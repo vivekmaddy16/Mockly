@@ -242,9 +242,12 @@ function extractSkillsFromText(text: string): string[] {
     'Tailwind CSS', 'Microservices', 'Git', 'CI/CD'
   ];
   
-  const found = commonSkills.filter(skill => 
-    new RegExp(`\\b${skill.replace('.', '\\.')}\\b`, 'i').test(text)
-  );
+  const found = commonSkills.filter(skill => {
+    const escaped = skill.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const startBoundary = /^\w/.test(skill) ? '\\b' : '';
+    const endBoundary = /\w$/.test(skill) ? '\\b' : '';
+    return new RegExp(`${startBoundary}${escaped}${endBoundary}`, 'i').test(text);
+  });
 
   return found.length > 0 ? found : ['React', 'Node.js', 'TypeScript', 'System Design', 'SQL'];
 }
