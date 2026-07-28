@@ -3,6 +3,7 @@ import './globals.css';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { PageTransitionWrapper } from '@/components/PageTransitionWrapper';
+import { AuthProvider } from '@/context/AuthContext';
 
 export const metadata: Metadata = {
   title: 'Mockly — AI-Powered Interview Preparation & Simulator System',
@@ -17,13 +18,15 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className="bg-dark-bg text-neutral-200 min-h-screen flex flex-col antialiased">
-        <Navbar />
-        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <PageTransitionWrapper>
-            {children}
-          </PageTransitionWrapper>
-        </main>
-        <Footer />
+        <AuthProvider>
+          <Navbar />
+          <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <PageTransitionWrapper>
+              {children}
+            </PageTransitionWrapper>
+          </main>
+          <Footer />
+        </AuthProvider>
       </body>
     </html>
   );

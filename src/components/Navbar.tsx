@@ -3,14 +3,21 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { PlayCircle, BookOpen, BarChart3, Key, Menu, X, Zap } from 'lucide-react';
+import { PlayCircle, BookOpen, BarChart3, Key, Menu, X, Zap, User, LogIn } from 'lucide-react';
 import { ApiKeyModal } from './ApiKeyModal';
+import { AuthModal } from './AuthModal';
+import { UserProfileModal } from './UserProfileModal';
+import { useAuth } from '@/context/AuthContext';
 import { getStoredApiKey } from '@/lib/storage';
 
 export const Navbar: React.FC = () => {
   const pathname = usePathname();
+  const { user, isAuthenticated } = useAuth();
   const [hasApiKey, setHasApiKey] = useState(false);
   const [isKeyModalOpen, setIsKeyModalOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const checkKey = () => {
@@ -21,7 +28,6 @@ export const Navbar: React.FC = () => {
     checkKey();
   }, []);
 
-  // Close mobile menu on route change
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [pathname]);
@@ -80,8 +86,36 @@ export const Navbar: React.FC = () => {
             </div>
 
             {/* Right side Actions */}
-            <div className="flex items-center gap-2.5 sm:gap-3">
-              {/* Get Started CTA — navigates directly to setup */}
+            <div className="flex items-center gap-2 sm:gap-3">
+              {isAuthenticated && user ? (
+                <button
+                  onClick={() => setIsProfileModalOpen(true)}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-neutral-900 border border-neutral-800 hover:border-neutral-700 text-xs font-semibold text-white transition"
+                >
+                  <div className="w-6 h-6 rounded-full bg-brand-500 text-dark-bg flex items-center justify-center font-bold text-[11px]">
+                    {user.name.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="hidden sm:inline max-w-[100px] truncate">{user.name}</span>
+                </button>
+              ) : (
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => { setAuthMode('login'); setIsAuthModalOpen(true); }}
+                    className="text-xs sm:text-sm font-medium text-neutral-300 hover:text-white px-3 py-1.5 transition hidden sm:inline-flex items-center gap-1"
+                  >
+                    <LogIn className="w-3.5 h-3.5 text-brand-400" />
+                    Sign In
+                  </button>
+                  <button
+                    onClick={() => { setAuthMode('register'); setIsAuthModalOpen(true); }}
+                    className="text-xs font-bold text-neutral-300 hover:text-white border border-neutral-800 hover:border-neutral-700 px-3 py-1.5 rounded-full transition"
+                  >
+                    Register
+                  </button>
+                </div>
+              )}
+
+              {/* Get Started CTA */}
               <Link
                 href="/setup"
                 className="btn-yellow text-xs sm:text-sm px-4 sm:px-5 py-2 inline-flex items-center gap-1.5"
@@ -123,6 +157,32 @@ export const Navbar: React.FC = () => {
                     </Link>
                   );
                 })}
+
+                {!isAuthenticated ? (
+                  <button
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      setAuthMode('login');
+                      setIsAuthModalOpen(true);
+                    }}
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-neutral-300 hover:bg-neutral-800/50 transition w-full text-left"
+                  >
+                    <User className="w-4 h-4 text-brand-400" />
+                    Sign In / Register
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      setIsProfileModalOpen(true);
+                    }}
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-neutral-300 hover:bg-neutral-800/50 transition w-full text-left"
+                  >
+                    <User className="w-4 h-4 text-brand-400" />
+                    My Profile ({user?.name})
+                  </button>
+                )}
+
                 <button
                   onClick={() => {
                     setIsMobileMenuOpen(false);
@@ -143,6 +203,17 @@ export const Navbar: React.FC = () => {
         isOpen={isKeyModalOpen}
         onClose={() => setIsKeyModalOpen(false)}
         onSaved={checkKey}
+      />
+
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        initialMode={authMode}
+      />
+
+      <UserProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
       />
     </>
   );
