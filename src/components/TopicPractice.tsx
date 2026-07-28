@@ -1,11 +1,13 @@
 'use client';
 
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   BookOpen, Code2, Database, Cpu, Network, Layers, 
   ChevronDown, ChevronUp, CheckCircle2, Send, Sparkles, 
   AlertTriangle, Brain
 } from 'lucide-react';
+import { QuestionEvaluation } from '@/types';
 import { evaluateAnswer } from '@/lib/gemini';
 
 const topicBank: Record<string, { icon: React.ReactNode; color: string; cardClass: string; iconClass: string; questions: { q: string; expected: string[] }[] }> = {
@@ -71,7 +73,7 @@ export const TopicPractice: React.FC = () => {
   const [activeTopic, setActiveTopic] = useState<string | null>(null);
   const [activeQIdx, setActiveQIdx] = useState<number | null>(null);
   const [userAnswer, setUserAnswer] = useState('');
-  const [evaluation, setEvaluation] = useState<any>(null);
+  const [evaluation, setEvaluation] = useState<QuestionEvaluation | null>(null);
   const [isEvaluating, setIsEvaluating] = useState(false);
 
   const handleTopicClick = (name: string) => {
@@ -137,56 +139,101 @@ export const TopicPractice: React.FC = () => {
                   </div>
                 </button>
 
-                {isOpen && (
-                  <div className="p-5 space-y-3 animate-fade-in bg-dark-card rounded-b-2xl border-t border-neutral-800/60">
-                    {topic.questions.map((tq, idx) => (
-                      <div key={idx}>
-                        <button onClick={() => handleSelectQ(idx)}
-                          className={`w-full text-left p-4 rounded-xl border transition ${
-                            activeQIdx === idx ? 'bg-brand-500/10 border-brand-500/20 text-brand-200' : 'bg-neutral-900/60 border-neutral-800 text-neutral-300 hover:border-neutral-700'
-                          }`}>
-                          <div className="flex items-center justify-between gap-3">
-                            <span className="text-sm font-medium">{tq.q}</span>
-                            <span className="px-2 py-0.5 rounded-lg bg-neutral-900 text-neutral-500 text-[10px] font-bold shrink-0">
-                              Q{idx+1}
-                            </span>
-                          </div>
-                        </button>
-
-                        {activeQIdx === idx && (
-                          <div className="mt-3 p-5 rounded-2xl bg-[#0e0e0e] border border-neutral-800 space-y-4 animate-fade-in">
-                            <textarea rows={5} value={userAnswer} onChange={(e) => setUserAnswer(e.target.value)}
-                              placeholder="Type your answer here..."
-                              className="w-full px-4 py-3 bg-[#141414] border border-neutral-800 rounded-xl text-neutral-200 text-xs focus:outline-none focus:border-brand-500/40 transition placeholder:text-neutral-600 resize-none font-mono"
-                            />
-                            <button onClick={handleSubmit} disabled={isEvaluating || !userAnswer.trim()}
-                              className="btn-yellow text-xs px-5 py-2.5 inline-flex items-center gap-2 disabled:opacity-50 disabled:pointer-events-none">
-                              {isEvaluating ? <><div className="w-3.5 h-3.5 border-2 border-dark-bg/30 border-t-dark-bg rounded-full animate-spin" /> Evaluating</>
-                              : <><Send className="w-3.5 h-3.5" /> Submit</>}
+                <AnimatePresence>
+                  {isOpen && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.3, ease: 'easeInOut' }}
+                      className="overflow-hidden"
+                    >
+                      <div className="p-5 space-y-3 bg-dark-card rounded-b-2xl border-t border-neutral-800/60">
+                        {topic.questions.map((tq, idx) => (
+                          <div key={idx}>
+                            <button onClick={() => handleSelectQ(idx)}
+                              className={`w-full text-left p-4 rounded-xl border transition ${
+                                activeQIdx === idx ? 'bg-brand-500/10 border-brand-500/20 text-brand-200' : 'bg-neutral-900/60 border-neutral-800 text-neutral-300 hover:border-neutral-700'
+                              }`}>
+                              <div className="flex items-center justify-between gap-3">
+                                <span className="text-sm font-medium">{tq.q}</span>
+                                <span className="px-2 py-0.5 rounded-lg bg-neutral-900 text-neutral-500 text-[10px] font-bold shrink-0">
+                                  Q{idx+1}
+                                </span>
+                              </div>
                             </button>
 
-                            {evaluation && (
-                              <div className="space-y-3 animate-fade-in text-xs">
-                                <div className="flex items-center gap-3 pt-2 border-t border-neutral-800">
-                                  <span className={`px-3 py-1.5 rounded-xl border font-bold ${
-                                    evaluation.score >= 80 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                                    : evaluation.score >= 60 ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                                    : 'bg-red-500/10 text-red-400 border-red-500/20'
-                                  }`}>{evaluation.score}%</span>
-                                  <span className="text-neutral-400">{evaluation.feedback}</span>
-                                </div>
-                                <div className="p-3.5 rounded-xl bg-neutral-900 border border-neutral-800">
-                                  <span className="font-bold text-brand-400 text-[10px] uppercase tracking-widest block mb-1"><Sparkles className="w-3 h-3 inline mr-1" />Model Answer</span>
-                                  <p className="text-neutral-400 font-mono whitespace-pre-line">{evaluation.modelAnswer}</p>
-                                </div>
-                              </div>
-                            )}
+                            <AnimatePresence>
+                              {activeQIdx === idx && (
+                                <motion.div
+                                  initial={{ height: 0, opacity: 0 }}
+                                  animate={{ height: 'auto', opacity: 1 }}
+                                  exit={{ height: 0, opacity: 0 }}
+                                  transition={{ duration: 0.25, ease: 'easeInOut' }}
+                                  className="overflow-hidden"
+                                >
+                                  <div className="mt-3 p-5 rounded-2xl bg-[#0e0e0e] border border-neutral-800 space-y-4">
+                                    <textarea rows={5} value={userAnswer} onChange={(e) => setUserAnswer(e.target.value)}
+                                      placeholder="Type your answer here..."
+                                      className="w-full px-4 py-3 bg-[#141414] border border-neutral-800 rounded-xl text-neutral-200 text-xs focus:outline-none focus:border-brand-500/40 transition placeholder:text-neutral-600 resize-none font-mono"
+                                    />
+                                    <button onClick={handleSubmit} disabled={isEvaluating || !userAnswer.trim()}
+                                      className="btn-yellow text-xs px-5 py-2.5 inline-flex items-center gap-2 disabled:opacity-50 disabled:pointer-events-none">
+                                      {isEvaluating ? <><div className="w-3.5 h-3.5 border-2 border-dark-bg/30 border-t-dark-bg rounded-full animate-spin" /> Evaluating</>
+                                      : <><Send className="w-3.5 h-3.5" /> Submit</>}
+                                    </button>
+
+                                    {evaluation && (
+                                      <div className="space-y-3 animate-fade-in text-xs">
+                                        <div className="flex items-center gap-3 pt-2 border-t border-neutral-800">
+                                          <span className={`px-3 py-1.5 rounded-xl border font-bold ${
+                                            evaluation.score >= 80 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                            : evaluation.score >= 60 ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                                            : 'bg-red-500/10 text-red-400 border-red-500/20'
+                                          }`}>{evaluation.score}%</span>
+                                          <span className="text-neutral-400">{evaluation.feedback}</span>
+                                        </div>
+
+                                        {/* Strengths & Improvements */}
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                          <div className="p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/15">
+                                            <span className="font-bold text-emerald-400 text-[10px] uppercase tracking-widest block mb-1.5">
+                                              <CheckCircle2 className="w-3 h-3 inline mr-1" />Strengths
+                                            </span>
+                                            <ul className="space-y-1 text-neutral-400">
+                                              {evaluation.positiveHighlights.map((pt, i) => (
+                                                <li key={i} className="flex items-start gap-1.5"><span className="text-emerald-400 mt-0.5">•</span>{pt}</li>
+                                              ))}
+                                            </ul>
+                                          </div>
+                                          <div className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/15">
+                                            <span className="font-bold text-amber-400 text-[10px] uppercase tracking-widest block mb-1.5">
+                                              <AlertTriangle className="w-3 h-3 inline mr-1" />Improve
+                                            </span>
+                                            <ul className="space-y-1 text-neutral-400">
+                                              {evaluation.areasToImprove.map((pt, i) => (
+                                                <li key={i} className="flex items-start gap-1.5"><span className="text-amber-400 mt-0.5">•</span>{pt}</li>
+                                              ))}
+                                            </ul>
+                                          </div>
+                                        </div>
+
+                                        <div className="p-3.5 rounded-xl bg-neutral-900 border border-neutral-800">
+                                          <span className="font-bold text-brand-400 text-[10px] uppercase tracking-widest block mb-1"><Sparkles className="w-3 h-3 inline mr-1" />Model Answer</span>
+                                          <p className="text-neutral-400 font-mono whitespace-pre-line">{evaluation.modelAnswer}</p>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
                           </div>
-                        )}
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             );
           })}
