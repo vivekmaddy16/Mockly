@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   GraduationCap,
   Code2,
@@ -15,10 +16,7 @@ import {
   Mic,
   ChevronDown,
   ChevronUp,
-  Users,
-  Award,
   Brain,
-  Sparkles,
   CheckCircle2,
   PlayCircle,
   Zap,
@@ -143,41 +141,41 @@ export default function HomePage() {
           </div>
 
           {/* College → Coding → Career Flow */}
-          <div className="flex items-center justify-center gap-4 sm:gap-8 py-6">
+          <div className="flex items-center justify-center gap-3 sm:gap-8 py-6 overflow-hidden">
             {/* College */}
-            <div className="flex flex-col items-center gap-3">
-              <div className="w-20 h-20 sm:w-28 sm:h-28 rounded-3xl border border-blue-500/30 bg-blue-500/5 flex items-center justify-center">
-                <GraduationCap className="w-10 h-10 sm:w-14 sm:h-14 text-blue-400" />
+            <div className="flex flex-col items-center gap-2 sm:gap-3 shrink-0">
+              <div className="w-16 h-16 sm:w-28 sm:h-28 rounded-2xl sm:rounded-3xl border border-blue-500/30 bg-blue-500/5 flex items-center justify-center">
+                <GraduationCap className="w-8 h-8 sm:w-14 sm:h-14 text-blue-400" />
               </div>
-              <span className="text-lg sm:text-xl font-extrabold text-white">College</span>
+              <span className="text-sm sm:text-xl font-extrabold text-white">College</span>
             </div>
 
             {/* Arrow */}
-            <div className="flex items-center">
-              <div className="w-12 sm:w-20 h-0.5 bg-gradient-to-r from-blue-500 to-brand-500"></div>
-              <ArrowRight className="w-5 h-5 text-brand-400 -ml-1" />
+            <div className="flex items-center shrink-0">
+              <div className="w-8 sm:w-20 h-0.5 bg-gradient-to-r from-blue-500 to-brand-500"></div>
+              <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 text-brand-400 -ml-1" />
             </div>
 
             {/* Interview (center, larger) */}
-            <div className="flex flex-col items-center gap-3">
-              <div className="w-24 h-24 sm:w-36 sm:h-36 rounded-3xl border-2 border-brand-500/40 bg-brand-500/5 flex items-center justify-center shadow-lg shadow-brand-500/10">
-                <Code2 className="w-12 h-12 sm:w-16 sm:h-16 text-brand-400" />
+            <div className="flex flex-col items-center gap-2 sm:gap-3 shrink-0">
+              <div className="w-20 h-20 sm:w-36 sm:h-36 rounded-2xl sm:rounded-3xl border-2 border-brand-500/40 bg-brand-500/5 flex items-center justify-center shadow-lg shadow-brand-500/10">
+                <Code2 className="w-10 h-10 sm:w-16 sm:h-16 text-brand-400" />
               </div>
-              <span className="text-xl sm:text-2xl font-extrabold text-gradient-gold">Interview</span>
+              <span className="text-base sm:text-2xl font-extrabold text-gradient-gold">Interview</span>
             </div>
 
             {/* Arrow */}
-            <div className="flex items-center">
-              <div className="w-12 sm:w-20 h-0.5 bg-gradient-to-r from-brand-500 to-emerald-500"></div>
-              <ArrowRight className="w-5 h-5 text-emerald-400 -ml-1" />
+            <div className="flex items-center shrink-0">
+              <div className="w-8 sm:w-20 h-0.5 bg-gradient-to-r from-brand-500 to-emerald-500"></div>
+              <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400 -ml-1" />
             </div>
 
             {/* Career */}
-            <div className="flex flex-col items-center gap-3">
-              <div className="w-20 h-20 sm:w-28 sm:h-28 rounded-3xl border border-emerald-500/30 bg-emerald-500/5 flex items-center justify-center">
-                <Briefcase className="w-10 h-10 sm:w-14 sm:h-14 text-emerald-400" />
+            <div className="flex flex-col items-center gap-2 sm:gap-3 shrink-0">
+              <div className="w-16 h-16 sm:w-28 sm:h-28 rounded-2xl sm:rounded-3xl border border-emerald-500/30 bg-emerald-500/5 flex items-center justify-center">
+                <Briefcase className="w-8 h-8 sm:w-14 sm:h-14 text-emerald-400" />
               </div>
-              <span className="text-lg sm:text-xl font-extrabold text-white">Career</span>
+              <span className="text-sm sm:text-xl font-extrabold text-white">Career</span>
             </div>
           </div>
 
@@ -237,14 +235,14 @@ export default function HomePage() {
         {/* ════════ STATS SECTION ════════ */}
         <section className="max-w-4xl mx-auto">
           <div className="card-dark rounded-3xl overflow-hidden">
-            <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-neutral-900">
+            <div className="grid grid-cols-2 md:grid-cols-4">
               {[
                 { num: '12+', label: 'CS Topics Covered' },
                 { num: '50+', label: 'Practice Questions' },
                 { num: '3', label: 'Interview Modes' },
                 { num: '100%', label: 'Free & Private' },
               ].map((s, i) => (
-                <div key={i} className="stat-card">
+                <div key={i} className="stat-card border-b md:border-b-0 border-r border-neutral-800/50 last:border-r-0 [&:nth-child(2)]:border-r-0 md:[&:nth-child(2)]:border-r">
                   <div className="stat-number">{s.num}</div>
                   <div className="stat-label">{s.label}</div>
                 </div>
@@ -350,11 +348,21 @@ export default function HomePage() {
                     <ChevronDown className="w-4 h-4 text-neutral-500 shrink-0" />
                   )}
                 </button>
-                {openFaqIdx === idx && (
-                  <div className="px-5 pb-5 animate-fade-in">
-                    <p className="text-sm text-neutral-400 leading-relaxed">{faq.a}</p>
-                  </div>
-                )}
+                <AnimatePresence>
+                  {openFaqIdx === idx && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.3, ease: 'easeInOut' }}
+                      className="overflow-hidden"
+                    >
+                      <div className="px-5 pb-5">
+                        <p className="text-sm text-neutral-400 leading-relaxed">{faq.a}</p>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             ))}
           </div>
