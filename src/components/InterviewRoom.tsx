@@ -26,7 +26,8 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
   const [isListening, setIsListening] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const [interimText, setInterimText] = useState('');
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recognitionRef = useRef<any>(null);
   const hasUnsavedProgress = useRef(false);
 
   // Timer
@@ -71,13 +72,12 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
 
   const toggleListening = useCallback(() => {
     if (typeof window === 'undefined') return;
-    const SR = (window as unknown as { SpeechRecognition?: typeof SpeechRecognition; webkitSpeechRecognition?: typeof SpeechRecognition }).SpeechRecognition 
-      || (window as unknown as { webkitSpeechRecognition?: typeof SpeechRecognition }).webkitSpeechRecognition;
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) { alert('Speech Recognition not supported. Please type your answer.'); return; }
     if (isListening && recognitionRef.current) { recognitionRef.current.stop(); setIsListening(false); setInterimText(''); return; }
     const r = new SR();
     r.continuous = true; r.interimResults = true;
-    r.onresult = (e: SpeechRecognitionEvent) => {
+    r.onresult = (e: any) => {
       let finalTranscript = '';
       let interimTranscript = '';
       for (let i = e.resultIndex; i < e.results.length; i++) {
