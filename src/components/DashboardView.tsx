@@ -42,6 +42,10 @@ export const DashboardView: React.FC = () => {
     return 'bg-red-500/10 border-red-500/20';
   };
 
+  // Limit chart bars for mobile readability
+  const chartData = completed.slice(-10);
+  const mobileChartData = chartData.slice(-5);
+
   return (
     <div className="page-glow relative">
       <div className="relative z-10 w-full max-w-5xl mx-auto space-y-8 animate-fade-in">
@@ -93,20 +97,39 @@ export const DashboardView: React.FC = () => {
           </div>
         ) : (
           <>
-            {/* Score Chart (Simple bar visualization) */}
+            {/* Score Chart */}
             {completed.length >= 2 && (
               <div className="card-dark rounded-2xl p-6 space-y-4">
                 <h3 className="text-sm font-bold text-white flex items-center gap-2">
                   <TrendingUp className="w-4 h-4 text-emerald-400" /> Score Trend
                 </h3>
-                <div className="flex items-end gap-2 h-32">
-                  {completed.slice(-10).map((s, idx) => {
+                {/* Desktop chart */}
+                <div className="hidden sm:flex items-end gap-2 h-32">
+                  {chartData.map((s, idx) => {
                     const score = s.totalScore ?? Math.round(Object.values(s.evaluations).reduce((acc, ev) => acc + ev.score, 0) / (Object.keys(s.evaluations).length || 1));
                     return (
-                      <div key={idx} className="flex-1 flex flex-col items-center gap-1">
+                      <div key={s.id || idx} className="flex-1 flex flex-col items-center gap-1">
                         <span className={`text-[10px] font-bold ${getScoreColor(score)}`}>{score}%</span>
                         <div
-                          className="w-full rounded-t-lg bg-gradient-to-t from-brand-500/30 to-brand-500/60 transition-all"
+                          className="w-full rounded-t-lg bg-gradient-to-t from-brand-500/30 to-brand-500/60 transition-all duration-700 ease-out"
+                          style={{ height: `${Math.max(score * 0.9, 8)}%` }}
+                        />
+                        <span className="text-[9px] text-neutral-600 truncate max-w-full">
+                          {new Date(s.createdAt).toLocaleDateString('en', { month: 'short', day: 'numeric' })}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+                {/* Mobile chart — limited bars */}
+                <div className="sm:hidden flex items-end gap-3 h-28">
+                  {mobileChartData.map((s, idx) => {
+                    const score = s.totalScore ?? Math.round(Object.values(s.evaluations).reduce((acc, ev) => acc + ev.score, 0) / (Object.keys(s.evaluations).length || 1));
+                    return (
+                      <div key={s.id || idx} className="flex-1 flex flex-col items-center gap-1 min-w-[40px]">
+                        <span className={`text-[10px] font-bold ${getScoreColor(score)}`}>{score}%</span>
+                        <div
+                          className="w-full rounded-t-lg bg-gradient-to-t from-brand-500/30 to-brand-500/60 transition-all duration-700 ease-out"
                           style={{ height: `${Math.max(score * 0.9, 8)}%` }}
                         />
                         <span className="text-[9px] text-neutral-600 truncate max-w-full">
@@ -121,16 +144,16 @@ export const DashboardView: React.FC = () => {
 
             {/* Session History */}
             <div className="space-y-4">
-              <div className="flex items-center justify-between gap-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <h2 className="text-lg font-bold text-white">Session History</h2>
-                <div className="relative">
+                <div className="relative w-full sm:w-auto">
                   <Search className="w-3.5 h-3.5 text-neutral-500 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Search sessions..."
-                    className="pl-8 pr-4 py-2 bg-neutral-900 border border-neutral-800 rounded-xl text-xs text-neutral-300 focus:outline-none focus:border-brand-500/40 transition placeholder:text-neutral-600 w-48"
+                    className="pl-8 pr-4 py-2 bg-neutral-900 border border-neutral-800 rounded-xl text-xs text-neutral-300 focus:outline-none focus:border-brand-500/40 transition placeholder:text-neutral-600 w-full sm:w-48"
                   />
                 </div>
               </div>
@@ -147,18 +170,18 @@ export const DashboardView: React.FC = () => {
                     <div key={s.id} className="card-dark rounded-2xl overflow-hidden">
                       <button onClick={() => setExpandedId(isExp ? null : s.id)}
                         className="w-full p-5 text-left flex items-center justify-between gap-4 hover:bg-neutral-800/20 transition">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center border font-extrabold text-sm ${getScoreBg(score)} ${getScoreColor(score)}`}>
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center border font-extrabold text-sm shrink-0 ${getScoreBg(score)} ${getScoreColor(score)}`}>
                             {score}%
                           </div>
-                          <div>
-                            <h4 className="text-sm font-bold text-white">{s.targetRole}</h4>
+                          <div className="min-w-0">
+                            <h4 className="text-sm font-bold text-white truncate">{s.targetRole}</h4>
                             <p className="text-xs text-neutral-500">{s.experienceLevel} • {new Date(s.createdAt).toLocaleDateString()} • {evalCount}/{s.questions.length} answered</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-3 shrink-0">
                           <Link href={`/interview/${s.id}/results`} onClick={(e) => e.stopPropagation()}
-                            className="text-xs text-brand-400 hover:text-brand-300 font-semibold flex items-center gap-1">
+                            className="text-xs text-brand-400 hover:text-brand-300 font-semibold flex items-center gap-1 hidden sm:flex">
                             View <ArrowRight className="w-3 h-3" />
                           </Link>
                           {isExp ? <ChevronUp className="w-4 h-4 text-neutral-500" /> : <ChevronDown className="w-4 h-4 text-neutral-500" />}
@@ -171,18 +194,23 @@ export const DashboardView: React.FC = () => {
                             const ev = s.evaluations[q.id];
                             return (
                               <div key={q.id} className="flex items-center justify-between p-2.5 rounded-xl bg-[#0e0e0e] border border-neutral-800">
-                                <div className="flex items-center gap-2">
-                                  <span className="px-2 py-0.5 rounded-lg bg-neutral-900 text-neutral-500 font-bold text-[10px]">Q{idx+1}</span>
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className="px-2 py-0.5 rounded-lg bg-neutral-900 text-neutral-500 font-bold text-[10px] shrink-0">Q{idx+1}</span>
                                   <span className="text-neutral-300 line-clamp-1">{q.questionText}</span>
                                 </div>
                                 {ev ? (
-                                  <span className={`px-2.5 py-0.5 rounded-lg border font-bold text-[10px] ${getScoreBg(ev.score)} ${getScoreColor(ev.score)}`}>{ev.score}%</span>
+                                  <span className={`px-2.5 py-0.5 rounded-lg border font-bold text-[10px] shrink-0 ${getScoreBg(ev.score)} ${getScoreColor(ev.score)}`}>{ev.score}%</span>
                                 ) : (
-                                  <span className="text-neutral-600 text-[10px]">Unanswered</span>
+                                  <span className="text-neutral-600 text-[10px] shrink-0">Unanswered</span>
                                 )}
                               </div>
                             );
                           })}
+                          {/* Mobile view link */}
+                          <Link href={`/interview/${s.id}/results`}
+                            className="sm:hidden mt-2 w-full text-center text-xs text-brand-400 hover:text-brand-300 font-semibold flex items-center justify-center gap-1 py-2">
+                            View Full Report <ArrowRight className="w-3 h-3" />
+                          </Link>
                         </div>
                       )}
                     </div>
