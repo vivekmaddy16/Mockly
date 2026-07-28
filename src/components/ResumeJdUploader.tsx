@@ -1,21 +1,29 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   FileText, 
   Briefcase, 
   Upload, 
-  Sparkles, 
   CheckCircle2, 
   AlertCircle, 
   Brain,
   Zap,
-  Code2
+  Sparkles,
+  Cpu,
+  MessageSquare
 } from 'lucide-react';
 import { ExperienceLevel, InterviewSession } from '@/types';
 import { generateInterviewQuestions } from '@/lib/gemini';
 import { saveSession } from '@/lib/storage';
+
+const LOADING_STEPS = [
+  { icon: Brain, text: 'Analyzing your resume & job description...', color: 'text-blue-400' },
+  { icon: Cpu, text: 'Extracting skills & requirements...', color: 'text-purple-400' },
+  { icon: MessageSquare, text: 'Generating tailored interview questions...', color: 'text-brand-400' },
+  { icon: Sparkles, text: 'Preparing your AI interview room...', color: 'text-emerald-400' },
+];
 
 export const ResumeJdUploader: React.FC = () => {
   const router = useRouter();
@@ -26,6 +34,7 @@ export const ResumeJdUploader: React.FC = () => {
   const [jobDescriptionText, setJobDescriptionText] = useState('');
   const [questionCount, setQuestionCount] = useState<number>(3);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingStep, setLoadingStep] = useState(0);
   const [errorMsg, setErrorMsg] = useState('');
 
   const quickRoles = [
@@ -35,6 +44,15 @@ export const ResumeJdUploader: React.FC = () => {
     'DevOps / Cloud Engineer',
     'Data Engineer / AI Engineer'
   ];
+
+  // Animate loading steps
+  useEffect(() => {
+    if (!isLoading) { setLoadingStep(0); return; }
+    const interval = setInterval(() => {
+      setLoadingStep(prev => (prev < LOADING_STEPS.length - 1 ? prev + 1 : prev));
+    }, 2200);
+    return () => clearInterval(interval);
+  }, [isLoading]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, type: 'resume' | 'jd') => {
     const file = e.target.files?.[0];
@@ -82,12 +100,82 @@ export const ResumeJdUploader: React.FC = () => {
       };
       saveSession(newSession);
       router.push(`/interview/${newSession.id}`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
       setErrorMsg('Failed to generate interview. Please check inputs or try again.');
       setIsLoading(false);
     }
   };
+
+  // Premium Loading Overlay
+  if (isLoading) {
+    return (
+      <div className="page-glow relative">
+        <div className="relative z-10 w-full max-w-2xl mx-auto py-20 animate-fade-in">
+          <div className="card-dark rounded-3xl p-10 sm:p-14 space-y-10 border border-brand-500/15 text-center">
+            {/* Animated Logo */}
+            <div className="flex justify-center">
+              <div className="relative">
+                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center shadow-2xl shadow-brand-500/30 animate-pulse-slow">
+                  <Brain className="w-10 h-10 text-dark-bg" />
+                </div>
+                <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-emerald-400 rounded-full border-4 border-dark-bg flex items-center justify-center">
+                  <div className="w-2.5 h-2.5 border-2 border-dark-bg/60 border-t-dark-bg rounded-full animate-spin" />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <h2 className="text-2xl font-extrabold text-white">Preparing Your Interview</h2>
+              <p className="text-sm text-neutral-400">Our AI is crafting a personalized experience for you</p>
+            </div>
+
+            {/* Steps */}
+            <div className="space-y-3 text-left max-w-sm mx-auto">
+              {LOADING_STEPS.map((step, idx) => {
+                const Icon = step.icon;
+                const isActive = idx === loadingStep;
+                const isDone = idx < loadingStep;
+                return (
+                  <div
+                    key={idx}
+                    className={`flex items-center gap-3 p-3 rounded-xl border transition-all duration-500 ${
+                      isActive ? 'bg-brand-500/10 border-brand-500/20 scale-[1.02]'
+                      : isDone ? 'bg-emerald-500/5 border-emerald-500/15 opacity-70'
+                      : 'bg-neutral-900/40 border-neutral-800/50 opacity-40'
+                    }`}
+                  >
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                      isDone ? 'bg-emerald-500/15' : isActive ? 'bg-brand-500/15' : 'bg-neutral-800/50'
+                    }`}>
+                      {isDone ? (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                      ) : isActive ? (
+                        <div className="w-4 h-4 border-2 border-brand-400/30 border-t-brand-400 rounded-full animate-spin" />
+                      ) : (
+                        <Icon className={`w-4 h-4 ${step.color} opacity-50`} />
+                      )}
+                    </div>
+                    <span className={`text-xs font-medium ${isDone ? 'text-emerald-400/80' : isActive ? 'text-white' : 'text-neutral-600'}`}>
+                      {step.text}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Progress bar */}
+            <div className="w-full h-1 rounded-full bg-neutral-800 overflow-hidden">
+              <div 
+                className="h-full bg-gradient-to-r from-brand-500 to-emerald-500 rounded-full transition-all duration-1000 ease-out"
+                style={{ width: `${((loadingStep + 1) / LOADING_STEPS.length) * 100}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="page-glow relative">
@@ -263,17 +351,8 @@ export const ResumeJdUploader: React.FC = () => {
             disabled={isLoading}
             className="btn-yellow text-sm px-10 py-4 inline-flex items-center gap-2.5 shadow-xl shadow-brand-500/20 disabled:opacity-50 disabled:pointer-events-none"
           >
-            {isLoading ? (
-              <>
-                <div className="w-4 h-4 border-2 border-dark-bg/30 border-t-dark-bg rounded-full animate-spin" />
-                Analyzing & Generating AI Interview...
-              </>
-            ) : (
-              <>
-                <Zap className="w-5 h-5" />
-                Launch AI Mock Interview Room
-              </>
-            )}
+            <Zap className="w-5 h-5" />
+            Launch AI Mock Interview Room
           </button>
         </div>
       </div>

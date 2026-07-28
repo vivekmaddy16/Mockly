@@ -1,5 +1,4 @@
 import { InterviewSession, UserProgressStats, QuestionEvaluation } from '@/types';
-import { PRACTICE_QUESTIONS } from './mockData';
 
 const API_KEY_STORAGE_KEY = 'mockly_gemini_api_key';
 const SESSIONS_STORAGE_KEY = 'mockly_interview_sessions';

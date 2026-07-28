@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { Github, Heart } from 'lucide-react';
 
 export const Footer: React.FC = () => {
   return (
@@ -45,14 +46,17 @@ export const Footer: React.FC = () => {
             </ul>
           </div>
 
-          {/* Company */}
+          {/* About */}
           <div>
-            <h4 className="text-sm font-bold text-white mb-4">Company</h4>
+            <h4 className="text-sm font-bold text-white mb-4">About</h4>
             <ul className="space-y-2.5">
-              <li><span className="text-sm text-neutral-500">About Us</span></li>
-              <li><span className="text-sm text-neutral-500">Contact Us</span></li>
-              <li><span className="text-sm text-neutral-500">Privacy Policy</span></li>
-              <li><span className="text-sm text-neutral-500">Terms of Service</span></li>
+              <li className="text-sm text-neutral-500 flex items-center gap-1.5">
+                <Heart className="w-3.5 h-3.5 text-red-400" />
+                Built for students & developers
+              </li>
+              <li className="text-sm text-neutral-500">100% Free & Open Source</li>
+              <li className="text-sm text-neutral-500">Privacy-first — all data stays local</li>
+              <li className="text-sm text-neutral-500">No account required</li>
             </ul>
           </div>
         </div>

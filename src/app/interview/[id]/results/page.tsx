@@ -1,18 +1,18 @@
 'use client';
 
-export const dynamic = 'force-dynamic';
-
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { ResultsView } from '@/components/ResultsView';
 import { InterviewSession } from '@/types';
 import { getSessionById } from '@/lib/storage';
 import { DEMO_INITIAL_SESSION } from '@/lib/mockData';
+import { AlertCircle } from 'lucide-react';
 
 export default function InterviewResultsPage() {
   const params = useParams();
   const id = params?.id as string;
   const [session, setSession] = useState<InterviewSession | null>(null);
+  const [isDemo, setIsDemo] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -21,6 +21,7 @@ export default function InterviewResultsPage() {
         setSession(found);
       } else {
         setSession(DEMO_INITIAL_SESSION);
+        setIsDemo(true);
       }
     }
   }, [id]);
@@ -33,5 +34,15 @@ export default function InterviewResultsPage() {
     );
   }
 
-  return <ResultsView session={session} />;
+  return (
+    <>
+      {isDemo && (
+        <div className="mb-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs flex items-center gap-2 max-w-5xl mx-auto animate-fade-in">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>Session not found — showing <strong>demo results</strong> for preview. <a href="/setup" className="underline underline-offset-2 hover:text-amber-300">Create a real interview →</a></span>
+        </div>
+      )}
+      <ResultsView session={session} />
+    </>
+  );
 }

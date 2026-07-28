@@ -3,16 +3,14 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { PlayCircle, BookOpen, BarChart3, Key, Sun, Menu, X } from 'lucide-react';
+import { PlayCircle, BookOpen, BarChart3, Key, Menu, X, Zap } from 'lucide-react';
 import { ApiKeyModal } from './ApiKeyModal';
-import { LoginModal } from './LoginModal';
 import { getStoredApiKey } from '@/lib/storage';
 
 export const Navbar: React.FC = () => {
   const pathname = usePathname();
   const [hasApiKey, setHasApiKey] = useState(false);
   const [isKeyModalOpen, setIsKeyModalOpen] = useState(false);
-  const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const checkKey = () => {
@@ -83,21 +81,14 @@ export const Navbar: React.FC = () => {
 
             {/* Right side Actions */}
             <div className="flex items-center gap-2.5 sm:gap-3">
-              {/* Theme toggle */}
-              <button
-                aria-label="Toggle theme"
-                className="w-9 h-9 rounded-full border border-neutral-800 flex items-center justify-center text-neutral-400 hover:text-white hover:border-neutral-600 transition"
+              {/* Get Started CTA — navigates directly to setup */}
+              <Link
+                href="/setup"
+                className="btn-yellow text-xs sm:text-sm px-4 sm:px-5 py-2 inline-flex items-center gap-1.5"
               >
-                <Sun className="w-4 h-4" />
-              </button>
-
-              {/* Get Started CTA */}
-              <button
-                onClick={() => setIsLoginOpen(true)}
-                className="btn-yellow text-xs sm:text-sm px-4 sm:px-5 py-2"
-              >
+                <Zap className="w-3.5 h-3.5" />
                 Get Started
-              </button>
+              </Link>
 
               {/* Mobile Hamburger Toggle */}
               <button
@@ -152,11 +143,6 @@ export const Navbar: React.FC = () => {
         isOpen={isKeyModalOpen}
         onClose={() => setIsKeyModalOpen(false)}
         onSaved={checkKey}
-      />
-
-      <LoginModal
-        isOpen={isLoginOpen}
-        onClose={() => setIsLoginOpen(false)}
       />
     </>
   );
