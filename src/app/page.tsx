@@ -111,7 +111,7 @@ export default function HomePage() {
                   <div className="icon-badge">
                     <Mic className="w-4 h-4 text-charcoal" />
                   </div>
-                  <span className="btn-label">Start AI Mock Session</span>
+                  <span className="btn-label">Switch to Mockly</span>
                 </Link>
               </div>
 
@@ -169,7 +169,7 @@ export default function HomePage() {
                 <div className="w-1 bg-charcoal h-7 rounded-full" />
                 <div className="w-1 bg-charcoal h-3 rounded-full" />
               </div>
-              <span className="font-display font-extrabold text-sm text-charcoal ml-2">Mock Sessions</span>
+              <span className="font-display font-extrabold text-sm text-charcoal ml-2">Mock Interviews</span>
             </div>
 
             {/* Stat 1 */}
