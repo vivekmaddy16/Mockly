@@ -35,7 +35,7 @@ const InterviewSessionSchema = new mongoose.Schema(
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: false,
+      required: true,
     },
     targetRole: {
       type: String,
@@ -70,9 +70,13 @@ const InterviewSessionSchema = new mongoose.Schema(
     totalScore: {
       type: Number,
     },
+    completedAt: {
+      type: Date,
+    },
     overallFeedback: {
       summary: { type: String },
       strengths: [{ type: String }],
+      weaknesses: [{ type: String }],
       actionableAdvice: [{ type: String }],
     },
   },
@@ -80,5 +84,10 @@ const InterviewSessionSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+// ─── Indexes for Performance ─────────────────────────────────
+InterviewSessionSchema.index({ user: 1, createdAt: -1 });
+InterviewSessionSchema.index({ sessionId: 1 });
+InterviewSessionSchema.index({ user: 1, status: 1 });
 
 module.exports = mongoose.models.InterviewSession || mongoose.model('InterviewSession', InterviewSessionSchema);
