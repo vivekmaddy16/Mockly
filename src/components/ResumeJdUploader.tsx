@@ -3,26 +3,18 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
-  FileText, 
-  Briefcase, 
-  Upload, 
-  CheckCircle2, 
-  AlertCircle, 
-  Brain,
-  Zap,
-  Sparkles,
-  Cpu,
-  MessageSquare
+  FileText, Briefcase, Upload, CheckCircle2, AlertCircle, Brain, 
+  Zap, Sparkles, Cpu, MessageSquare, Mic
 } from 'lucide-react';
 import { ExperienceLevel, InterviewSession } from '@/types';
 import { generateInterviewQuestions } from '@/lib/gemini';
 import { saveSession } from '@/lib/storage';
 
 const LOADING_STEPS = [
-  { icon: Brain, text: 'Analyzing your resume & job description...', color: 'text-blue-400' },
-  { icon: Cpu, text: 'Extracting skills & requirements...', color: 'text-purple-400' },
-  { icon: MessageSquare, text: 'Generating tailored interview questions...', color: 'text-brand-400' },
-  { icon: Sparkles, text: 'Preparing your AI interview room...', color: 'text-emerald-400' },
+  { icon: Brain, text: 'Analyzing your resume & job description...', color: 'text-charcoal' },
+  { icon: Cpu, text: 'Extracting skills & requirements...', color: 'text-charcoal' },
+  { icon: MessageSquare, text: 'Generating tailored interview questions...', color: 'text-coral' },
+  { icon: Sparkles, text: 'Preparing your AI interview room...', color: 'text-charcoal' },
 ];
 
 export const ResumeJdUploader: React.FC = () => {
@@ -107,70 +99,44 @@ export const ResumeJdUploader: React.FC = () => {
     }
   };
 
-  // Premium Loading Overlay
+  // Castrio Loading Overlay
   if (isLoading) {
     return (
-      <div className="page-glow relative">
-        <div className="relative z-10 w-full max-w-2xl mx-auto py-20 animate-fade-in">
-          <div className="card-dark rounded-3xl p-10 sm:p-14 space-y-10 border border-brand-500/15 text-center">
-            {/* Animated Logo */}
-            <div className="flex justify-center">
-              <div className="relative">
-                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center shadow-2xl shadow-brand-500/30 animate-pulse-slow">
-                  <Brain className="w-10 h-10 text-dark-bg" />
-                </div>
-                <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-emerald-400 rounded-full border-4 border-dark-bg flex items-center justify-center">
-                  <div className="w-2.5 h-2.5 border-2 border-dark-bg/60 border-t-dark-bg rounded-full animate-spin" />
-                </div>
-              </div>
-            </div>
+      <div className="w-full max-w-2xl mx-auto py-16 animate-fade-in">
+        <div className="card-cream p-10 sm:p-14 space-y-8 text-center shadow-2xl border border-white">
+          <div className="w-20 h-20 rounded-full bg-charcoal text-cream flex items-center justify-center mx-auto shadow-xl animate-pulse-slow">
+            <Brain className="w-10 h-10" />
+          </div>
 
-            <div className="space-y-2">
-              <h2 className="text-2xl font-extrabold text-white">Preparing Your Interview</h2>
-              <p className="text-sm text-neutral-400">Our AI is crafting a personalized experience for you</p>
-            </div>
+          <div className="space-y-2">
+            <h2 className="font-display font-black text-3xl text-charcoal">Preparing Your Interview</h2>
+            <p className="text-xs font-bold text-charcoal/60">Our AI engine is crafting personalized role questions</p>
+          </div>
 
-            {/* Steps */}
-            <div className="space-y-3 text-left max-w-sm mx-auto">
-              {LOADING_STEPS.map((step, idx) => {
-                const Icon = step.icon;
-                const isActive = idx === loadingStep;
-                const isDone = idx < loadingStep;
-                return (
-                  <div
-                    key={idx}
-                    className={`flex items-center gap-3 p-3 rounded-xl border transition-all duration-500 ${
-                      isActive ? 'bg-brand-500/10 border-brand-500/20 scale-[1.02]'
-                      : isDone ? 'bg-emerald-500/5 border-emerald-500/15 opacity-70'
-                      : 'bg-neutral-900/40 border-neutral-800/50 opacity-40'
-                    }`}
-                  >
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                      isDone ? 'bg-emerald-500/15' : isActive ? 'bg-brand-500/15' : 'bg-neutral-800/50'
-                    }`}>
-                      {isDone ? (
-                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                      ) : isActive ? (
-                        <div className="w-4 h-4 border-2 border-brand-400/30 border-t-brand-400 rounded-full animate-spin" />
-                      ) : (
-                        <Icon className={`w-4 h-4 ${step.color} opacity-50`} />
-                      )}
-                    </div>
-                    <span className={`text-xs font-medium ${isDone ? 'text-emerald-400/80' : isActive ? 'text-white' : 'text-neutral-600'}`}>
-                      {step.text}
-                    </span>
+          <div className="space-y-3 text-left max-w-sm mx-auto">
+            {LOADING_STEPS.map((step, idx) => {
+              const isActive = idx === loadingStep;
+              const isDone = idx < loadingStep;
+              return (
+                <div
+                  key={idx}
+                  className={`flex items-center gap-3 p-3.5 rounded-2xl transition-all ${
+                    isActive ? 'bg-white border border-charcoal/10 shadow-md scale-[1.02]'
+                    : isDone ? 'bg-black/5 opacity-80'
+                    : 'opacity-40'
+                  }`}
+                >
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${
+                    isDone ? 'bg-emerald-500 text-white' : isActive ? 'bg-charcoal text-cream' : 'bg-charcoal/20'
+                  }`}>
+                    {isDone ? <CheckCircle2 className="w-4 h-4" /> : <Sparkles className="w-3.5 h-3.5" />}
                   </div>
-                );
-              })}
-            </div>
-
-            {/* Progress bar */}
-            <div className="w-full h-1 rounded-full bg-neutral-800 overflow-hidden">
-              <div 
-                className="h-full bg-gradient-to-r from-brand-500 to-emerald-500 rounded-full transition-all duration-1000 ease-out"
-                style={{ width: `${((loadingStep + 1) / LOADING_STEPS.length) * 100}%` }}
-              />
-            </div>
+                  <span className={`text-xs font-extrabold ${isActive ? 'text-charcoal' : 'text-charcoal/60'}`}>
+                    {step.text}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -178,184 +144,182 @@ export const ResumeJdUploader: React.FC = () => {
   }
 
   return (
-    <div className="page-glow relative">
-      <div className="relative z-10 w-full max-w-4xl mx-auto space-y-8 animate-fade-in">
+    <div className="w-full max-w-4xl mx-auto space-y-8 animate-fade-in py-4">
+      
+      {/* Header */}
+      <div className="text-center space-y-3">
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-charcoal/10 text-charcoal text-xs font-extrabold shadow-sm">
+          <Brain className="w-4 h-4 text-coral" /> AI Interview Setup
+        </div>
+        <h1 className="font-display font-black text-3xl sm:text-5xl text-charcoal tracking-tight">
+          Create Your Mock Interview
+        </h1>
+        <p className="text-sm font-bold text-charcoal/60 max-w-xl mx-auto">
+          Specify your target role and paste your resume & JD to generate role-tailored interview questions.
+        </p>
+      </div>
+
+      {errorMsg && (
+        <div className="p-4 rounded-2xl bg-coral/10 border border-coral/20 text-coral text-xs font-bold flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>{errorMsg}</span>
+        </div>
+      )}
+
+      {/* Main Grid Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         
-        {/* Header */}
-        <div className="text-center space-y-3">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-neutral-800 bg-neutral-900/60 text-neutral-300 text-xs font-semibold">
-            <Brain className="w-4 h-4 text-brand-400" />
-            Gemini AI Interview Engine
+        {/* Step 1: Role & Experience */}
+        <div className="card-cream p-7 space-y-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-charcoal text-cream flex items-center justify-center font-bold">
+              <Briefcase className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-display font-black text-lg text-charcoal">Target Position</h3>
+              <p className="text-xs font-bold text-charcoal/60">Specify role & seniority</p>
+            </div>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
-            Create Your Personalized <span className="text-gradient-gold">Mock Interview</span>
-          </h1>
-          <p className="text-sm text-neutral-400 max-w-xl mx-auto">
-            Upload your resume and the Job Description. Mockly will analyze requirements to tailor exact technical & behavioral questions.
-          </p>
+
+          <div>
+            <label className="block text-xs font-extrabold text-charcoal mb-2">Target Job Title</label>
+            <input
+              type="text"
+              value={targetRole}
+              onChange={(e) => setTargetRole(e.target.value)}
+              placeholder="e.g. Senior Full Stack Engineer"
+              className="input-castrio"
+            />
+            <div className="mt-3 flex flex-wrap gap-2">
+              {quickRoles.map(role => (
+                <button
+                  key={role}
+                  type="button"
+                  onClick={() => setTargetRole(role)}
+                  className={`text-[11px] px-3 py-1.5 rounded-full font-bold transition ${
+                    targetRole === role
+                      ? 'bg-charcoal text-cream shadow-sm'
+                      : 'bg-white text-charcoal/70 border border-charcoal/10 hover:bg-cream'
+                  }`}
+                >
+                  {role}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-extrabold text-charcoal mb-2">Experience Level</label>
+            <div className="grid grid-cols-2 gap-2">
+              {(['Entry-Level / Junior', 'Mid-Level (2-4 yrs)', 'Senior (5+ yrs)', 'Lead / Architect'] as ExperienceLevel[]).map(level => (
+                <button
+                  key={level}
+                  type="button"
+                  onClick={() => setExperienceLevel(level)}
+                  className={`px-3 py-2.5 rounded-2xl text-xs text-left font-bold border transition ${
+                    experienceLevel === level
+                      ? 'bg-charcoal text-cream border-charcoal'
+                      : 'bg-white text-charcoal/70 border-charcoal/10 hover:bg-cream'
+                  }`}
+                >
+                  {level}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-extrabold text-charcoal mb-2 flex items-center justify-between">
+              <span>Question Count</span>
+              <span className="text-coral font-black">{questionCount} Questions</span>
+            </label>
+            <div className="flex gap-2">
+              {[3, 5, 7].map(num => (
+                <button
+                  key={num}
+                  type="button"
+                  onClick={() => setQuestionCount(num)}
+                  className={`flex-1 py-2.5 rounded-2xl text-xs font-black border transition ${
+                    questionCount === num
+                      ? 'bg-charcoal text-cream border-charcoal'
+                      : 'bg-white text-charcoal/70 border-charcoal/10 hover:bg-cream'
+                  }`}
+                >
+                  {num} Qs
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
-        {errorMsg && (
-          <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>{errorMsg}</span>
+        {/* Step 2: Resume & JD */}
+        <div className="card-cream p-7 space-y-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-charcoal text-cream flex items-center justify-center font-bold">
+              <FileText className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-display font-black text-lg text-charcoal">Resume & Job Context</h3>
+              <p className="text-xs font-bold text-charcoal/60">Paste text or upload file (.txt, .md)</p>
+            </div>
           </div>
-        )}
 
-        {/* Main Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          
-          {/* Step 1: Role & Experience */}
-          <div className="card-dark rounded-2xl p-6 space-y-5">
-            <div className="flex items-center gap-3">
-              <div className="icon-box icon-box-yellow">
-                <Briefcase className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-white">Target Position</h3>
-                <p className="text-xs text-neutral-500">Specify the role & seniority level</p>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-neutral-300 mb-1.5">Target Job Title</label>
-              <input
-                type="text"
-                value={targetRole}
-                onChange={(e) => setTargetRole(e.target.value)}
-                placeholder="e.g. Senior Full Stack Engineer"
-                className="input-dark !pl-4"
-              />
-              <div className="mt-2.5 flex flex-wrap gap-1.5">
-                {quickRoles.map(role => (
-                  <button
-                    key={role}
-                    type="button"
-                    onClick={() => setTargetRole(role)}
-                    className={`text-[11px] px-2.5 py-1 rounded-lg border transition ${
-                      targetRole === role
-                        ? 'bg-brand-500/15 text-brand-300 border-brand-500/30 font-semibold'
-                        : 'bg-neutral-900/50 text-neutral-500 border-neutral-800 hover:text-neutral-300'
-                    }`}
-                  >
-                    {role}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-neutral-300 mb-1.5">Experience Level</label>
-              <div className="grid grid-cols-2 gap-2">
-                {(['Entry-Level / Junior', 'Mid-Level (2-4 yrs)', 'Senior (5+ yrs)', 'Lead / Architect'] as ExperienceLevel[]).map(level => (
-                  <button
-                    key={level}
-                    type="button"
-                    onClick={() => setExperienceLevel(level)}
-                    className={`px-3 py-2.5 rounded-xl text-xs text-left font-medium border transition ${
-                      experienceLevel === level
-                        ? 'bg-brand-500/15 text-brand-300 border-brand-500/30'
-                        : 'bg-neutral-900/50 text-neutral-500 border-neutral-800 hover:text-neutral-300'
-                    }`}
-                  >
-                    {level}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-neutral-300 mb-1.5 flex items-center justify-between">
-                <span>Question Count</span>
-                <span className="text-brand-400 font-bold">{questionCount} Questions</span>
+          {/* Resume */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs font-extrabold text-charcoal flex items-center gap-1.5">
+                Resume / Bio {resumeText && <CheckCircle2 className="w-4 h-4 text-emerald-600" />}
               </label>
-              <div className="flex gap-2">
-                {[3, 5, 7].map(num => (
-                  <button
-                    key={num}
-                    type="button"
-                    onClick={() => setQuestionCount(num)}
-                    className={`flex-1 py-2.5 rounded-xl text-xs font-bold border transition ${
-                      questionCount === num
-                        ? 'bg-brand-500/15 text-brand-300 border-brand-500/30'
-                        : 'bg-neutral-900/50 text-neutral-500 border-neutral-800 hover:text-neutral-300'
-                    }`}
-                  >
-                    {num} Qs
-                  </button>
-                ))}
-              </div>
+              <label className="cursor-pointer text-xs font-black text-coral hover:underline flex items-center gap-1">
+                <Upload className="w-3.5 h-3.5" /> Upload
+                <input type="file" accept=".txt,.md,.json" onChange={(e) => handleFileUpload(e, 'resume')} className="hidden" />
+              </label>
             </div>
+            <textarea
+              rows={4}
+              value={resumeText}
+              onChange={(e) => setResumeText(e.target.value)}
+              placeholder="Paste your resume summary, tech stack, past projects..."
+              className="w-full px-4 py-3 bg-white border border-charcoal/10 rounded-2xl text-charcoal text-xs font-medium focus:outline-none focus:border-charcoal resize-none"
+            />
           </div>
 
-          {/* Step 2: Resume & JD */}
-          <div className="card-dark rounded-2xl p-6 space-y-5">
-            <div className="flex items-center gap-3">
-              <div className="icon-box icon-box-blue">
-                <FileText className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-white">Resume & Job Description</h3>
-                <p className="text-xs text-neutral-500">Paste text or upload file (.txt, .md)</p>
-              </div>
+          {/* JD */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs font-extrabold text-charcoal flex items-center gap-1.5">
+                Job Description {jobDescriptionText && <CheckCircle2 className="w-4 h-4 text-emerald-600" />}
+              </label>
+              <label className="cursor-pointer text-xs font-black text-coral hover:underline flex items-center gap-1">
+                <Upload className="w-3.5 h-3.5" /> Upload
+                <input type="file" accept=".txt,.md,.json" onChange={(e) => handleFileUpload(e, 'jd')} className="hidden" />
+              </label>
             </div>
-
-            {/* Resume */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-xs font-semibold text-neutral-300 flex items-center gap-1.5">
-                  Resume / Bio
-                  {resumeText && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />}
-                </label>
-                <label className="cursor-pointer text-[11px] text-brand-400 hover:text-brand-300 flex items-center gap-1">
-                  <Upload className="w-3 h-3" /> Upload
-                  <input type="file" accept=".txt,.md,.json" onChange={(e) => handleFileUpload(e, 'resume')} className="hidden" />
-                </label>
-              </div>
-              <textarea
-                rows={4}
-                value={resumeText}
-                onChange={(e) => setResumeText(e.target.value)}
-                placeholder="Paste your resume summary, tech stack, past projects..."
-                className="w-full px-4 py-3 bg-[#1a1a1a] border border-neutral-800/80 rounded-xl text-neutral-200 text-xs focus:outline-none focus:border-brand-500/50 transition placeholder:text-neutral-600 resize-none font-mono"
-              />
-            </div>
-
-            {/* JD */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-xs font-semibold text-neutral-300 flex items-center gap-1.5">
-                  Job Description
-                  {jobDescriptionText && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />}
-                </label>
-                <label className="cursor-pointer text-[11px] text-brand-400 hover:text-brand-300 flex items-center gap-1">
-                  <Upload className="w-3 h-3" /> Upload
-                  <input type="file" accept=".txt,.md,.json" onChange={(e) => handleFileUpload(e, 'jd')} className="hidden" />
-                </label>
-              </div>
-              <textarea
-                rows={4}
-                value={jobDescriptionText}
-                onChange={(e) => setJobDescriptionText(e.target.value)}
-                placeholder="Paste the target job description requirements..."
-                className="w-full px-4 py-3 bg-[#1a1a1a] border border-neutral-800/80 rounded-xl text-neutral-200 text-xs focus:outline-none focus:border-brand-500/50 transition placeholder:text-neutral-600 resize-none font-mono"
-              />
-            </div>
+            <textarea
+              rows={4}
+              value={jobDescriptionText}
+              onChange={(e) => setJobDescriptionText(e.target.value)}
+              placeholder="Paste the target job description requirements..."
+              className="w-full px-4 py-3 bg-white border border-charcoal/10 rounded-2xl text-charcoal text-xs font-medium focus:outline-none focus:border-charcoal resize-none"
+            />
           </div>
-        </div>
-
-        {/* Start Button */}
-        <div className="text-center pt-2">
-          <button
-            onClick={handleGenerate}
-            disabled={isLoading}
-            className="btn-yellow text-sm px-10 py-4 inline-flex items-center gap-2.5 shadow-xl shadow-brand-500/20 disabled:opacity-50 disabled:pointer-events-none"
-          >
-            <Zap className="w-5 h-5" />
-            Launch AI Mock Interview Room
-          </button>
         </div>
       </div>
+
+      {/* Start Button Dual Pill */}
+      <div className="text-center pt-2 flex justify-center">
+        <button
+          onClick={handleGenerate}
+          disabled={isLoading}
+          className="btn-dual-pill scale-110 disabled:opacity-50"
+        >
+          <div className="icon-badge">
+            <Mic className="w-5 h-5 text-charcoal" />
+          </div>
+          <span className="btn-label">Launch AI Session</span>
+        </button>
+      </div>
+
     </div>
   );
 };
