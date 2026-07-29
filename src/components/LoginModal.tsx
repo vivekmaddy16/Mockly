@@ -12,7 +12,7 @@ interface LoginModalProps {
 type ModalView = 'login' | 'signup' | 'forgot' | 'forgot-sent' | 'verification-sent';
 
 export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
-  const { login, register } = useAuth();
+  const { login, register, forgotPassword } = useAuth();
 
   const [view, setView] = useState<ModalView>('login');
   const [showPassword, setShowPassword] = useState(false);
@@ -79,7 +79,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
     setIsSubmitting(true);
 
     try {
-      const { forgotPassword } = await import('@/lib/apiClient').then((m) => m.authApi);
       const msg = await forgotPassword(email);
       setSuccessMsg(msg);
       setView('forgot-sent');
