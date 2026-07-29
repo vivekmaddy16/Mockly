@@ -1,8 +1,13 @@
 import { InterviewSession, UserProgressStats, QuestionEvaluation } from '@/types';
+import { interviewApi, progressApi, getAuthToken } from '@/lib/apiClient';
 
 const API_KEY_STORAGE_KEY = 'mockly_gemini_api_key';
 const SESSIONS_STORAGE_KEY = 'mockly_interview_sessions';
 const PRACTICE_PROGRESS_KEY = 'mockly_practice_progress';
+
+// ═══════════════════════════════════════════════════════════════
+// API Key Storage (stays in localStorage — client-side concern)
+// ═══════════════════════════════════════════════════════════════
 
 export const getStoredApiKey = (): string | null => {
   if (typeof window === 'undefined') return null;
@@ -18,7 +23,19 @@ export const setStoredApiKey = (key: string): void => {
   }
 };
 
-export const getAllSessions = (): InterviewSession[] => {
+// ═══════════════════════════════════════════════════════════════
+// Helper: Check if user is authenticated
+// ═══════════════════════════════════════════════════════════════
+const isAuthenticated = (): boolean => {
+  return !!getAuthToken();
+};
+
+// ═══════════════════════════════════════════════════════════════
+// Session Storage — API-first with localStorage fallback
+// ═══════════════════════════════════════════════════════════════
+
+// ─── localStorage helpers (fallback for unauthenticated users) ─
+const getLocalSessions = (): InterviewSession[] => {
   if (typeof window === 'undefined') return [];
   try {
     const raw = localStorage.getItem(SESSIONS_STORAGE_KEY);
@@ -29,40 +46,129 @@ export const getAllSessions = (): InterviewSession[] => {
   }
 };
 
-export const getSessionById = (id: string): InterviewSession | null => {
-  const sessions = getAllSessions();
-  return sessions.find(s => s.id === id) || null;
-};
-
-export const saveSession = (session: InterviewSession): void => {
+const saveLocalSession = (session: InterviewSession): void => {
   if (typeof window === 'undefined') return;
   try {
-    const sessions = getAllSessions();
+    const sessions = getLocalSessions();
     const index = sessions.findIndex(s => s.id === session.id);
     if (index >= 0) {
       sessions[index] = session;
     } else {
       sessions.unshift(session);
     }
-    // Cap stored sessions to maximum 30 to prevent quota errors
     const trimmed = sessions.slice(0, 30);
     localStorage.setItem(SESSIONS_STORAGE_KEY, JSON.stringify(trimmed));
   } catch (err) {
-    console.warn('Failed to save session to localStorage (quota exceeded or restricted):', err);
+    console.warn('Failed to save session to localStorage:', err);
   }
 };
 
-export const updateSessionEvaluation = (
+// ─── API-first Session Functions ─────────────────────────────
+
+export const getAllSessions = (): InterviewSession[] => {
+  // Synchronous fallback — for immediate UI rendering
+  // Use fetchAllSessionsAsync for API data
+  return getLocalSessions();
+};
+
+export const fetchAllSessionsAsync = async (): Promise<InterviewSession[]> => {
+  if (!isAuthenticated()) {
+    return getLocalSessions();
+  }
+
+  try {
+    const data = await interviewApi.getSessions(1, 50);
+    // Map backend format to frontend format
+    return data.sessions.map((s: any) => ({
+      id: s.sessionId,
+      createdAt: s.createdAt,
+      targetRole: s.targetRole,
+      experienceLevel: s.experienceLevel,
+      resumeText: s.resumeText,
+      jobDescriptionText: s.jobDescriptionText,
+      extractedSkills: s.extractedSkills || [],
+      questions: s.questions || [],
+      evaluations: s.evaluations instanceof Map
+        ? Object.fromEntries(s.evaluations)
+        : (s.evaluations || {}),
+      currentQuestionIndex: s.currentQuestionIndex || 0,
+      status: s.status || 'in_progress',
+      totalScore: s.totalScore,
+      overallFeedback: s.overallFeedback,
+    }));
+  } catch (err) {
+    console.warn('Failed to fetch sessions from API, using localStorage:', err);
+    return getLocalSessions();
+  }
+};
+
+export const getSessionById = (id: string): InterviewSession | null => {
+  const sessions = getLocalSessions();
+  return sessions.find(s => s.id === id) || null;
+};
+
+export const fetchSessionByIdAsync = async (id: string): Promise<InterviewSession | null> => {
+  if (!isAuthenticated()) {
+    return getSessionById(id);
+  }
+
+  try {
+    const s = await interviewApi.getSessionById(id);
+    return {
+      id: s.sessionId,
+      createdAt: s.createdAt,
+      targetRole: s.targetRole,
+      experienceLevel: s.experienceLevel,
+      resumeText: s.resumeText,
+      jobDescriptionText: s.jobDescriptionText,
+      extractedSkills: s.extractedSkills || [],
+      questions: s.questions || [],
+      evaluations: s.evaluations instanceof Map
+        ? Object.fromEntries(s.evaluations)
+        : (s.evaluations || {}),
+      currentQuestionIndex: s.currentQuestionIndex || 0,
+      status: s.status || 'in_progress',
+      totalScore: s.totalScore,
+      overallFeedback: s.overallFeedback,
+    };
+  } catch {
+    return getSessionById(id);
+  }
+};
+
+export const saveSession = async (session: InterviewSession): Promise<void> => {
+  // Always save to localStorage as immediate cache
+  saveLocalSession(session);
+
+  // If authenticated, also save to backend
+  if (isAuthenticated()) {
+    try {
+      await interviewApi.createSession({
+        sessionId: session.id,
+        targetRole: session.targetRole,
+        experienceLevel: session.experienceLevel,
+        resumeText: session.resumeText,
+        jobDescriptionText: session.jobDescriptionText,
+        extractedSkills: session.extractedSkills,
+        questions: session.questions,
+      });
+    } catch (err) {
+      console.warn('Failed to save session to API:', err);
+    }
+  }
+};
+
+export const updateSessionEvaluation = async (
   sessionId: string,
   questionId: string,
   evaluation: QuestionEvaluation
-): InterviewSession | null => {
+): Promise<InterviewSession | null> => {
+  // Update localStorage
   const session = getSessionById(sessionId);
   if (!session) return null;
 
   session.evaluations[questionId] = evaluation;
-  
-  // Check if all questions have evaluations
+
   const totalQuestions = session.questions.length;
   const evaluatedCount = Object.keys(session.evaluations).length;
 
@@ -71,14 +177,13 @@ export const updateSessionEvaluation = (
     const scores = Object.values(session.evaluations).map(e => e.score);
     const avgScore = Math.round(scores.reduce((a, b) => a + b, 0) / (scores.length || 1));
     session.totalScore = avgScore;
-    
-    // Overall feedback calculation
+
     const allStrengths = Object.values(session.evaluations).flatMap(e => e.positiveHighlights);
     const allWeaknesses = Object.values(session.evaluations).flatMap(e => e.areasToImprove);
-    
+
     session.overallFeedback = {
       summary: `You achieved an overall interview performance score of ${avgScore}%. ${
-        avgScore >= 80 
+        avgScore >= 80
           ? 'Excellent performance with strong technical depth and clear articulation.'
           : avgScore >= 60
           ? 'Solid foundational answers with good structure, but could expand on edge cases.'
@@ -94,14 +199,33 @@ export const updateSessionEvaluation = (
     };
   }
 
-  saveSession(session);
+  saveLocalSession(session);
+
+  // Sync to backend
+  if (isAuthenticated()) {
+    try {
+      await interviewApi.updateEvaluation(sessionId, questionId, evaluation);
+
+      if (session.status === 'completed') {
+        await interviewApi.completeSession(sessionId, session.overallFeedback);
+      }
+    } catch (err) {
+      console.warn('Failed to sync evaluation to API:', err);
+    }
+  }
+
   return session;
 };
 
+// ═══════════════════════════════════════════════════════════════
+// Progress Stats — API-first with localStorage fallback
+// ═══════════════════════════════════════════════════════════════
+
 export const getUserProgressStats = (): UserProgressStats => {
-  const sessions = getAllSessions();
+  // Synchronous fallback from localStorage
+  const sessions = getLocalSessions();
   const completed = sessions.filter(s => s.status === 'completed');
-  
+
   let totalEvaluatedQuestions = 0;
   let totalScoreSum = 0;
 
@@ -137,7 +261,7 @@ export const getUserProgressStats = (): UserProgressStats => {
   const strongTopics: string[] = [];
 
   Object.entries(categoryScores).forEach(([cat, data]) => {
-    const avg = data.count > 0 ? Math.round(data.sum / data.count) : 70; // baseline 70 if unassessed
+    const avg = data.count > 0 ? Math.round(data.sum / data.count) : 70;
     finalCategoryScores[cat] = avg;
     if (avg < 70) weakTopics.push(cat);
     if (avg >= 80) strongTopics.push(cat);
@@ -156,4 +280,64 @@ export const getUserProgressStats = (): UserProgressStats => {
       role: s.targetRole
     }))
   };
+};
+
+export const fetchUserProgressStatsAsync = async (): Promise<UserProgressStats> => {
+  if (!isAuthenticated()) {
+    return getUserProgressStats();
+  }
+
+  try {
+    const stats = await progressApi.getStats();
+    return {
+      totalInterviewsCompleted: stats.totalInterviews || 0,
+      totalQuestionsAnswered: stats.totalQuestionsAnswered || 0,
+      averageScore: stats.avgScore || 0,
+      categoryScores: stats.categoryScores || {},
+      weakTopics: stats.weakTopics || [],
+      strongTopics: stats.strongTopics || [],
+      recentScores: stats.recentScores || [],
+    };
+  } catch {
+    return getUserProgressStats();
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════
+// Migration: Upload localStorage data to MongoDB on first login
+// ═══════════════════════════════════════════════════════════════
+export const migrateLocalDataToBackend = async (): Promise<void> => {
+  if (!isAuthenticated()) return;
+
+  const migrated = localStorage.getItem('mockly_data_migrated');
+  if (migrated) return;
+
+  const localSessions = getLocalSessions();
+  if (localSessions.length === 0) {
+    localStorage.setItem('mockly_data_migrated', 'true');
+    return;
+  }
+
+  console.log(`📦 Migrating ${localSessions.length} sessions from localStorage to MongoDB...`);
+
+  let migratedCount = 0;
+  for (const session of localSessions) {
+    try {
+      await interviewApi.createSession({
+        sessionId: session.id,
+        targetRole: session.targetRole,
+        experienceLevel: session.experienceLevel,
+        resumeText: session.resumeText,
+        jobDescriptionText: session.jobDescriptionText,
+        extractedSkills: session.extractedSkills,
+        questions: session.questions,
+      });
+      migratedCount++;
+    } catch {
+      // Session might already exist — skip
+    }
+  }
+
+  console.log(`✅ Migrated ${migratedCount}/${localSessions.length} sessions`);
+  localStorage.setItem('mockly_data_migrated', 'true');
 };

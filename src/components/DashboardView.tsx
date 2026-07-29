@@ -5,18 +5,34 @@ import Link from 'next/link';
 import { 
   BarChart3, TrendingUp, Clock, Award, PlayCircle, 
   Search, ChevronDown, ChevronUp, CheckCircle2, Brain,
-  Target, ArrowRight, Sparkles
+  Target, ArrowRight, Sparkles, Loader2
 } from 'lucide-react';
 import { InterviewSession } from '@/types';
-import { getAllSessions } from '@/lib/storage';
+import { getAllSessions, fetchAllSessionsAsync } from '@/lib/storage';
 
 export const DashboardView: React.FC = () => {
   const [sessions, setSessions] = useState<InterviewSession[]>([]);
   const [search, setSearch] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // Immediately show localStorage data
     setSessions(getAllSessions().sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+
+    // Then fetch from API and update
+    const loadFromApi = async () => {
+      try {
+        const apiSessions = await fetchAllSessionsAsync();
+        setSessions(apiSessions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+      } catch {
+        // Keep localStorage data on failure
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadFromApi();
   }, []);
 
   const completed = sessions.filter(s => Object.keys(s.evaluations).length > 0);
