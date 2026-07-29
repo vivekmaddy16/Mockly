@@ -5,10 +5,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   BookOpen, Code2, Database, Cpu, Network, Layers, 
   ChevronDown, ChevronUp, CheckCircle2, Send, Sparkles, 
-  AlertTriangle, Brain
+  AlertTriangle, Brain, GitBranch, Target
 } from 'lucide-react';
 import { QuestionEvaluation } from '@/types';
 import { evaluateAnswer } from '@/lib/gemini';
+import { RoadmapView } from '@/components/RoadmapView';
 
 const topicBank: Record<string, { icon: React.ReactNode; color: string; cardClass: string; iconClass: string; questions: { q: string; expected: string[] }[] }> = {
   'Data Structures & Algorithms': {
@@ -58,46 +59,44 @@ const topicBank: Record<string, { icon: React.ReactNode; color: string; cardClas
   },
   'Computer Networks': {
     icon: <Network className="w-5 h-5" />,
-    color: 'text-cyan-400',
-    cardClass: 'card-gradient-teal',
-    iconClass: 'icon-box-teal',
+    color: 'text-rose-400',
+    cardClass: 'card-gradient-red',
+    iconClass: 'icon-box-red',
     questions: [
-      { q: 'Explain the OSI model layers and their functions.', expected: ['Physical, Data Link, Network, Transport, Session, Presentation, Application', 'Each layer role'] },
-      { q: 'What is the difference between TCP and UDP?', expected: ['Connection-oriented vs connectionless', 'Reliability vs speed', 'Use cases: HTTP vs streaming'] },
-      { q: 'How does DNS resolution work? Walk through a request.', expected: ['Browser cache → OS cache → Recursive resolver', 'Root → TLD → Authoritative', 'A record / CNAME'] },
+      { q: 'Walk step-by-step through what happens when you type a URL into a browser.', expected: ['DNS resolution', 'TCP 3-way handshake', 'TLS handshake', 'HTTP GET request', 'DOM rendering'] },
+      { q: 'Compare TCP and UDP. Provide ideal use cases for each.', expected: ['TCP: reliable, ordered, connection-oriented', 'UDP: fast, connectionless, video/gaming', 'Flow & congestion control'] },
+      { q: 'What is the OSI model? Briefly state the purpose of each layer.', expected: ['7 layers: Physical to Application', 'PDU at each layer', 'Encapsulation / Decapsulation'] },
     ],
   },
 };
 
 export const TopicPractice: React.FC = () => {
-  const [activeTopic, setActiveTopic] = useState<string | null>(null);
-  const [activeQIdx, setActiveQIdx] = useState<number | null>(null);
-  const [userAnswer, setUserAnswer] = useState('');
-  const [evaluation, setEvaluation] = useState<QuestionEvaluation | null>(null);
+  const [activeTab, setActiveTab] = useState<'practice' | 'roadmap'>('practice');
+  const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
+  const [selectedQuestion, setSelectedQuestion] = useState<{ q: string; expected: string[] } | null>(null);
+  const [answer, setAnswer] = useState('');
   const [isEvaluating, setIsEvaluating] = useState(false);
+  const [evaluation, setEvaluation] = useState<QuestionEvaluation | null>(null);
 
-  const handleTopicClick = (name: string) => {
-    setActiveTopic(activeTopic === name ? null : name);
-    setActiveQIdx(null); setEvaluation(null); setUserAnswer('');
-  };
-
-  const handleSelectQ = (idx: number) => {
-    setActiveQIdx(activeQIdx === idx ? null : idx);
-    setEvaluation(null); setUserAnswer('');
-  };
-
-  const handleSubmit = async () => {
-    if (!activeTopic || activeQIdx === null || !userAnswer.trim()) return;
+  const handleEvaluate = async () => {
+    if (!selectedQuestion || !answer.trim()) return;
     setIsEvaluating(true);
     try {
-      const tq = topicBank[activeTopic].questions[activeQIdx];
-      const result = await evaluateAnswer(
-        { id: `tp_${Date.now()}`, type: 'cs_fundamental', questionText: tq.q, category: 'Technical', difficulty: 'Medium', expectedKeyPoints: tq.expected },
-        userAnswer, 'CS Fundamentals'
-      );
+      const qObj = {
+        id: `practice-${Date.now()}`,
+        type: 'technical' as const,
+        category: selectedTopic || 'General',
+        questionText: selectedQuestion.q,
+        expectedKeyPoints: selectedQuestion.expected,
+        difficulty: 'Medium' as const,
+      };
+      const result = await evaluateAnswer(qObj, answer, selectedTopic || 'Full Stack Developer');
       setEvaluation(result);
-    } catch (e) { console.error(e); }
-    finally { setIsEvaluating(false); }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsEvaluating(false);
+    }
   };
 
   return (
@@ -106,138 +105,152 @@ export const TopicPractice: React.FC = () => {
         
         {/* Header */}
         <div className="text-center space-y-3">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-neutral-800 bg-neutral-900/60 text-neutral-300 text-xs font-semibold">
-            <Brain className="w-4 h-4 text-purple-400" /> CS Fundamentals Practice Hub
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-brand-500/20 bg-brand-500/10 text-brand-300 text-xs font-extrabold uppercase tracking-wide">
+            <Brain className="w-4 h-4 text-brand-400" /> CS Fundamentals & Prep Hub
           </div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
-            Topic-wise <span className="text-gradient-gold">Practice</span>
+          <h1 className="text-3xl sm:text-5xl font-black text-white tracking-tight">
+            Targeted <span className="text-gradient-gold">Topic Practice & Roadmap</span>
           </h1>
           <p className="text-sm text-neutral-400 max-w-xl mx-auto">
-            Master core Computer Science fundamentals with AI-graded practice questions across 5 essential topics.
+            Deep-dive into core Computer Science topics or follow a structured step-by-step interview roadmap path.
           </p>
         </div>
 
-        {/* Topics Grid */}
-        <div className="space-y-4">
-          {Object.entries(topicBank).map(([name, topic]) => {
-            const isOpen = activeTopic === name;
-            return (
-              <div key={name} className="overflow-hidden rounded-2xl border border-transparent transition-all">
-                <button onClick={() => handleTopicClick(name)}
-                  className={`w-full p-5 text-left flex items-center justify-between gap-4 transition rounded-2xl ${
-                    isOpen ? `${topic.cardClass}` : 'card-dark hover:border-neutral-700'
-                  }`}>
-                  <div className="flex items-center gap-3">
-                    <div className={`icon-box ${topic.iconClass}`}>{topic.icon}</div>
-                    <div>
-                      <h3 className="text-base font-bold text-white">{name}</h3>
-                      <p className="text-xs text-neutral-500">{topic.questions.length} questions</p>
+        {/* Tab Selector */}
+        <div className="flex justify-center">
+          <div className="inline-flex items-center gap-2 p-1.5 rounded-2xl bg-neutral-900 border border-neutral-800 shadow-xl">
+            <button
+              onClick={() => setActiveTab('practice')}
+              className={`px-5 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
+                activeTab === 'practice'
+                  ? 'bg-gradient-to-r from-brand-500 to-brand-600 text-white shadow-lg shadow-brand-500/20'
+                  : 'text-neutral-400 hover:text-white'
+              }`}
+            >
+              <Target className="w-4 h-4" /> Practice Questions
+            </button>
+
+            <button
+              onClick={() => setActiveTab('roadmap')}
+              className={`px-5 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
+                activeTab === 'roadmap'
+                  ? 'bg-gradient-to-r from-brand-500 to-brand-600 text-white shadow-lg shadow-brand-500/20'
+                  : 'text-neutral-400 hover:text-white'
+              }`}
+            >
+              <GitBranch className="w-4 h-4" /> CS Roadmap Tree
+            </button>
+          </div>
+        </div>
+
+        {/* Render Tab Content */}
+        {activeTab === 'roadmap' ? (
+          <RoadmapView />
+        ) : (
+          <div className="space-y-6">
+            {/* Topic Selector Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {Object.entries(topicBank).map(([topic, data]) => {
+                const isSelected = selectedTopic === topic;
+
+                return (
+                  <div
+                    key={topic}
+                    onClick={() => {
+                      setSelectedTopic(topic);
+                      setSelectedQuestion(null);
+                      setEvaluation(null);
+                      setAnswer('');
+                    }}
+                    className={`${data.cardClass} rounded-3xl p-5 border border-white/10 cursor-pointer transition-all ${
+                      isSelected ? 'ring-2 ring-brand-400 scale-[1.02] shadow-2xl' : 'hover:scale-[1.01]'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={data.iconClass}>{data.icon}</div>
+                      <div>
+                        <h3 className="text-sm font-extrabold text-white">{topic}</h3>
+                        <span className="text-[10px] text-neutral-400 font-bold">{data.questions.length} Core Questions</span>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {isOpen ? <ChevronUp className="w-4 h-4 text-neutral-500" /> : <ChevronDown className="w-4 h-4 text-neutral-500" />}
-                  </div>
-                </button>
+                );
+              })}
+            </div>
 
-                <AnimatePresence>
-                  {isOpen && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.3, ease: 'easeInOut' }}
-                      className="overflow-hidden"
-                    >
-                      <div className="p-5 space-y-3 bg-dark-card rounded-b-2xl border-t border-neutral-800/60">
-                        {topic.questions.map((tq, idx) => (
-                          <div key={idx}>
-                            <button onClick={() => handleSelectQ(idx)}
-                              className={`w-full text-left p-4 rounded-xl border transition ${
-                                activeQIdx === idx ? 'bg-brand-500/10 border-brand-500/20 text-brand-200' : 'bg-neutral-900/60 border-neutral-800 text-neutral-300 hover:border-neutral-700'
-                              }`}>
-                              <div className="flex items-center justify-between gap-3">
-                                <span className="text-sm font-medium">{tq.q}</span>
-                                <span className="px-2 py-0.5 rounded-lg bg-neutral-900 text-neutral-500 text-[10px] font-bold shrink-0">
-                                  Q{idx+1}
-                                </span>
-                              </div>
-                            </button>
+            {/* Questions Bank List */}
+            {selectedTopic && (
+              <div className="card-dark rounded-3xl p-6 sm:p-8 space-y-6 border border-white/10 shadow-2xl animate-fade-in">
+                <h3 className="text-lg font-extrabold text-white flex items-center gap-2">
+                  <BookOpen className="w-5 h-5 text-brand-400" /> Questions: {selectedTopic}
+                </h3>
 
-                            <AnimatePresence>
-                              {activeQIdx === idx && (
-                                <motion.div
-                                  initial={{ height: 0, opacity: 0 }}
-                                  animate={{ height: 'auto', opacity: 1 }}
-                                  exit={{ height: 0, opacity: 0 }}
-                                  transition={{ duration: 0.25, ease: 'easeInOut' }}
-                                  className="overflow-hidden"
-                                >
-                                  <div className="mt-3 p-5 rounded-2xl bg-[#0e0e0e] border border-neutral-800 space-y-4">
-                                    <textarea rows={5} value={userAnswer} onChange={(e) => setUserAnswer(e.target.value)}
-                                      placeholder="Type your answer here..."
-                                      className="w-full px-4 py-3 bg-[#141414] border border-neutral-800 rounded-xl text-neutral-200 text-xs focus:outline-none focus:border-brand-500/40 transition placeholder:text-neutral-600 resize-none font-mono"
-                                    />
-                                    <button onClick={handleSubmit} disabled={isEvaluating || !userAnswer.trim()}
-                                      className="btn-yellow text-xs px-5 py-2.5 inline-flex items-center gap-2 disabled:opacity-50 disabled:pointer-events-none">
-                                      {isEvaluating ? <><div className="w-3.5 h-3.5 border-2 border-dark-bg/30 border-t-dark-bg rounded-full animate-spin" /> Evaluating</>
-                                      : <><Send className="w-3.5 h-3.5" /> Submit</>}
-                                    </button>
+                <div className="space-y-3">
+                  {topicBank[selectedTopic].questions.map((qObj, idx) => {
+                    const isSel = selectedQuestion?.q === qObj.q;
 
-                                    {evaluation && (
-                                      <div className="space-y-3 animate-fade-in text-xs">
-                                        <div className="flex items-center gap-3 pt-2 border-t border-neutral-800">
-                                          <span className={`px-3 py-1.5 rounded-xl border font-bold ${
-                                            evaluation.score >= 80 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                                            : evaluation.score >= 60 ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                                            : 'bg-red-500/10 text-red-400 border-red-500/20'
-                                          }`}>{evaluation.score}%</span>
-                                          <span className="text-neutral-400">{evaluation.feedback}</span>
-                                        </div>
-
-                                        {/* Strengths & Improvements */}
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                          <div className="p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/15">
-                                            <span className="font-bold text-emerald-400 text-[10px] uppercase tracking-widest block mb-1.5">
-                                              <CheckCircle2 className="w-3 h-3 inline mr-1" />Strengths
-                                            </span>
-                                            <ul className="space-y-1 text-neutral-400">
-                                              {evaluation.positiveHighlights.map((pt, i) => (
-                                                <li key={i} className="flex items-start gap-1.5"><span className="text-emerald-400 mt-0.5">•</span>{pt}</li>
-                                              ))}
-                                            </ul>
-                                          </div>
-                                          <div className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/15">
-                                            <span className="font-bold text-amber-400 text-[10px] uppercase tracking-widest block mb-1.5">
-                                              <AlertTriangle className="w-3 h-3 inline mr-1" />Improve
-                                            </span>
-                                            <ul className="space-y-1 text-neutral-400">
-                                              {evaluation.areasToImprove.map((pt, i) => (
-                                                <li key={i} className="flex items-start gap-1.5"><span className="text-amber-400 mt-0.5">•</span>{pt}</li>
-                                              ))}
-                                            </ul>
-                                          </div>
-                                        </div>
-
-                                        <div className="p-3.5 rounded-xl bg-neutral-900 border border-neutral-800">
-                                          <span className="font-bold text-brand-400 text-[10px] uppercase tracking-widest block mb-1"><Sparkles className="w-3 h-3 inline mr-1" />Model Answer</span>
-                                          <p className="text-neutral-400 font-mono whitespace-pre-line">{evaluation.modelAnswer}</p>
-                                        </div>
-                                      </div>
-                                    )}
-                                  </div>
-                                </motion.div>
-                              )}
-                            </AnimatePresence>
-                          </div>
-                        ))}
+                    return (
+                      <div
+                        key={idx}
+                        onClick={() => {
+                          setSelectedQuestion(qObj);
+                          setEvaluation(null);
+                          setAnswer('');
+                        }}
+                        className={`p-4 rounded-2xl border cursor-pointer transition-all ${
+                          isSel
+                            ? 'bg-neutral-900 border-brand-500/50 shadow-lg shadow-brand-500/10'
+                            : 'bg-neutral-950/60 border-neutral-800 hover:border-neutral-700'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-4">
+                          <span className="text-xs font-bold text-neutral-200">Q{idx + 1}. {qObj.q}</span>
+                          <span className="text-[10px] font-extrabold text-brand-400 shrink-0">Practice →</span>
+                        </div>
                       </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                    );
+                  })}
+                </div>
+
+                {/* Selected Question Practice Box */}
+                {selectedQuestion && (
+                  <div className="p-6 rounded-2xl bg-neutral-950 border border-neutral-800 space-y-4 pt-6 mt-6">
+                    <h4 className="text-sm font-extrabold text-white leading-relaxed">{selectedQuestion.q}</h4>
+
+                    {!evaluation ? (
+                      <div className="space-y-4">
+                        <textarea
+                          rows={5}
+                          value={answer}
+                          onChange={(e) => setAnswer(e.target.value)}
+                          placeholder="Type your response here..."
+                          className="w-full px-4 py-3 bg-black/60 border border-neutral-800 rounded-2xl text-neutral-100 text-sm focus:outline-none focus:border-brand-500/50 font-mono"
+                        />
+                        <button
+                          onClick={handleEvaluate}
+                          disabled={isEvaluating || !answer.trim()}
+                          className="btn-yellow text-xs px-6 py-3 font-bold inline-flex items-center gap-2 disabled:opacity-50"
+                        >
+                          {isEvaluating ? 'Evaluating...' : <><Send className="w-4 h-4" /> Evaluate Response</>}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-4 animate-fade-in">
+                        <div className="flex items-center gap-3 p-4 rounded-xl bg-brand-500/10 border border-brand-500/20">
+                          <div className="text-2xl font-black text-brand-300">{evaluation.score}%</div>
+                          <span className="text-xs text-neutral-300 font-bold">Feedback generated</span>
+                        </div>
+                        <p className="text-xs text-neutral-300 leading-relaxed font-mono whitespace-pre-line bg-black/40 p-4 rounded-xl border border-neutral-800">
+                          {evaluation.modelAnswer}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-            );
-          })}
-        </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
