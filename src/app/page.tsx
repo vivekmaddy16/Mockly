@@ -3,10 +3,9 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  GraduationCap, Code2, Briefcase, ArrowRight, FileText, Bot, Target, BookOpen, 
-  BarChart3, Mic, ChevronDown, ChevronUp, Brain, Play, Sparkles, MessageSquare, 
-  TrendingUp, Shield, Users, CheckCircle2, PlayCircle, Zap
+import { 
+  Mic, Play, ArrowUpRight, Sparkles, ChevronDown, ChevronUp, 
+  Brain, FileText, Bot, Target, BookOpen, BarChart3, Zap
 } from 'lucide-react';
 
 const faqs = [
@@ -22,106 +21,92 @@ const faqs = [
     q: 'What CS topics does the Practice Hub cover?',
     a: 'Data Structures & Algorithms (Arrays, Trees, Graphs, DP), OOPs, DBMS (SQL, ACID, Indexing), Operating Systems (Threads, Deadlocks), and Computer Networks (TCP/UDP, HTTP, DNS).',
   },
-  {
-    q: 'Can I practice with voice & speech?',
-    a: 'Yes! Mockly supports Speech-to-Text (STT) for dictating your answers, and Text-to-Speech (TTS) for having the AI interviewer read questions aloud.',
-  },
 ];
 
 export default function HomePage() {
   const [openFaqIdx, setOpenFaqIdx] = useState<number | null>(null);
 
   return (
-    <div className="space-y-12 py-4 animate-fade-in">
+    <div className="space-y-10 py-2 animate-fade-in">
       
       {/* ═════════════════════════════════════════════════════════════
-         CASTRIO HERO SECTION (Sage Green, Coral Hero, Speech Bubble Stack)
+         CASTRIO MAIN WHITE CANVAS SHEET (Centered Sheet Container)
          ═════════════════════════════════════════════════════════════ */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+      <div className="bg-white rounded-[40px] shadow-2xl p-6 sm:p-12 space-y-12 border border-white relative overflow-hidden">
         
-        {/* Left Column: Coral Hero Image Card */}
-        <div className="lg:col-span-5 card-coral-hero p-8 relative overflow-hidden flex flex-col justify-between min-h-[460px]">
-          {/* Top Pill Header */}
-          <div className="flex items-center justify-between text-white/90 text-xs font-bold">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-white animate-ping" />
-              <span>Mockly.AI</span>
-            </div>
-            <span>24/7 AI Room</span>
+        {/* ─── Hero Headline & Inline Avatar Section ────────────── */}
+        <div className="relative pt-4 sm:pt-8">
+          
+          {/* Vertical Scroll Badge Right */}
+          <div className="hidden lg:flex absolute top-4 right-0 vertical-scroll-badge">
+            <span>♦ Scroll Down ♦</span>
           </div>
 
-          {/* Center Title */}
-          <div className="my-auto space-y-4 pt-6">
-            <h1 className="font-display font-black text-4xl sm:text-5xl leading-none tracking-tight text-white">
-              Join our<br />community
+          <div className="max-w-4xl space-y-6">
+            {/* Giant Syne Extended Headline */}
+            <h1 className="font-display font-black text-4xl sm:text-6xl md:text-7xl leading-[1.05] tracking-tight text-charcoal">
+              Create & monetize <br />
+              your int
+              {/* Circular Dashed Avatar Frame inset in the word 'interview' */}
+              <span className="inline-flex items-center justify-center align-middle mx-1 sm:mx-2 w-12 h-12 sm:w-16 sm:h-16 rounded-full border-2 border-dashed border-charcoal/60 bg-cream overflow-hidden">
+                <div className="w-full h-full bg-gradient-to-br from-coral to-amber-400 flex items-center justify-center text-white font-black text-sm sm:text-lg">
+                  AI
+                </div>
+              </span>
+              erview
             </h1>
-            <p className="text-sm text-white/80 font-medium max-w-xs leading-relaxed">
-              Connect with over 5,000+ candidates practicing real-time AI mock interviews.
-            </p>
-          </div>
 
-          {/* Floating Action Pill */}
-          <div className="pt-4 flex items-center justify-start">
-            <Link href="/setup" className="btn-dual-pill">
-              <div className="icon-badge">
-                <Mic className="w-4 h-4 text-charcoal" />
+            {/* Subtext & Action Controls Row */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end pt-4">
+              
+              {/* Left Subtext & Lime Green Dual Pill Button */}
+              <div className="md:col-span-7 space-y-6">
+                <p className="text-xs sm:text-sm font-medium text-charcoal/70 max-w-md leading-relaxed">
+                  Distribute your interview preparation to the most popular tech roles, including FAANG with just a simple step.
+                </p>
+
+                {/* Castrio Lime Green Dual Pill `( 🎙️ ) [ Switch to castrio ]` */}
+                <Link href="/setup" className="btn-dual-pill-lime">
+                  <div className="icon-badge">
+                    <Mic className="w-4 h-4 text-charcoal" />
+                  </div>
+                  <span className="btn-label">Switch to castrio</span>
+                </Link>
               </div>
-              <span className="btn-label">Join Community</span>
-            </Link>
+
+              {/* Right Community Speech Bubble Badge */}
+              <div className="md:col-span-5 flex flex-col items-start md:items-end space-y-2">
+                <p className="text-[11px] font-extrabold text-charcoal/60 text-left md:text-right max-w-xs leading-normal">
+                  Our Community contains some amazing teams and individuals with over 5k followers.
+                </p>
+
+                {/* Speech Bubble Badge `Join the community of 89+` */}
+                <div className="speech-bubble-badge">
+                  <span className="text-xs font-extrabold text-cream">
+                    Join the community of 89+
+                  </span>
+                  <div className="avatar-stack">
+                    <div className="avatar-circle bg-amber-400 text-charcoal text-[10px] font-black flex items-center justify-center">JD</div>
+                    <div className="avatar-circle bg-coral text-white text-[10px] font-black flex items-center justify-center">MK</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
 
-        {/* Right Column: Castrio Grid (Speech Bubble, Circular Badge, Mint Card) */}
-        <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-6">
+        {/* ─── Hero Bottom Sage Banner & Floating Preview Card ───── */}
+        <div className="relative rounded-[36px] bg-[#CBD7B8] p-7 sm:p-10 border border-charcoal/5 space-y-8 overflow-hidden min-h-[340px]">
           
-          {/* Top Card 1: Community Speech Bubble Banner */}
-          <div className="sm:col-span-2 card-cream p-7 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-            <div className="space-y-1">
-              <h3 className="font-display font-extrabold text-xl text-charcoal">
-                Interactive Practice Hub
-              </h3>
-              <p className="text-xs text-charcoal/70 font-medium">
-                Our community contains amazing interviewers and 5k+ candidate followers.
-              </p>
-            </div>
-
-            {/* Castrio Speech Bubble Avatar Stack Badge */}
-            <div className="speech-bubble-badge shrink-0">
-              <div className="avatar-stack">
-                <div className="avatar-circle bg-amber-400 text-charcoal text-[10px] font-black flex items-center justify-center">JD</div>
-                <div className="avatar-circle bg-indigo-500 text-white text-[10px] font-black flex items-center justify-center">AL</div>
-                <div className="avatar-circle bg-coral text-white text-[10px] font-black flex items-center justify-center">MK</div>
-              </div>
-              <span className="text-xs font-extrabold text-charcoal">Join 89+ online</span>
-            </div>
-          </div>
-
-          {/* Middle Card 2: Mint Gradient Feature Container */}
-          <div className="card-mint-gradient p-7 flex flex-col justify-between min-h-[220px]">
-            <div className="space-y-2">
-              <span className="text-[10px] font-extrabold uppercase tracking-widest text-charcoal/60">Automated Feedback</span>
-              <h3 className="font-display font-black text-2xl text-charcoal leading-tight">
-                Create & ace your interviews
-              </h3>
-            </div>
-
-            <Link href="/setup" className="btn-dual-pill-light w-fit mt-4">
-              <div className="icon-badge">
-                <Sparkles className="w-4 h-4 text-white" />
-              </div>
-              <span className="btn-label">Switch to Mockly</span>
-            </Link>
-          </div>
-
-          {/* Middle Card 3: Circular Rotating Badge & Stats */}
-          <div className="card-cream p-7 flex flex-col justify-between items-center text-center min-h-[220px]">
-            {/* Castrio Circular Spinning Text Badge */}
-            <div className="circular-text-badge my-auto">
+          {/* Overlay Circular Spinning Badge */}
+          <div className="absolute top-6 left-1/2 -translate-x-1/2 z-20 hidden md:block">
+            <div className="circular-text-badge shadow-2xl">
               <svg className="rotating-svg" viewBox="0 0 100 100">
-                <path id="circlePath" d="M 50, 50 m -35, 0 a 35,35 0 1,1 70,0 a 35,35 0 1,1 -70,0" fill="none" />
+                <path id="circlePathHero" d="M 50, 50 m -35, 0 a 35,35 0 1,1 70,0 a 35,35 0 1,1 -70,0" fill="none" />
                 <text className="text-[9px] font-black uppercase fill-white tracking-widest">
-                  <textPath href="#circlePath" startOffset="0%">
-                    Play Interview • Play Interview •
+                  <textPath href="#circlePathHero" startOffset="0%">
+                    Play podcast . Play podcast .
                   </textPath>
                 </text>
               </svg>
@@ -131,32 +116,70 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Bottom Card 4: Extended Numerical Stat Counters */}
-          <div className="sm:col-span-2 card-cream p-8 grid grid-cols-2 sm:grid-cols-3 gap-6 text-center sm:text-left">
+          {/* Stats Bar */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 items-center max-w-xl">
+            
+            {/* Audio Waveform Bars Graphic */}
+            <div className="flex items-center gap-2">
+              <div className="flex items-end gap-1 h-8">
+                <div className="w-1 bg-charcoal h-4 rounded-full" />
+                <div className="w-1 bg-charcoal h-8 rounded-full" />
+                <div className="w-1 bg-charcoal h-6 rounded-full" />
+                <div className="w-1 bg-charcoal h-7 rounded-full" />
+                <div className="w-1 bg-charcoal h-3 rounded-full" />
+              </div>
+              <span className="font-display font-extrabold text-sm text-charcoal ml-2">Podcasts</span>
+            </div>
+
+            {/* Stat 1 */}
             <div>
               <span className="font-display font-black text-4xl sm:text-5xl text-charcoal block">34K</span>
-              <span className="text-xs font-bold text-charcoal/60 uppercase tracking-wider">Candidates Joined</span>
+              <span className="text-xs font-bold text-charcoal/70 uppercase">Users Joined</span>
             </div>
+
+            {/* Stat 2 */}
             <div>
               <span className="font-display font-black text-4xl sm:text-5xl text-charcoal block">130</span>
-              <span className="text-xs font-bold text-charcoal/60 uppercase tracking-wider">Roles & JDs</span>
+              <span className="text-xs font-bold text-charcoal/70 uppercase">Teams Created</span>
             </div>
-            <div className="col-span-2 sm:col-span-1">
-              <span className="font-display font-black text-4xl sm:text-5xl text-coral block">98%</span>
-              <span className="text-xs font-bold text-charcoal/60 uppercase tracking-wider">Accuracy Score</span>
+          </div>
+
+          {/* Floating Tilting Card Preview (Bottom Right) */}
+          <div className="relative sm:absolute bottom-4 right-4 sm:right-10 w-full sm:w-72 bg-white rounded-3xl p-6 shadow-2xl border border-charcoal/10 space-y-4 transform rotate-1 hover:rotate-0 transition-transform duration-300">
+            <div className="flex items-center justify-between">
+              <span className="font-display font-extrabold text-xs text-charcoal">Teams Members</span>
+              <div className="w-8 h-8 rounded-full bg-[#C5F874] flex items-center justify-center text-charcoal font-bold">
+                <ArrowUpRight className="w-4 h-4" />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <div className="avatar-stack">
+                <div className="avatar-circle bg-indigo-500 text-white text-[10px] font-black flex items-center justify-center">AL</div>
+                <div className="avatar-circle bg-coral text-white text-[10px] font-black flex items-center justify-center">MK</div>
+                <div className="avatar-circle bg-amber-400 text-charcoal text-[10px] font-black flex items-center justify-center">JD</div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-2 border-t border-charcoal/5">
+              <span className="font-display font-black text-2xl text-charcoal">30+</span>
+              <Link href="/setup" className="px-4 py-2 rounded-full bg-charcoal text-white text-xs font-bold hover:bg-charcoal-light">
+                Join our Team &gt;&gt;
+              </Link>
             </div>
           </div>
 
         </div>
+
       </div>
 
-      {/* ════════ FEATURE CARDS (Castrio Cream Grid) ════════ */}
-      <section className="space-y-8 pt-6">
+      {/* ════════ FEATURE CARDS (Castrio Grid) ════════ */}
+      <section className="space-y-6 pt-4">
         <div className="text-center space-y-2">
           <h2 className="font-display font-black text-3xl sm:text-4xl text-charcoal">
             Everything you need for tech interviews
           </h2>
-          <p className="text-sm font-bold text-charcoal/60 max-w-md mx-auto">
+          <p className="text-xs font-bold text-charcoal/60 max-w-md mx-auto">
             From resume ATS skill parsing to real-time speech evaluation.
           </p>
         </div>
@@ -182,7 +205,7 @@ export default function HomePage() {
       </section>
 
       {/* ════════ FAQ SECTION ════════ */}
-      <section className="max-w-3xl mx-auto space-y-6 pt-6">
+      <section className="max-w-3xl mx-auto space-y-6 pt-4">
         <div className="text-center space-y-2">
           <h2 className="font-display font-black text-3xl sm:text-4xl text-charcoal">
             Frequently Asked Questions
@@ -230,9 +253,9 @@ export default function HomePage() {
         <p className="text-xs text-cream/70 font-medium max-w-md mx-auto">
           Start a real-time AI mock session tailored to your targeted role in under 30 seconds.
         </p>
-        <Link href="/setup" className="btn-dual-pill-light mx-auto">
+        <Link href="/setup" className="btn-dual-pill-lime mx-auto">
           <div className="icon-badge">
-            <Zap className="w-4 h-4 text-white" />
+            <Zap className="w-4 h-4 text-charcoal" />
           </div>
           <span className="btn-label">Launch AI Session</span>
         </Link>
