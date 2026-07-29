@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { PlayCircle, BookOpen, BarChart3, Key, Menu, X, Mic, User, LogIn, Sparkles } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { ApiKeyModal } from './ApiKeyModal';
 import { AuthModal } from './AuthModal';
 import { UserProfileModal } from './UserProfileModal';
@@ -18,7 +19,16 @@ export const Navbar: React.FC = () => {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [activePill, setActivePill] = useState<'login' | 'register'>('register');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const handlePillClick = (mode: 'login' | 'register') => {
+    setActivePill(mode);
+    setTimeout(() => {
+      setAuthMode(mode);
+      setIsAuthModalOpen(true);
+    }, 250);
+  };
 
   const checkKey = () => {
     setHasApiKey(!!getStoredApiKey());
@@ -94,19 +104,33 @@ export const Navbar: React.FC = () => {
                 <span className="hidden sm:inline max-w-[100px] truncate">{user.name}</span>
               </button>
             ) : (
-              /* Connected Pill `[ Login ] ( Register )` */
-              <div className="btn-connected-pill">
+              /* Connected Pill `[ Login ] ( Register )` with smooth sliding animation */
+              <div className="btn-connected-pill relative">
                 <button
-                  onClick={() => { setAuthMode('login'); setIsAuthModalOpen(true); }}
-                  className="login-btn"
+                  onClick={() => handlePillClick('login')}
+                  className={`login-btn ${activePill === 'login' ? 'active-text' : ''}`}
                 >
-                  Login
+                  {activePill === 'login' && (
+                    <motion.div
+                      layoutId="activePillBg"
+                      className="absolute inset-0 bg-charcoal rounded-full -z-10"
+                      transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                    />
+                  )}
+                  <span className="relative z-10">Login</span>
                 </button>
                 <button
-                  onClick={() => { setAuthMode('register'); setIsAuthModalOpen(true); }}
-                  className="signup-btn"
+                  onClick={() => handlePillClick('register')}
+                  className={`signup-btn ${activePill === 'register' ? 'active-text' : ''}`}
                 >
-                  Register
+                  {activePill === 'register' && (
+                    <motion.div
+                      layoutId="activePillBg"
+                      className="absolute inset-0 bg-charcoal rounded-full -z-10"
+                      transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                    />
+                  )}
+                  <span className="relative z-10">Register</span>
                 </button>
               </div>
             )}

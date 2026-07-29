@@ -204,6 +204,7 @@
 
 /* 3. Top-Right Connected Navbar Pill `[ Login ] ( Signup )` */
 .btn-connected-pill {
+  position: relative;
   display: inline-flex;
   align-items: center;
   background-color: #FFFFFF;
@@ -211,29 +212,30 @@
   border-radius: 9999px;
   padding: 3px;
   box-shadow: 0 4px 15px rgba(27, 30, 22, 0.05);
+  z-index: 10;
 }
 
-.btn-connected-pill .login-btn {
-  padding: 8px 20px;
-  font-weight: 700;
-  font-size: 0.85rem;
-  color: var(--dark-charcoal);
-  border-radius: 9999px;
-  transition: all 0.2s ease;
-}
-
+.btn-connected-pill .login-btn,
 .btn-connected-pill .signup-btn {
+  position: relative;
   padding: 8px 22px;
   font-weight: 700;
   font-size: 0.85rem;
-  background-color: var(--dark-charcoal);
-  color: #FFFFFF;
+  color: var(--dark-charcoal);
+  background: transparent;
+  border: none;
   border-radius: 9999px;
-  transition: all 0.2s ease;
+  cursor: pointer;
+  z-index: 2;
+  transition: color 0.3s ease, transform 0.2s ease;
 }
 
-.btn-connected-pill .signup-btn:hover {
-  background-color: var(--dark-charcoal-light);
+.btn-connected-pill button.active-text {
+  color: #FFFFFF !important;
+}
+
+.btn-connected-pill button:hover:not(.active-text) {
+  color: var(--dark-charcoal-light);
   transform: scale(1.02);
 }
 
