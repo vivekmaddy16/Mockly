@@ -73,17 +73,17 @@ export default function HomePage() {
       {/* ═════════════════════════════════════════════════════════════
          CASTRIO LAYOUT HERO SHEET (Centered White Sheet, Sage Outer Frame)
          ═════════════════════════════════════════════════════════════ */}
-      <div className="bg-white rounded-[40px] shadow-2xl p-6 sm:p-14 space-y-12 border border-white relative overflow-hidden">
+      <div className="bg-white rounded-[40px] shadow-2xl p-6 sm:p-12 sm:pb-8 space-y-6 border border-white relative overflow-hidden">
         
         {/* ─── Hero Headline & Inline Avatar Section ────────────── */}
-        <div className="relative pt-4 sm:pt-6">
+        <div className="relative pt-2">
           
           {/* Vertical Scroll Badge Right */}
-          <div className="hidden lg:flex absolute top-4 right-0 vertical-scroll-badge">
+          <div className="hidden lg:flex absolute top-2 right-0 vertical-scroll-badge">
             <span>♦ Scroll Down ♦</span>
           </div>
 
-          <div className="max-w-4xl space-y-6">
+          <div className="max-w-4xl space-y-4">
             {/* Giant Syne Extended Headline */}
             <h1 className="font-display font-black text-4xl sm:text-6xl md:text-7xl leading-[1.05] tracking-tight text-charcoal">
               Master & ace <br />
@@ -98,10 +98,10 @@ export default function HomePage() {
             </h1>
 
             {/* Subtext & Action Controls Row */}
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end pt-4">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end pt-2">
               
               {/* Left Subtext & Lime Green Dual Pill Button */}
-              <div className="md:col-span-7 space-y-6">
+              <div className="md:col-span-7 space-y-4">
                 <p className="text-xs sm:text-sm font-medium text-charcoal/70 max-w-md leading-relaxed">
                   Prepare for your next technical interview with AI-powered mock sessions tailored to your resume and target job description.
                 </p>
@@ -138,25 +138,8 @@ export default function HomePage() {
         </div>
 
         {/* ─── Hero Bottom Sage Banner & Floating Preview Card ───── */}
-        <div className="relative rounded-[36px] bg-[#CBD7B8] p-7 sm:p-10 border border-charcoal/5 space-y-8 overflow-hidden min-h-[340px]">
+        <div className="relative rounded-[36px] bg-[#CBD7B8] p-6 sm:p-8 border border-charcoal/5 space-y-6 overflow-hidden min-h-[300px] mt-2">
           
-          {/* Overlay Circular Spinning Badge */}
-          <div className="absolute top-6 left-1/2 -translate-x-1/2 z-20 hidden md:block">
-            <div className="circular-text-badge shadow-2xl">
-              <svg className="rotating-svg" viewBox="0 0 100 100">
-                <path id="circlePathHero" d="M 50, 50 m -35, 0 a 35,35 0 1,1 70,0 a 35,35 0 1,1 -70,0" fill="none" />
-                <text className="text-[9px] font-black uppercase fill-white tracking-widest">
-                  <textPath href="#circlePathHero" startOffset="0%">
-                    Play Interview Demo • Play Interview Demo •
-                  </textPath>
-                </text>
-              </svg>
-              <Link href="/setup" className="w-12 h-12 rounded-full bg-white text-charcoal flex items-center justify-center hover:scale-110 transition-transform">
-                <Play className="w-5 h-5 fill-charcoal ml-0.5" />
-              </Link>
-            </div>
-          </div>
-
           {/* Stats Bar */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 items-center max-w-xl">
             
