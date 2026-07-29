@@ -146,15 +146,8 @@ npm run dev:full
 
 ---
 
-## 🎨 Design System Preview
 
-Mockly features a **Castrio-inspired UI design system**:
-- **Centered White Canvas Sheet**: `bg-white rounded-[40px] shadow-2xl`
-- **Castrio Dual-Pill Buttons**: Connected buttons with floating circular icon badges `( 🎙️ ) [ Switch to Mockly ]`
-- **Syne Extended Display Typography**: High-impact geometric display font for headlines
-- **Avatar Inset Headline**: Dashed circular avatar frame inset into the word "interview"
 
----
 
 ## 📄 License
 This project is licensed under the [MIT License](LICENSE).
