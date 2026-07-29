@@ -1,16 +1,39 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { AuthUser, getAuthToken, setAuthToken, getStoredUser, setStoredUser, authApi } from '@/lib/apiClient';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import {
+  AuthUser,
+  getAuthToken,
+  setAuthToken,
+  getStoredUser,
+  setStoredUser,
+  authApi,
+} from '@/lib/apiClient';
 
 interface AuthContextType {
   user: AuthUser | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isEmailVerified: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string, targetRole?: string, experienceLevel?: string) => Promise<void>;
-  logout: () => void;
-  updateProfile: (payload: { name?: string; targetRole?: string; experienceLevel?: string; password?: string }) => Promise<void>;
+  register: (
+    name: string,
+    email: string,
+    password: string,
+    targetRole?: string,
+    experienceLevel?: string
+  ) => Promise<{ message?: string }>;
+  logout: () => Promise<void>;
+  updateProfile: (payload: {
+    name?: string;
+    targetRole?: string;
+    experienceLevel?: string;
+  }) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  forgotPassword: (email: string) => Promise<string>;
+  resetPassword: (token: string, password: string) => Promise<string>;
+  verifyEmail: (token: string) => Promise<string>;
+  resendVerification: () => Promise<string>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -19,58 +42,144 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // ─── Force Logout Listener ──────────────────────────────
   useEffect(() => {
-    // Check initial stored user & token
-    const token = getAuthToken();
-    const stored = getStoredUser();
+    const handleForceLogout = () => {
+      setAuthToken(null);
+      setStoredUser(null);
+      setUser(null);
+    };
 
-    if (token && stored) {
-      setUser(stored);
-      // Attempt to verify with backend asynchronously
-      authApi.getMe()
-        .then((profile) => {
+    window.addEventListener('mockly:forceLogout', handleForceLogout);
+    return () => window.removeEventListener('mockly:forceLogout', handleForceLogout);
+  }, []);
+
+  // ─── Check initial stored user & verify with backend ────
+  useEffect(() => {
+    const initAuth = async () => {
+      const token = getAuthToken();
+      const stored = getStoredUser();
+
+      if (token && stored) {
+        setUser(stored);
+
+        try {
+          const profile = await authApi.getMe();
           const updated = { ...stored, ...profile };
           setUser(updated);
           setStoredUser(updated);
-        })
-        .catch(() => {
-          // If token expired/invalid, clear auth
-          setAuthToken(null);
-          setStoredUser(null);
-          setUser(null);
-        })
-        .finally(() => setIsLoading(false));
-    } else {
+        } catch {
+          // Token might be expired — try refresh
+          try {
+            const newToken = await authApi.refreshToken();
+            if (newToken) {
+              const profile = await authApi.getMe();
+              const updated = { ...stored, ...profile, token: newToken };
+              setUser(updated);
+              setStoredUser(updated);
+            } else {
+              setAuthToken(null);
+              setStoredUser(null);
+              setUser(null);
+            }
+          } catch {
+            setAuthToken(null);
+            setStoredUser(null);
+            setUser(null);
+          }
+        }
+      }
+
       setIsLoading(false);
-    }
+    };
+
+    initAuth();
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string) => {
     const data = await authApi.login({ email, password });
     setAuthToken(data.token);
     setStoredUser(data);
     setUser(data);
-  };
+  }, []);
 
-  const register = async (name: string, email: string, password: string, targetRole?: string, experienceLevel?: string) => {
-    const data = await authApi.register({ name, email, password, targetRole, experienceLevel });
-    setAuthToken(data.token);
-    setStoredUser(data);
-    setUser(data);
-  };
+  const register = useCallback(
+    async (
+      name: string,
+      email: string,
+      password: string,
+      targetRole?: string,
+      experienceLevel?: string
+    ) => {
+      const data = await authApi.register({
+        name,
+        email,
+        password,
+        targetRole,
+        experienceLevel,
+      });
+      setAuthToken(data.token);
+      setStoredUser(data);
+      setUser(data);
+      return { message: data.message };
+    },
+    []
+  );
 
-  const logout = () => {
+  const logout = useCallback(async () => {
+    try {
+      await authApi.logout();
+    } catch {
+      /* clear locally even if server call fails */
+    }
     setAuthToken(null);
     setStoredUser(null);
     setUser(null);
-  };
+  }, []);
 
-  const updateProfile = async (payload: { name?: string; targetRole?: string; experienceLevel?: string; password?: string }) => {
-    const data = await authApi.updateProfile(payload);
-    setAuthToken(data.token);
-    setStoredUser(data);
-    setUser(data);
-  };
+  const updateProfile = useCallback(
+    async (payload: { name?: string; targetRole?: string; experienceLevel?: string }) => {
+      const data = await authApi.updateProfile(payload);
+      setAuthToken(data.token);
+      setStoredUser(data);
+      setUser(data);
+    },
+    []
+  );
+
+  const changePassword = useCallback(async (currentPassword: string, newPassword: string) => {
+    await authApi.changePassword({ currentPassword, newPassword });
+  }, []);
+
+  const forgotPassword = useCallback(async (email: string) => {
+    const data = await authApi.forgotPassword(email);
+    return data.message;
+  }, []);
+
+  const resetPassword = useCallback(async (token: string, password: string) => {
+    const data = await authApi.resetPassword(token, password);
+    // Clear any existing auth state after password reset
+    setAuthToken(null);
+    setStoredUser(null);
+    setUser(null);
+    return data.message;
+  }, []);
+
+  const verifyEmail = useCallback(async (token: string) => {
+    const data = await authApi.verifyEmail(token);
+    // Update user's verified status
+    if (user) {
+      const updated = { ...user, isEmailVerified: true };
+      setUser(updated);
+      setStoredUser(updated);
+    }
+    return data.message;
+  }, [user]);
+
+  const resendVerification = useCallback(async () => {
+    const data = await authApi.resendVerification();
+    return data.message;
+  }, []);
 
   return (
     <AuthContext.Provider
@@ -78,10 +187,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user,
         isAuthenticated: !!user,
         isLoading,
+        isEmailVerified: user?.isEmailVerified ?? false,
         login,
         register,
         logout,
         updateProfile,
+        changePassword,
+        forgotPassword,
+        resetPassword,
+        verifyEmail,
+        resendVerification,
       }}
     >
       {children}
