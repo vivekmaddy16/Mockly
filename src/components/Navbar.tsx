@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { PlayCircle, BookOpen, BarChart3, Key, Menu, X, Mic, User, LogIn } from 'lucide-react';
+import { PlayCircle, BookOpen, BarChart3, Key, Menu, X, Mic, User, LogIn, Sparkles } from 'lucide-react';
 import { ApiKeyModal } from './ApiKeyModal';
 import { AuthModal } from './AuthModal';
 import { UserProfileModal } from './UserProfileModal';
@@ -33,10 +33,9 @@ export const Navbar: React.FC = () => {
   }, [pathname]);
 
   const navLinks = [
-    { name: 'Home', href: '/' },
-    { name: 'Features', href: '#features' },
-    { name: 'Switch to Mockly', href: '/setup' },
-    { name: 'Practice Hub', href: '/practice' },
+    { name: 'Mock Interview', href: '/setup', icon: PlayCircle },
+    { name: 'Topic Practice', href: '/practice', icon: BookOpen },
+    { name: 'Dashboard', href: '/dashboard', icon: BarChart3 },
   ];
 
   return (
@@ -44,7 +43,7 @@ export const Navbar: React.FC = () => {
       <header className="w-full py-4 px-4 sm:px-8 bg-transparent">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           
-          {/* Logo — Castrio Lined Badge + Syne Display Typography */}
+          {/* Logo — Mockly Brand with Castrio Design Style */}
           <Link href="/" className="flex items-center gap-2.5 group shrink-0">
             <div className="w-10 h-10 rounded-full bg-charcoal text-cream flex items-center justify-center font-black group-hover:scale-105 transition-transform shadow-md">
               <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -52,21 +51,22 @@ export const Navbar: React.FC = () => {
                 <path d="M8 12h8M12 8v8" />
               </svg>
             </div>
-            <span className="font-display font-black text-2xl tracking-tight text-charcoal">
-              Castrio
-            </span>
+            <div className="font-display font-black text-2xl tracking-tight text-charcoal flex items-center gap-0.5">
+              <span>Mockly</span>
+              <span className="text-coral">.ai</span>
+            </div>
           </Link>
 
           {/* Center Navigation Links */}
           <div className="hidden md:flex items-center gap-8">
             {navLinks.map((item) => {
-              const isActive = pathname === item.href;
+              const isActive = pathname === item.href || (item.href !== '/' && pathname?.startsWith(item.href));
               return (
                 <Link
                   key={item.name}
                   href={item.href}
                   className={`text-xs font-extrabold tracking-tight transition-colors ${
-                    isActive ? 'text-charcoal' : 'text-charcoal/70 hover:text-charcoal'
+                    isActive ? 'text-charcoal border-b-2 border-charcoal pb-0.5' : 'text-charcoal/70 hover:text-charcoal'
                   }`}
                 >
                   {item.name}
@@ -81,7 +81,7 @@ export const Navbar: React.FC = () => {
             </button>
           </div>
 
-          {/* Right Side Connected Dual Pill `[ Login ] ( Signup )` */}
+          {/* Right Side Connected Dual Pill `[ Login ] ( Register )` */}
           <div className="flex items-center gap-3">
             {isAuthenticated && user ? (
               <button
@@ -94,7 +94,7 @@ export const Navbar: React.FC = () => {
                 <span className="hidden sm:inline max-w-[100px] truncate">{user.name}</span>
               </button>
             ) : (
-              /* Connected Pill `[ Login ] ( Signup )` */
+              /* Connected Pill `[ Login ] ( Register )` */
               <div className="btn-connected-pill">
                 <button
                   onClick={() => { setAuthMode('login'); setIsAuthModalOpen(true); }}
@@ -106,7 +106,7 @@ export const Navbar: React.FC = () => {
                   onClick={() => { setAuthMode('register'); setIsAuthModalOpen(true); }}
                   className="signup-btn"
                 >
-                  Signup
+                  Register
                 </button>
               </div>
             )}
