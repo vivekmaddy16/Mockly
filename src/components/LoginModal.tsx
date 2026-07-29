@@ -1,19 +1,27 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Mail, Lock, Eye, EyeOff, X, Github } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, X, Github, ArrowLeft, CheckCircle, AlertTriangle, Loader2 } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 
 interface LoginModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
+type ModalView = 'login' | 'signup' | 'forgot' | 'forgot-sent' | 'verification-sent';
+
 export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
-  const [isSignUp, setIsSignUp] = useState(false);
+  const { login, register } = useAuth();
+
+  const [view, setView] = useState<ModalView>('login');
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
 
   useEffect(() => {
     if (isOpen) {
@@ -21,16 +29,183 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
       setPassword('');
       setName('');
       setShowPassword(false);
+      setError('');
+      setSuccessMsg('');
+      setView('login');
+      setIsSubmitting(false);
     }
   }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Demo: just close
-    onClose();
+    setError('');
+    setIsSubmitting(true);
+
+    try {
+      await login(email, password);
+      onClose();
+    } catch (err: any) {
+      setError(err.message || 'Login failed');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setIsSubmitting(true);
+
+    try {
+      const result = await register(name, email, password);
+      if (result?.message) {
+        setSuccessMsg(result.message);
+        setView('verification-sent');
+      } else {
+        onClose();
+      }
+    } catch (err: any) {
+      setError(err.message || 'Registration failed');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setIsSubmitting(true);
+
+    try {
+      const { forgotPassword } = await import('@/lib/apiClient').then((m) => m.authApi);
+      const msg = await forgotPassword(email);
+      setSuccessMsg(msg);
+      setView('forgot-sent');
+    } catch (err: any) {
+      setError(err.message || 'Failed to send reset email');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // ─── Forgot Password View ──────────────────────────────
+  if (view === 'forgot') {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay animate-fade-in" onClick={onClose}>
+        <div className="relative w-full max-w-md modal-card p-8 shadow-2xl animate-slide-up" onClick={(e) => e.stopPropagation()}>
+          <button onClick={onClose} className="absolute top-5 right-5 p-1.5 text-neutral-500 hover:text-white rounded-lg hover:bg-white/5 transition">
+            <X className="w-5 h-5" />
+          </button>
+
+          <button onClick={() => { setView('login'); setError(''); }} className="flex items-center gap-1.5 text-sm text-neutral-400 hover:text-white transition mb-6">
+            <ArrowLeft className="w-4 h-4" /> Back to login
+          </button>
+
+          <div className="flex justify-center mb-5">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center shadow-lg shadow-orange-500/20">
+              <Lock className="w-7 h-7 text-white" />
+            </div>
+          </div>
+
+          <div className="text-center mb-6">
+            <h2 className="text-2xl font-extrabold text-white">Forgot Password?</h2>
+            <p className="text-sm text-neutral-400 mt-1">Enter your email and we&apos;ll send you a reset link</p>
+          </div>
+
+          {error && (
+            <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3 mb-4">
+              <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0" />
+              <p className="text-sm text-red-300">{error}</p>
+            </div>
+          )}
+
+          <form onSubmit={handleForgotPassword} className="space-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-neutral-300 mb-1.5">Email Address</label>
+              <div className="relative">
+                <Mail className="w-4 h-4 text-neutral-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  className="input-dark"
+                  required
+                />
+              </div>
+            </div>
+
+            <button type="submit" disabled={isSubmitting} className="btn-signin mt-2">
+              {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Send Reset Link'}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Forgot Password Sent View ─────────────────────────
+  if (view === 'forgot-sent') {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay animate-fade-in" onClick={onClose}>
+        <div className="relative w-full max-w-md modal-card p-8 shadow-2xl animate-slide-up" onClick={(e) => e.stopPropagation()}>
+          <button onClick={onClose} className="absolute top-5 right-5 p-1.5 text-neutral-500 hover:text-white rounded-lg hover:bg-white/5 transition">
+            <X className="w-5 h-5" />
+          </button>
+
+          <div className="flex justify-center mb-5">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-green-500/20">
+              <CheckCircle className="w-7 h-7 text-white" />
+            </div>
+          </div>
+
+          <div className="text-center mb-6">
+            <h2 className="text-2xl font-extrabold text-white">Check Your Email</h2>
+            <p className="text-sm text-neutral-400 mt-2">{successMsg || 'If an account exists with that email, a reset link has been sent.'}</p>
+            <p className="text-xs text-neutral-500 mt-4">The link expires in 10 minutes</p>
+          </div>
+
+          <button onClick={() => { setView('login'); setError(''); }} className="btn-signin mt-2">
+            Back to Login
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Verification Sent View ────────────────────────────
+  if (view === 'verification-sent') {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay animate-fade-in" onClick={onClose}>
+        <div className="relative w-full max-w-md modal-card p-8 shadow-2xl animate-slide-up" onClick={(e) => e.stopPropagation()}>
+          <button onClick={onClose} className="absolute top-5 right-5 p-1.5 text-neutral-500 hover:text-white rounded-lg hover:bg-white/5 transition">
+            <X className="w-5 h-5" />
+          </button>
+
+          <div className="flex justify-center mb-5">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center shadow-lg shadow-brand-500/20">
+              <Mail className="w-7 h-7 text-white" />
+            </div>
+          </div>
+
+          <div className="text-center mb-6">
+            <h2 className="text-2xl font-extrabold text-white">Verify Your Email</h2>
+            <p className="text-sm text-neutral-400 mt-2">{successMsg || 'We\'ve sent a verification link to your email.'}</p>
+            <p className="text-xs text-neutral-500 mt-4">Check your inbox and click the link to activate your account</p>
+          </div>
+
+          <button onClick={onClose} className="btn-signin mt-2">
+            Got it!
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Login / SignUp View ───────────────────────────────
+  const isSignUp = view === 'signup';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay animate-fade-in" onClick={onClose}>
@@ -63,6 +238,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
           </p>
         </div>
 
+        {/* Error message */}
+        {error && (
+          <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3 mb-4">
+            <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0" />
+            <p className="text-sm text-red-300">{error}</p>
+          </div>
+        )}
+
         {/* Social Login Buttons */}
         <div className="space-y-3 mb-5">
           <button className="btn-social btn-social-google">
@@ -85,7 +268,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
         <div className="divider-text mb-5">Or continue with email</div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={isSignUp ? handleSignUp : handleLogin} className="space-y-4">
           {isSignUp && (
             <div>
               <label className="block text-sm font-semibold text-neutral-300 mb-1.5">Full Name</label>
@@ -97,6 +280,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Your full name"
                   className="input-dark"
+                  required
                 />
               </div>
             </div>
@@ -112,20 +296,34 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
                 className="input-dark"
+                required
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-neutral-300 mb-1.5">Password</label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-sm font-semibold text-neutral-300">Password</label>
+              {!isSignUp && (
+                <button
+                  type="button"
+                  onClick={() => { setView('forgot'); setError(''); }}
+                  className="text-xs text-brand-400 hover:text-brand-300 font-semibold transition"
+                >
+                  Forgot password?
+                </button>
+              )}
+            </div>
             <div className="relative">
               <Lock className="w-4 h-4 text-neutral-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password"
+                placeholder={isSignUp ? 'Min 8 chars, uppercase, number, special' : 'Enter your password'}
                 className="input-dark pr-10"
+                required
+                minLength={isSignUp ? 8 : undefined}
               />
               <button
                 type="button"
@@ -135,10 +333,19 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
+            {isSignUp && (
+              <p className="text-xs text-neutral-500 mt-1">Must contain uppercase, lowercase, number & special character</p>
+            )}
           </div>
 
-          <button type="submit" className="btn-signin mt-2">
-            {isSignUp ? 'Create Account' : 'Sign In'}
+          <button type="submit" disabled={isSubmitting} className="btn-signin mt-2">
+            {isSubmitting ? (
+              <Loader2 className="w-5 h-5 animate-spin mx-auto" />
+            ) : isSignUp ? (
+              'Create Account'
+            ) : (
+              'Sign In'
+            )}
           </button>
         </form>
 
@@ -146,7 +353,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
         <p className="text-center text-sm text-neutral-400 mt-5">
           {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
           <button
-            onClick={() => setIsSignUp(!isSignUp)}
+            onClick={() => { setView(isSignUp ? 'login' : 'signup'); setError(''); }}
             className="font-bold text-white hover:text-brand-400 underline underline-offset-2 transition"
           >
             {isSignUp ? 'Sign in' : 'Sign up'}
