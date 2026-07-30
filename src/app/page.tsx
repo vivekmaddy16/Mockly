@@ -15,7 +15,7 @@ const faqs = [
   },
   {
     q: 'Do I need a Gemini API key?',
-    a: 'No! Mockly includes a high-fidelity built-in AI evaluation engine that works out of the box. You can also optionally configure your free Google Gemini API key.',
+    a: 'No! Mockly includes a high-fidelity built-in AI evaluation engine that works out of the box. You can also configure your Google Gemini API key in the .env environment file.',
   },
   {
     q: 'What topics does the Practice Hub cover?',

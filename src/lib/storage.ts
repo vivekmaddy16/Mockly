@@ -1,27 +1,8 @@
 import { InterviewSession, UserProgressStats, QuestionEvaluation } from '@/types';
 import { interviewApi, progressApi, getAuthToken } from '@/lib/apiClient';
 
-const API_KEY_STORAGE_KEY = 'mockly_gemini_api_key';
 const SESSIONS_STORAGE_KEY = 'mockly_interview_sessions';
 const PRACTICE_PROGRESS_KEY = 'mockly_practice_progress';
-
-// ═══════════════════════════════════════════════════════════════
-// API Key Storage (stays in localStorage — client-side concern)
-// ═══════════════════════════════════════════════════════════════
-
-export const getStoredApiKey = (): string | null => {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem(API_KEY_STORAGE_KEY);
-};
-
-export const setStoredApiKey = (key: string): void => {
-  if (typeof window === 'undefined') return;
-  if (!key || key.trim() === '') {
-    localStorage.removeItem(API_KEY_STORAGE_KEY);
-  } else {
-    localStorage.setItem(API_KEY_STORAGE_KEY, key.trim());
-  }
-};
 
 // ═══════════════════════════════════════════════════════════════
 // Helper: Check if user is authenticated

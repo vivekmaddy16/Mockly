@@ -1,10 +1,8 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { Question, QuestionEvaluation, ExperienceLevel } from '@/types';
-import { getStoredApiKey } from './storage';
 
 export const getGeminiClient = () => {
-  const customKey = getStoredApiKey();
-  const apiKey = customKey || process.env.NEXT_PUBLIC_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+  const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
   try {
     return new GoogleGenerativeAI(apiKey);

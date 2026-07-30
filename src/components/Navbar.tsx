@@ -3,40 +3,18 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { PlayCircle, BookOpen, BarChart3, Key, Menu, X, Mic, User, LogIn, Sparkles } from 'lucide-react';
-import { motion } from 'framer-motion';
-import { ApiKeyModal } from './ApiKeyModal';
+import { PlayCircle, BookOpen, BarChart3, Menu, X } from 'lucide-react';
 import { AuthModal } from './AuthModal';
 import { UserProfileModal } from './UserProfileModal';
 import { useAuth } from '@/context/AuthContext';
-import { getStoredApiKey } from '@/lib/storage';
 
 export const Navbar: React.FC = () => {
   const pathname = usePathname();
   const { user, isAuthenticated } = useAuth();
-  const [hasApiKey, setHasApiKey] = useState(false);
-  const [isKeyModalOpen, setIsKeyModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
-  const [activePill, setActivePill] = useState<'login' | 'register'>('register');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-  const handlePillClick = (mode: 'login' | 'register') => {
-    setActivePill(mode);
-    setTimeout(() => {
-      setAuthMode(mode);
-      setIsAuthModalOpen(true);
-    }, 250);
-  };
-
-  const checkKey = () => {
-    setHasApiKey(!!getStoredApiKey());
-  };
-
-  useEffect(() => {
-    checkKey();
-  }, []);
 
   useEffect(() => {
     setIsMobileMenuOpen(false);
@@ -83,12 +61,6 @@ export const Navbar: React.FC = () => {
                 </Link>
               );
             })}
-            <button
-              onClick={() => setIsKeyModalOpen(true)}
-              className="text-xs font-extrabold tracking-tight text-charcoal/70 hover:text-charcoal transition-colors"
-            >
-              API Key
-            </button>
           </div>
 
           {/* Right Side Connected Dual Pill `[ Login ] ( Register )` */}
@@ -104,33 +76,19 @@ export const Navbar: React.FC = () => {
                 <span className="hidden sm:inline max-w-[100px] truncate">{user.name}</span>
               </button>
             ) : (
-              /* Connected Pill `[ Login ] ( Register )` with smooth sliding animation */
-              <div className="btn-connected-pill relative">
+              /* Connected Pill `[ Login ] ( Register )` */
+              <div className="btn-connected-pill">
                 <button
-                  onClick={() => handlePillClick('login')}
-                  className={`login-btn ${activePill === 'login' ? 'active-text' : ''}`}
+                  onClick={() => { setAuthMode('login'); setIsAuthModalOpen(true); }}
+                  className="login-btn"
                 >
-                  {activePill === 'login' && (
-                    <motion.div
-                      layoutId="activePillBg"
-                      className="absolute inset-0 bg-charcoal rounded-full -z-10"
-                      transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                    />
-                  )}
-                  <span className="relative z-10">Login</span>
+                  Login
                 </button>
                 <button
-                  onClick={() => handlePillClick('register')}
-                  className={`signup-btn ${activePill === 'register' ? 'active-text' : ''}`}
+                  onClick={() => { setAuthMode('register'); setIsAuthModalOpen(true); }}
+                  className="signup-btn"
                 >
-                  {activePill === 'register' && (
-                    <motion.div
-                      layoutId="activePillBg"
-                      className="absolute inset-0 bg-charcoal rounded-full -z-10"
-                      transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                    />
-                  )}
-                  <span className="relative z-10">Register</span>
+                  Register
                 </button>
               </div>
             )}
@@ -162,7 +120,6 @@ export const Navbar: React.FC = () => {
         )}
       </header>
 
-      <ApiKeyModal isOpen={isKeyModalOpen} onClose={() => setIsKeyModalOpen(false)} onSaved={checkKey} />
       <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} initialMode={authMode} />
       <UserProfileModal isOpen={isProfileModalOpen} onClose={() => setIsProfileModalOpen(false)} />
     </>
