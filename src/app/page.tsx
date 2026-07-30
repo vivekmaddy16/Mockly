@@ -106,12 +106,12 @@ export default function HomePage() {
                   Prepare for your next technical interview with AI-powered mock sessions tailored to your resume and target job description.
                 </p>
 
-                {/* Castrio Lime Green Dual Pill `( 🎙️ ) [ Switch to Mockly ]` */}
+                {/* Castrio Lime Green Dual Pill `( 🎙️ ) [ Start Mock Interview ]` */}
                 <Link href="/setup" className="btn-dual-pill-lime">
                   <div className="icon-badge">
                     <Mic className="w-4 h-4 text-charcoal" />
                   </div>
-                  <span className="btn-label">Switch to Mockly</span>
+                  <span className="btn-label">Start Mock Interview</span>
                 </Link>
               </div>
 

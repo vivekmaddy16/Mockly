@@ -106,16 +106,43 @@ export const Navbar: React.FC = () => {
 
         {/* Mobile Drawer */}
         {isMobileMenuOpen && (
-          <div className="md:hidden mt-3 p-5 modal-card-castrio space-y-2 shadow-2xl animate-fade-in">
+          <div className="md:hidden mt-3 p-5 modal-card-castrio space-y-3 shadow-2xl animate-fade-in">
             {navLinks.map((item) => (
               <Link
                 key={item.name}
                 href={item.href}
+                onClick={() => setIsMobileMenuOpen(false)}
                 className="block px-4 py-3 rounded-2xl text-xs font-extrabold text-charcoal hover:bg-black/5"
               >
                 {item.name}
               </Link>
             ))}
+
+            <div className="pt-2 border-t border-charcoal/10">
+              {isAuthenticated && user ? (
+                <button
+                  onClick={() => { setIsMobileMenuOpen(false); setIsProfileModalOpen(true); }}
+                  className="w-full py-3 rounded-2xl bg-charcoal text-cream font-extrabold text-xs text-center"
+                >
+                  My Profile ({user.name})
+                </button>
+              ) : (
+                <div className="w-full grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => { setIsMobileMenuOpen(false); setAuthMode('login'); setIsAuthModalOpen(true); }}
+                    className="py-2.5 rounded-full border border-charcoal/20 text-xs font-extrabold text-charcoal text-center"
+                  >
+                    Login
+                  </button>
+                  <button
+                    onClick={() => { setIsMobileMenuOpen(false); setAuthMode('register'); setIsAuthModalOpen(true); }}
+                    className="py-2.5 rounded-full bg-charcoal text-cream text-xs font-extrabold text-center"
+                  >
+                    Register
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </header>
