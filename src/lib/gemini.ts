@@ -17,7 +17,8 @@ export const generateInterviewQuestions = async (
   experienceLevel: ExperienceLevel,
   resumeText: string = '',
   jobDescriptionText: string = '',
-  questionCount: number = 3
+  questionCount: number = 3,
+  difficultyMode: 'Easy' | 'Medium' | 'Hard' = 'Medium'
 ): Promise<{ questions: Question[]; extractedSkills: string[] }> => {
   const genAI = getGeminiClient();
 
@@ -27,14 +28,18 @@ export const generateInterviewQuestions = async (
 
       const prompt = `
 You are an expert technical interviewer for top technology companies.
-Generate ${questionCount} customized, high-quality interview questions for a candidates interviewing for the role of "${targetRole}" at experience level "${experienceLevel}".
+Generate ${questionCount} customized, high-quality interview questions for a candidate interviewing for the role of "${targetRole}" at experience level "${experienceLevel}" with an overall interview difficulty of "${difficultyMode}".
 
 ${resumeText ? `Candidate Resume Content:\n${resumeText.slice(0, 1500)}\n` : ''}
 ${jobDescriptionText ? `Job Description Requirements:\n${jobDescriptionText.slice(0, 1500)}\n` : ''}
 
 Instructions:
 1. Include a mix of Technical, Behavioral, and System Architecture/CS questions matching the candidate's skills and the JD.
-2. Return ONLY a valid raw JSON object matching the JSON schema below. Do not include markdown code block formatting like \`\`\`json.
+2. Align the depth and challenge of all questions to the "${difficultyMode}" level:
+   - "Easy": Focus on fundamentals, core syntax, basic concepts, common scenarios, and simpler problems.
+   - "Medium": Challenge with standard real-world engineering scenarios, normal operational trade-offs, standard designs, and typical debugging scenarios.
+   - "Hard": Probe deep internals, complex scale limits, system architecture edge cases, highly optimized algorithms, concurrency issues, and critical engineering trade-offs.
+3. Return ONLY a valid raw JSON object matching the JSON schema below. Do not include markdown code block formatting like \`\`\`json.
 
 JSON Schema:
 {
@@ -46,7 +51,7 @@ JSON Schema:
       "category": "DSA / Frontend / Backend / System Design",
       "questionText": "Detailed question prompt...",
       "expectedKeyPoints": ["Key point 1", "Key point 2"],
-      "difficulty": "Easy"
+      "difficulty": "${difficultyMode}"
     }
   ]
 }
@@ -73,48 +78,119 @@ JSON Schema:
   const generated: Question[] = [];
   
   // 1. Tech Deep Dive
-  generated.push({
-    id: `gen_q1_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-    type: 'technical',
-    category: extractedSkills[0] || 'Web Architecture',
-    questionText: `Given your target role as a ${targetRole} (${experienceLevel}), how would you optimize the performance and memory consumption of a production application utilizing ${extractedSkills.slice(0, 3).join(', ') || 'modern frameworks'} under high request concurrency?`,
-    expectedKeyPoints: [
+  let q1Text = '';
+  let q1KeyPoints: string[] = [];
+  if (difficultyMode === 'Easy') {
+    q1Text = `Explain the core concepts and basic lifecycle of a web application built using ${extractedSkills.slice(0, 2).join(', ') || 'modern web technologies'} as a ${targetRole} (${experienceLevel}).`;
+    q1KeyPoints = [
+      'Component mounting and state rendering',
+      'Basic error handling and input validation',
+      'Standard routing and file structure',
+      'Understanding state vs props / props drilling'
+    ];
+  } else if (difficultyMode === 'Hard') {
+    q1Text = `Explain how you would diagnose and resolve deep-seated performance issues (such as V8 memory leaks, database lock contention, and event loop delays) in a high-throughput production deployment of a ${targetRole} application utilizing ${extractedSkills.slice(0, 3).join(', ')}.`;
+    q1KeyPoints = [
+      'Heap profiling, core dumps, and flame graphs',
+      'Database deadlock resolution, query indexing, and connection limits',
+      'Asynchronous stream processing and non-blocking backpressure',
+      'Distributed caching eviction policies and cache stampede prevention'
+    ];
+  } else {
+    // Medium
+    q1Text = `Given your target role as a ${targetRole} (${experienceLevel}), how would you optimize the performance and memory consumption of a production application utilizing ${extractedSkills.slice(0, 3).join(', ') || 'modern frameworks'} under high request concurrency?`;
+    q1KeyPoints = [
       'Profiling memory leaks and event loop bottlenecks',
       'Caching strategy (Redis / CDN / In-Memory)',
       'Asynchronous non-blocking batch execution',
       'Database indexing and connection pooling'
-    ],
-    difficulty: 'Medium'
+    ];
+  }
+
+  generated.push({
+    id: `gen_q1_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+    type: 'technical',
+    category: extractedSkills[0] || 'Web Architecture',
+    questionText: q1Text,
+    expectedKeyPoints: q1KeyPoints,
+    difficulty: difficultyMode
   });
 
   // 2. Behavioral / Leadership
-  generated.push({
-    id: `gen_q2_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-    type: 'behavioral',
-    category: 'Behavioral & Problem Solving',
-    questionText: `Tell me about a time when you had to balance building a quick solution to meet a tight business deadline versus writing a long-term scalable system. How did you manage technical debt?`,
-    expectedKeyPoints: [
+  let q2Text = '';
+  let q2KeyPoints: string[] = [];
+  if (difficultyMode === 'Easy') {
+    q2Text = `Describe a simple project or feature you worked on recently. How did you plan it, and what did you learn from the implementation?`;
+    q2KeyPoints = [
+      'Task breakdown and time management',
+      'Reading documentation or code examples',
+      'Testing the feature locally',
+      'Collaborating with peers or code review'
+    ];
+  } else if (difficultyMode === 'Hard') {
+    q2Text = `Tell me about a time when you had to manage significant cross-team technical debt, align stakeholders with competing priorities, and execute a critical system migration without downtime.`;
+    q2KeyPoints = [
+      'STAR format (Situation, Task, Action, Result) with clear impact metrics',
+      'Stakeholder alignment, trade-off communication, and architectural roadmap',
+      'Blue-green or canary migration strategies, fallback and rollback plans',
+      'Long-term engineering culture improvements and monitoring'
+    ];
+  } else {
+    // Medium
+    q2Text = `Tell me about a time when you had to balance building a quick solution to meet a tight business deadline versus writing a long-term scalable system. How did you manage technical debt?`;
+    q2KeyPoints = [
       'STAR format (Situation, Task, Action, Result)',
       'Clear trade-off analysis and communication with stakeholders',
       'Documenting and tracking technical debt backlog items',
       'Post-launch refactoring strategy'
-    ],
-    difficulty: 'Medium'
+    ];
+  }
+
+  generated.push({
+    id: `gen_q2_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+    type: 'behavioral',
+    category: 'Behavioral & Problem Solving',
+    questionText: q2Text,
+    expectedKeyPoints: q2KeyPoints,
+    difficulty: difficultyMode
   });
 
   // 3. Technical / CS Fundamental or DSA
   if (questionCount >= 3) {
+    let q3Text = '';
+    let q3KeyPoints: string[] = [];
+    if (difficultyMode === 'Easy') {
+      q3Text = `What is the difference between synchronous and asynchronous code execution, and how do you handle basic error catch blocks in your standard code workflows?`;
+      q3KeyPoints = [
+        'Blocking vs non-blocking execution model',
+        'Use of Promises and async/await syntax',
+        'Try-catch statements and error objects'
+      ];
+    } else if (difficultyMode === 'Hard') {
+      q3Text = `Design a distributed lock manager or consensus mechanism for microservices needing serialized access to a shared resource. How would you handle network partitions and split-brain scenarios?`;
+      q3KeyPoints = [
+        'CAP Theorem tradeoffs (Consistency vs Availability)',
+        'Raft, consensus or Redlock algorithm using Redis/Zookeeper',
+        'Leasing mechanisms and fence tokens to prevent out-of-order writes',
+        'Network partitioning recovery and heartbeats'
+      ];
+    } else {
+      // Medium
+      q3Text = `How do you handle error boundaries, distributed transaction rollbacks, or state recovery when an upstream API service fails in a microservice or multi-tier architecture?`;
+      q3KeyPoints = [
+        'Circuit breaker pattern and retry backoff',
+        'Idempotency keys and saga transaction pattern',
+        'Graceful UX degradation and user notification'
+      ];
+    }
+
     generated.push({
       id: `gen_q3_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
       type: 'technical',
       category: 'CS Fundamentals & Reliability',
-      questionText: `How do you handle error boundaries, distributed transaction rollbacks, or state recovery when an upstream API service fails in a microservice or multi-tier architecture?`,
-      expectedKeyPoints: [
-        'Circuit breaker pattern and retry backoff',
-        'Idempotency keys and saga transaction pattern',
-        'Graceful UX degradation and user notification'
-      ],
-      difficulty: experienceLevel.includes('Senior') || experienceLevel.includes('Lead') ? 'Hard' : 'Medium'
+      questionText: q3Text,
+      expectedKeyPoints: q3KeyPoints,
+      difficulty: difficultyMode
     });
   }
 
@@ -135,6 +211,7 @@ export const evaluateAnswer = async (
 You are an elite Tech Lead & Senior Interviewer evaluating a candidate's answer for the role of "${targetRole}".
 
 Question Category: ${question.category}
+Question Difficulty: ${question.difficulty}
 Question: "${question.questionText}"
 Expected Key Points: ${question.expectedKeyPoints.join(', ')}
 
@@ -142,7 +219,7 @@ Candidate's Answer:
 "${userAnswer}"
 
 Instructions:
-Evaluate the answer critically and constructively.
+Evaluate the answer critically and constructively, calibrating your expectations according to the question difficulty level ("${question.difficulty}").
 Return ONLY a valid raw JSON object matching the schema below (no markdown code block syntax).
 
 JSON Schema:

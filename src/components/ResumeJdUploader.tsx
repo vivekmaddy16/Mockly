@@ -25,6 +25,7 @@ export const ResumeJdUploader: React.FC = () => {
   const [resumeText, setResumeText] = useState('');
   const [jobDescriptionText, setJobDescriptionText] = useState('');
   const [questionCount, setQuestionCount] = useState<number>(3);
+  const [difficultyMode, setDifficultyMode] = useState<'Easy' | 'Medium' | 'Hard'>('Medium');
   const [isLoading, setIsLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
   const [errorMsg, setErrorMsg] = useState('');
@@ -75,13 +76,14 @@ export const ResumeJdUploader: React.FC = () => {
     setIsLoading(true);
     try {
       const { questions, extractedSkills } = await generateInterviewQuestions(
-        targetRole, experienceLevel, resumeText, jobDescriptionText, questionCount
+        targetRole, experienceLevel, resumeText, jobDescriptionText, questionCount, difficultyMode
       );
       const newSession: InterviewSession = {
         id: `sess_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
         createdAt: new Date().toISOString(),
         targetRole: targetRole.trim(),
         experienceLevel,
+        difficultyMode,
         resumeText: resumeText.trim() || undefined,
         jobDescriptionText: jobDescriptionText.trim() || undefined,
         extractedSkills,
@@ -223,6 +225,26 @@ export const ResumeJdUploader: React.FC = () => {
                   }`}
                 >
                   {level}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-extrabold text-charcoal mb-2">Difficulty Mode</label>
+            <div className="flex gap-2">
+              {(['Easy', 'Medium', 'Hard'] as const).map(mode => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setDifficultyMode(mode)}
+                  className={`flex-1 py-2.5 rounded-2xl text-xs font-black border transition ${
+                    difficultyMode === mode
+                      ? 'bg-charcoal text-cream border-charcoal'
+                      : 'bg-white text-charcoal/70 border-charcoal/10 hover:bg-cream'
+                  }`}
+                >
+                  {mode}
                 </button>
               ))}
             </div>

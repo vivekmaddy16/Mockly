@@ -34,6 +34,7 @@ export interface InterviewSession {
   createdAt: string;
   targetRole: string;
   experienceLevel: ExperienceLevel;
+  difficultyMode?: 'Easy' | 'Medium' | 'Hard';
   resumeText?: string;
   jobDescriptionText?: string;
   extractedSkills: string[];
