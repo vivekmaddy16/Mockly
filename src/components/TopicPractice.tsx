@@ -10,6 +10,8 @@ import {
 import { QuestionEvaluation } from '@/types';
 import { evaluateAnswer } from '@/lib/gemini';
 import { RoadmapView } from '@/components/RoadmapView';
+import { useAuth } from '@/context/AuthContext';
+import { AuthBlocker } from './AuthBlocker';
 
 const topicBank: Record<string, { icon: React.ReactNode; questions: { q: string; expected: string[] }[] }> = {
   'Data Structures & Algorithms': {
@@ -62,6 +64,7 @@ export const TopicPractice: React.FC = () => {
   const [answer, setAnswer] = useState('');
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [evaluation, setEvaluation] = useState<QuestionEvaluation | null>(null);
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
 
   const handleEvaluate = async () => {
     if (!selectedQuestion || !answer.trim()) return;
@@ -83,6 +86,24 @@ export const TopicPractice: React.FC = () => {
       setIsEvaluating(false);
     }
   };
+
+  // Authentication Gate
+  if (isAuthLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="w-8 h-8 border-2 border-charcoal border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <AuthBlocker
+        title="Topic Practice Hub Locked"
+        description="You must be signed in to access the topic practice and roadmap hub. Sign in or register below to start mastering CS fundamentals."
+      />
+    );
+  }
 
   return (
     <div className="w-full max-w-5xl mx-auto space-y-8 animate-fade-in py-4">

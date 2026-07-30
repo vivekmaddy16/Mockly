@@ -7,12 +7,15 @@ import { InterviewSession } from '@/types';
 import { getSessionById } from '@/lib/storage';
 import { DEMO_INITIAL_SESSION } from '@/lib/mockData';
 import { AlertCircle } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { AuthBlocker } from '@/components/AuthBlocker';
 
 export default function InterviewResultsPage() {
   const params = useParams();
   const id = params?.id as string;
   const [session, setSession] = useState<InterviewSession | null>(null);
   const [isDemo, setIsDemo] = useState(false);
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
 
   useEffect(() => {
     if (id) {
@@ -25,6 +28,24 @@ export default function InterviewResultsPage() {
       }
     }
   }, [id]);
+
+  // Authentication Gate
+  if (isAuthLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="w-8 h-8 border-2 border-charcoal border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <AuthBlocker
+        title="Mock Interview Scorecard Locked"
+        description="You must be signed in to view mock interview results and feedback. Sign in or register below to access your scores."
+      />
+    );
+  }
 
   if (!session) {
     return (

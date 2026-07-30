@@ -9,6 +9,8 @@ import {
 import { ExperienceLevel, InterviewSession } from '@/types';
 import { generateInterviewQuestions } from '@/lib/gemini';
 import { saveSession } from '@/lib/storage';
+import { useAuth } from '@/context/AuthContext';
+import { AuthBlocker } from './AuthBlocker';
 
 const LOADING_STEPS = [
   { icon: Brain, text: 'Analyzing your resume & job description...', color: 'text-charcoal' },
@@ -30,6 +32,7 @@ export const ResumeJdUploader: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
   const [errorMsg, setErrorMsg] = useState('');
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
 
   const quickRoles = [
     'Full Stack Web Developer',
@@ -102,6 +105,24 @@ export const ResumeJdUploader: React.FC = () => {
       setIsLoading(false);
     }
   };
+
+  // Authentication Gate
+  if (isAuthLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="w-8 h-8 border-2 border-charcoal border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <AuthBlocker
+        title="Mock Interview Setup Locked"
+        description="You must be signed in to configure and start an AI mock interview. Sign in or register below to build your customized session."
+      />
+    );
+  }
 
   // Castrio Loading Overlay
   if (isLoading) {

@@ -9,6 +9,8 @@ import {
 import { ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
 import { InterviewSession, UserProgressStats } from '@/types';
 import { getAllSessions, fetchAllSessionsAsync, fetchUserProgressStatsAsync } from '@/lib/storage';
+import { useAuth } from '@/context/AuthContext';
+import { AuthBlocker } from './AuthBlocker';
 
 export const DashboardView: React.FC = () => {
   const [sessions, setSessions] = useState<InterviewSession[]>([]);
@@ -16,6 +18,7 @@ export const DashboardView: React.FC = () => {
   const [search, setSearch] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
 
   useEffect(() => {
     setSessions(getAllSessions().sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
@@ -58,6 +61,24 @@ export const DashboardView: React.FC = () => {
     s.targetRole.toLowerCase().includes(search.toLowerCase()) ||
     s.experienceLevel.toLowerCase().includes(search.toLowerCase())
   );
+
+  // Authentication Gate
+  if (isAuthLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="w-8 h-8 border-2 border-charcoal border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <AuthBlocker
+        title="Dashboard Locked"
+        description="You must be signed in to view your candidate readiness dashboard, scorecards, and session logs. Sign in below to view your progress."
+      />
+    );
+  }
 
   return (
     <div className="w-full max-w-5xl mx-auto space-y-8 animate-fade-in py-4">
