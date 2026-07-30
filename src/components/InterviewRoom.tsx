@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   Bot, Mic, MicOff, Volume2, VolumeX, Clock, Lightbulb, Send, Sparkles, 
-  CheckCircle2, ArrowRight, Code2, AlertTriangle, HelpCircle, X, Award, Zap
+  CheckCircle2, ArrowRight, Code2, AlertTriangle, HelpCircle, X, Award, Zap, Layers, MessageSquare
 } from 'lucide-react';
 import { InterviewSession, QuestionEvaluation } from '@/types';
 import { evaluateAnswer } from '@/lib/gemini';
@@ -195,11 +195,18 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
             <Bot className="w-5 h-5" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="font-display font-black text-charcoal text-sm">AI Interviewer</span>
               <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-white text-charcoal font-bold border border-charcoal/10 hidden sm:inline">
                 {session.targetRole}
               </span>
+              {session.roundType && (
+                <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-coral/10 text-coral font-extrabold border border-coral/15">
+                  {session.roundType === 'dsa' ? 'DSA Round' :
+                   session.roundType === 'system_design' ? 'System Design' :
+                   session.roundType === 'behavioral' ? 'Behavioral Round' : 'Tech Screen'}
+                </span>
+              )}
             </div>
             <p className="text-xs font-bold text-charcoal/60">{session.experienceLevel}</p>
           </div>
@@ -293,6 +300,26 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
           )}
         </div>
       </div>
+
+      {/* Round Specific Dynamic Banner */}
+      {session.roundType === 'dsa' && (
+        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-800 text-xs font-bold flex items-center gap-2 shadow-sm animate-fade-in">
+          <Code2 className="w-4 h-4 shrink-0 text-emerald-600" />
+          <span><strong>Algorithms (DSA) Tip:</strong> Walk through your logic step-by-step. Remember to state the Big-O Time & Space Complexity explicitly!</span>
+        </div>
+      )}
+      {session.roundType === 'system_design' && (
+        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-900 text-xs font-bold flex items-center gap-2 shadow-sm animate-fade-in">
+          <Layers className="w-4 h-4 shrink-0 text-amber-600" />
+          <span><strong>System Design Tip:</strong> Discuss database choices, scaling strategies, caching limits, and high-level component diagrams first.</span>
+        </div>
+      )}
+      {session.roundType === 'behavioral' && (
+        <div className="p-4 rounded-2xl bg-coral/10 border border-coral/20 text-coral text-xs font-bold flex items-center gap-2 shadow-sm animate-fade-in">
+          <MessageSquare className="w-4 h-4 shrink-0 text-coral" />
+          <span><strong>Behavioral Tip:</strong> Frame your responses with the STAR method (Situation, Task, Action, Result) to capture maximum score detail.</span>
+        </div>
+      )}
 
       {/* Answer Input Card */}
       {!currentEvaluation ? (

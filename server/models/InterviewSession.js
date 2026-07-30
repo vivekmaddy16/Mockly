@@ -50,6 +50,11 @@ const InterviewSessionSchema = new mongoose.Schema(
       enum: ['Easy', 'Medium', 'Hard'],
       default: 'Medium',
     },
+    roundType: {
+      type: String,
+      enum: ['technical_screen', 'dsa', 'system_design', 'behavioral'],
+      default: 'technical_screen',
+    },
     resumeText: {
       type: String,
     },

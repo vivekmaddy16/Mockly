@@ -122,7 +122,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ session }) => {
           Session Performance Report
         </h1>
         <p className="text-sm font-bold text-charcoal/60 max-w-xl mx-auto">
-          {session.targetRole} • {session.experienceLevel} • {session.difficultyMode || 'Medium'} Mode • {new Date(session.createdAt).toLocaleDateString()}
+          {session.targetRole} • {session.experienceLevel} • {session.difficultyMode || 'Medium'} Mode • {session.roundType === 'dsa' ? 'Algorithms & DSA Round' : session.roundType === 'system_design' ? 'System Design Round' : session.roundType === 'behavioral' ? 'Behavioral & HR Round' : 'Technical Screen Round'} • {new Date(session.createdAt).toLocaleDateString()}
         </p>
       </div>
 

@@ -176,7 +176,7 @@ export const DashboardView: React.FC = () => {
                       <div className="min-w-0 space-y-0.5">
                         <h4 className="font-display font-extrabold text-sm text-charcoal truncate">{s.targetRole}</h4>
                         <p className="text-xs font-bold text-charcoal/60">
-                          {s.experienceLevel} • {s.difficultyMode || 'Medium'} • {new Date(s.createdAt).toLocaleDateString()} • {evalCount}/{s.questions.length} Answered
+                          {s.experienceLevel} • {s.difficultyMode || 'Medium'} • {s.roundType === 'dsa' ? 'DSA' : s.roundType === 'system_design' ? 'System Design' : s.roundType === 'behavioral' ? 'Behavioral' : 'Tech Screen'} • {new Date(s.createdAt).toLocaleDateString()} • {evalCount}/{s.questions.length} Answered
                         </p>
                       </div>
                     </div>
