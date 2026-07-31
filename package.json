@@ -9,7 +9,7 @@
     "dev:full": "concurrently \"next dev\" \"nodemon server/index.js\"",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "test": "jest"
   },
   "dependencies": {
@@ -51,6 +51,8 @@
     "@types/react-dom": "^19.0.4",
     "autoprefixer": "^10.5.4",
     "concurrently": "^10.0.4",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.2.12",
     "jest": "^30.4.2",
     "jest-environment-jsdom": "^30.4.1",
     "nodemon": "^3.1.14",
