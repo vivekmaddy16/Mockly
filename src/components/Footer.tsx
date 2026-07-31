@@ -76,9 +76,6 @@ export const Footer: React.FC = () => {
           <p className="text-xs font-bold text-charcoal/60">
             © {new Date().getFullYear()} Mockly.ai — AI-Powered Interview Preparation System
           </p>
-          <div className="flex items-center gap-2 text-xs font-extrabold text-charcoal/70">
-            <Sparkles className="w-3.5 h-3.5 text-coral" /> Powered by Google Gemini AI
-          </div>
         </div>
       </div>
     </footer>
