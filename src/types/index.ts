@@ -34,6 +34,8 @@ export interface QuestionEvaluation {
   positiveHighlights: string[];
   areasToImprove: string[];
   modelAnswer: string;
+  inputMode?: 'spoken' | 'written';
+  sentenceHighlights?: Array<{ text: string; status: 'strong' | 'weak' | 'neutral'; reason: string }>;
 }
 
 export interface ReplayCoachingMoment {
@@ -50,6 +52,7 @@ export interface InterviewSession {
   experienceLevel: ExperienceLevel;
   difficultyMode?: 'Easy' | 'Medium' | 'Hard';
   roundType?: 'technical_screen' | 'dsa' | 'system_design' | 'behavioral';
+  aiEngine?: 'gemini' | 'ollama';
   resumeText?: string;
   jobDescriptionText?: string;
   extractedSkills: string[];

@@ -19,8 +19,80 @@ export const generateInterviewQuestions = async (
   jobDescriptionText: string = '',
   questionCount: number = 3,
   difficultyMode: 'Easy' | 'Medium' | 'Hard' = 'Medium',
-  roundType: 'technical_screen' | 'dsa' | 'system_design' | 'behavioral' = 'technical_screen'
+  roundType: 'technical_screen' | 'dsa' | 'system_design' | 'behavioral' = 'technical_screen',
+  aiEngine: 'gemini' | 'ollama' = 'gemini'
 ): Promise<{ questions: Question[]; extractedSkills: string[] }> => {
+  // Client side Ollama proxy check
+  if (typeof window !== 'undefined' && aiEngine === 'ollama') {
+    try {
+      const res = await fetch('/api/generate-questions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          targetRole, experienceLevel, resumeText, jobDescriptionText, questionCount, difficultyMode, roundType, aiEngine
+        })
+      });
+      return await res.json();
+    } catch (e) {
+      console.warn('Client-side Ollama proxy call failed, using dynamic local generator:', e);
+    }
+  }
+
+  // Server side Ollama execution
+  if (typeof window === 'undefined' && aiEngine === 'ollama') {
+    try {
+      const systemPrompt = `You are an expert technical interviewer. Generate ${questionCount} customized, high-quality interview questions for a candidate interviewing for the role of "${targetRole}" at experience level "${experienceLevel}" with an overall interview difficulty of "${difficultyMode}".
+Round focus: ${roundType}.
+${resumeText ? `Candidate Resume Content:\n${resumeText.slice(0, 1000)}\n` : ''}
+${jobDescriptionText ? `Job Description Requirements:\n${jobDescriptionText.slice(0, 1000)}\n` : ''}
+
+Return ONLY a valid raw JSON object matching the JSON schema below. Do not include markdown code block formatting.
+
+JSON Schema:
+{
+  "extractedSkills": ["Skill1", "Skill2", "Skill3"],
+  "questions": [
+    {
+      "id": "q_1",
+      "type": "${roundType === 'behavioral' ? 'behavioral' : 'technical'}",
+      "category": "DSA / Frontend / Backend / System Design",
+      "questionText": "Question text...",
+      "contextOrCode": "Initial code snippet template, or empty if not applicable",
+      "expectedKeyPoints": ["Key point 1", "Key point 2"],
+      "difficulty": "${difficultyMode}"
+    }
+  ]
+}`;
+
+      const ollamaUrl = process.env.OLLAMA_HOST || 'http://127.0.0.1:11434';
+      const modelName = process.env.NEXT_PUBLIC_OLLAMA_MODEL || 'llama3';
+      const response = await fetch(`${ollamaUrl}/api/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: modelName,
+          prompt: systemPrompt,
+          stream: false,
+          format: 'json'
+        })
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const text = data.response;
+        const cleanedJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        const parsed = JSON.parse(cleanedJson);
+        if (parsed.questions && Array.isArray(parsed.questions)) {
+          return {
+            questions: parsed.questions,
+            extractedSkills: parsed.extractedSkills || ['System Design', 'Software Engineering']
+          };
+        }
+      }
+    } catch (ollamaErr) {
+      console.warn('Ollama local host failed, falling back to dynamic generator:', ollamaErr);
+    }
+  }
+
   const genAI = getGeminiClient();
 
   if (genAI) {
@@ -507,8 +579,100 @@ JSON Schema:
 export const evaluateAnswer = async (
   question: Question,
   userAnswer: string,
-  targetRole: string
+  targetRole: string,
+  aiEngine: 'gemini' | 'ollama' = 'gemini'
 ): Promise<QuestionEvaluation> => {
+  // Client side Ollama proxy check
+  if (typeof window !== 'undefined' && aiEngine === 'ollama') {
+    try {
+      const res = await fetch('/api/evaluate-answer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question, userAnswer, targetRole, aiEngine
+        })
+      });
+      return await res.json();
+    } catch (e) {
+      console.warn('Client-side Ollama evaluation proxy call failed:', e);
+    }
+  }
+
+  // Server side Ollama execution
+  if (typeof window === 'undefined' && aiEngine === 'ollama' && userAnswer.trim().length > 10) {
+    try {
+      const systemPrompt = `You are an elite Tech Lead & Senior Interviewer evaluating a candidate's answer for the role of "${targetRole}".
+
+Question Category: ${question.category}
+Question Difficulty: ${question.difficulty}
+Question: "${question.questionText}"
+Expected Key Points: ${question.expectedKeyPoints.join(', ')}
+
+Candidate's Answer:
+"${userAnswer}"
+
+Evaluate the answer critically and constructively, calibrating your expectations according to the question difficulty level ("${question.difficulty}").
+Return ONLY a valid raw JSON object matching the JSON schema below (no markdown code block syntax).
+
+JSON Schema:
+{
+  "score": 85,
+  "structureScore": 80,
+  "technicalScore": 90,
+  "clarityScore": 85,
+  "keyPointsCovered": ["Point 1 covered"],
+  "keyPointsMissed": ["Point 2 missed"],
+  "feedback": "Constructive 2-3 sentence overview...",
+  "positiveHighlights": ["Clear explanation of concept X", "Good use of STAR framework"],
+  "areasToImprove": ["Mention time complexity explicitly", "Add error handling details"],
+  "modelAnswer": "Comprehensive model answer for comparison...",
+  "sentenceHighlights": [
+    {
+      "text": "Exact sentence from userAnswer",
+      "status": "strong",
+      "reason": "precise explanation of why this sentence is strong or weak"
+    }
+  ]
+}`;
+
+      const ollamaUrl = process.env.OLLAMA_HOST || 'http://127.0.0.1:11434';
+      const modelName = process.env.NEXT_PUBLIC_OLLAMA_MODEL || 'llama3';
+      const response = await fetch(`${ollamaUrl}/api/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: modelName,
+          prompt: systemPrompt,
+          stream: false,
+          format: 'json'
+        })
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const text = data.response;
+        const cleanedJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        const parsed = JSON.parse(cleanedJson);
+        return {
+          questionId: question.id,
+          userAnswer,
+          score: parsed.score || 75,
+          structureScore: parsed.structureScore || 75,
+          technicalScore: parsed.technicalScore || 75,
+          clarityScore: parsed.clarityScore || 80,
+          keyPointsCovered: parsed.keyPointsCovered || question.expectedKeyPoints.slice(0, 2),
+          keyPointsMissed: parsed.keyPointsMissed || question.expectedKeyPoints.slice(2),
+          feedback: parsed.feedback || 'Good structural start. Incorporate more granular technical examples to strengthen your response.',
+          positiveHighlights: parsed.positiveHighlights || ['Identified the primary system constraint clearly.', 'Good logical flow.'],
+          areasToImprove: parsed.areasToImprove || ['Mention specific Big-O memory bounds.', 'Provide concrete real-world code snippet.'],
+          modelAnswer: parsed.modelAnswer || `To answer this question effectively: 1. Briefly define the core problem. 2. Explain your solution using ${question.expectedKeyPoints.join(', ')}. 3. Address edge cases and scalability.`,
+          sentenceHighlights: parsed.sentenceHighlights || computeSentenceHighlights(userAnswer, parsed.keyPointsCovered || [])
+        };
+      }
+    } catch (ollamaErr) {
+      console.warn('Ollama local evaluation failed, falling back to Gemini:', ollamaErr);
+    }
+  }
+
   const genAI = getGeminiClient();
 
   if (genAI && userAnswer.trim().length > 10) {
@@ -540,7 +704,14 @@ JSON Schema:
   "feedback": "Constructive 2-3 sentence overview...",
   "positiveHighlights": ["Clear explanation of concept X", "Good use of STAR framework"],
   "areasToImprove": ["Mention time complexity explicitly", "Add error handling details"],
-  "modelAnswer": "Comprehensive model answer for comparison..."
+  "modelAnswer": "Comprehensive model answer for comparison...",
+  "sentenceHighlights": [
+    {
+      "text": "Exact sentence from userAnswer",
+      "status": "strong | weak | neutral",
+      "reason": "precise explanation of why this sentence is strong or weak"
+    }
+  ]
 }
 `;
       const result = await model.generateContent(prompt);
@@ -560,7 +731,8 @@ JSON Schema:
         feedback: parsed.feedback || 'Good structural start. Incorporate more granular technical examples to strengthen your response.',
         positiveHighlights: parsed.positiveHighlights || ['Identified the primary system constraint clearly.', 'Good logical flow.'],
         areasToImprove: parsed.areasToImprove || ['Mention specific Big-O memory bounds.', 'Provide concrete real-world code snippet.'],
-        modelAnswer: parsed.modelAnswer || `To answer this question effectively: 1. Briefly define the core problem. 2. Explain your solution using ${question.expectedKeyPoints.join(', ')}. 3. Address edge cases and scalability.`
+        modelAnswer: parsed.modelAnswer || `To answer this question effectively: 1. Briefly define the core problem. 2. Explain your solution using ${question.expectedKeyPoints.join(', ')}. 3. Address edge cases and scalability.`,
+        sentenceHighlights: parsed.sentenceHighlights || computeSentenceHighlights(userAnswer, parsed.keyPointsCovered || [])
       };
     } catch (e) {
       console.warn('Gemini evaluation fallback:', e);
@@ -612,9 +784,56 @@ JSON Schema:
       'Elaborate on edge cases and failure recovery mechanisms.',
       'Explicitly quantify performance gains (e.g. latency reduction, memory footprint).'
     ],
-    modelAnswer: `A comprehensive answer should follow a structured breakdown:\n1. Core Overview: State your approach clearly.\n2. Technical Implementation: Detail ${question.expectedKeyPoints.join(', ')}.\n3. Metrics & Trade-offs: Contrast with alternatives.`
+    modelAnswer: `A comprehensive answer should follow a structured breakdown:\n1. Core Overview: State your approach clearly.\n2. Technical Implementation: Detail ${question.expectedKeyPoints.join(', ')}.\n3. Metrics & Trade-offs: Contrast with alternatives.`,
+    sentenceHighlights: computeSentenceHighlights(userAnswer, covered)
   };
 };
+
+export function computeSentenceHighlights(
+  userAnswer: string,
+  keyPointsCovered: string[]
+): Array<{ text: string; status: 'strong' | 'weak' | 'neutral'; reason: string }> {
+  const sentences = userAnswer
+    .split(/(?<=[.!?])\s+/)
+    .filter(s => s.trim().length > 0);
+
+  const weakFillers = ['maybe', 'i think', 'actually', 'sort of', 'kind of', 'stuff', 'things', 'just', 'probably', 'like', 'um', 'uh'];
+  const strongKeywords = ['because', 'therefore', 'consequently', 'specifically', 'optimized', 'complexity', 'bottleneck', 'scale', 'latency', 'cache', 'prevent', 'guarantee', 'ensure', 'star', 'situation', 'result', 'implements', 'improving', 'reduces', 'trade-off'];
+
+  return sentences.map(text => {
+    const lower = text.toLowerCase();
+    
+    // Check if it matches any weak filler word
+    const hasWeak = weakFillers.some(filler => lower.includes(filler));
+    
+    // Check if it matches any covered key point term or strong keyword
+    const hasCoveredTerm = keyPointsCovered.some(pt => {
+      const terms = pt.toLowerCase().split(/\s+/).filter(t => t.length > 4);
+      return terms.some(t => lower.includes(t));
+    });
+    const hasStrongWord = strongKeywords.some(word => lower.includes(word));
+
+    if (hasWeak && !hasCoveredTerm) {
+      return {
+        text,
+        status: 'weak',
+        reason: 'Uses tentative phrasing or filler words ("just", "maybe", "i think") which lowers confidence.'
+      };
+    } else if (hasCoveredTerm || hasStrongWord) {
+      return {
+        text,
+        status: 'strong',
+        reason: 'Displays strong technical precision and directly covers expected key concept areas.'
+      };
+    } else {
+      return {
+        text,
+        status: 'neutral',
+        reason: 'Provides general conversational context or introductory background.'
+      };
+    }
+  });
+}
 
 function extractSkillsFromText(text: string): string[] {
   const commonSkills = [

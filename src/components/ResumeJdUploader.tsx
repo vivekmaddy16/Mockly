@@ -31,6 +31,7 @@ export const ResumeJdUploader: React.FC = () => {
   const [questionCount, setQuestionCount] = useState<number>(3);
   const [difficultyMode, setDifficultyMode] = useState<'Easy' | 'Medium' | 'Hard'>('Medium');
   const [roundType, setRoundType] = useState<'technical_screen' | 'dsa' | 'system_design' | 'behavioral'>('technical_screen');
+  const [aiEngine, setAiEngine] = useState<'gemini' | 'ollama'>('gemini');
   const [isLoading, setIsLoading] = useState(false);
   const [isParsingResume, setIsParsingResume] = useState(false);
   const [isParsingJd, setIsParsingJd] = useState(false);
@@ -104,7 +105,7 @@ export const ResumeJdUploader: React.FC = () => {
     setIsLoading(true);
     try {
       const { questions, extractedSkills } = await generateInterviewQuestions(
-        targetRole, experienceLevel, resumeText, jobDescriptionText, questionCount, difficultyMode, roundType
+        targetRole, experienceLevel, resumeText, jobDescriptionText, questionCount, difficultyMode, roundType, aiEngine
       );
       const newSession: InterviewSession = {
         id: `sess_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
@@ -113,6 +114,7 @@ export const ResumeJdUploader: React.FC = () => {
         experienceLevel,
         difficultyMode,
         roundType,
+        aiEngine,
         resumeText: resumeText.trim() || undefined,
         jobDescriptionText: jobDescriptionText.trim() || undefined,
         extractedSkills,
@@ -380,6 +382,32 @@ export const ResumeJdUploader: React.FC = () => {
                   }`}
                 >
                   {num} Qs
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-extrabold text-charcoal mb-2 flex items-center justify-between">
+              <span>AI Model Engine</span>
+              <span className="text-coral font-black">{aiEngine === 'gemini' ? 'Gemini 1.5 Flash' : 'Ollama Local Host'}</span>
+            </label>
+            <div className="flex gap-2">
+              {[
+                { id: 'gemini', label: 'Gemini (Cloud)' },
+                { id: 'ollama', label: 'Ollama (Local)' },
+              ].map(engine => (
+                <button
+                  key={engine.id}
+                  type="button"
+                  onClick={() => setAiEngine(engine.id as any)}
+                  className={`flex-1 py-2.5 rounded-2xl text-xs font-black border transition ${
+                    aiEngine === engine.id
+                      ? 'bg-charcoal text-cream border-charcoal'
+                      : 'bg-white text-charcoal/70 border-charcoal/10 hover:bg-cream'
+                  }`}
+                >
+                  {engine.label}
                 </button>
               ))}
             </div>

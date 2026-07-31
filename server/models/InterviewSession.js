@@ -23,6 +23,14 @@ const EvaluationSchema = new mongoose.Schema({
   positiveHighlights: [{ type: String }],
   areasToImprove: [{ type: String }],
   modelAnswer: { type: String },
+  inputMode: { type: String },
+  sentenceHighlights: [
+    {
+      text: { type: String },
+      status: { type: String },
+      reason: { type: String }
+    }
+  ]
 });
 
 const InterviewSessionSchema = new mongoose.Schema(
@@ -54,6 +62,11 @@ const InterviewSessionSchema = new mongoose.Schema(
       type: String,
       enum: ['technical_screen', 'dsa', 'system_design', 'behavioral'],
       default: 'technical_screen',
+    },
+    aiEngine: {
+      type: String,
+      enum: ['gemini', 'ollama'],
+      default: 'gemini',
     },
     resumeText: {
       type: String,

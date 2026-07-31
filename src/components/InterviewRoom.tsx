@@ -338,6 +338,7 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
   const [isListening, setIsListening] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const [interimText, setInterimText] = useState('');
+  const [inputMode, setInputMode] = useState<'spoken' | 'written'>('spoken');
   const [telemetry, setTelemetry] = useState({
     eyeContact: 95,
     stability: 98,
@@ -431,7 +432,7 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
     if (!userAnswer.trim()) return;
     setIsEvaluating(true);
     try {
-      const result = await evaluateAnswer(currentQuestion, userAnswer, session.targetRole);
+      const result = await evaluateAnswer(currentQuestion, userAnswer, session.targetRole, session.aiEngine || 'gemini');
       
       // Inject real-time webcam telemetry metrics
       result.confidenceScore = telemetry.confidence;
@@ -441,6 +442,7 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
         pacing: telemetry.pacing,
         emotion: telemetry.emotion
       };
+      result.inputMode = inputMode;
 
       const updated = await updateSessionEvaluation(session.id, currentQuestion.id, result);
       if (updated) setSession(updated);
@@ -607,21 +609,52 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
           {!currentEvaluation ? (
             <div className="card-cream p-7 space-y-5 border border-white shadow-2xl">
               <div className="flex items-center justify-between flex-wrap gap-3">
-                <label className="text-xs font-black text-charcoal uppercase tracking-wider flex items-center gap-2">
-                  <Code2 className="w-4 h-4 text-coral" /> Candidate Response
-                </label>
-
                 <div className="flex items-center gap-3">
-                  <AudioWaveformCanvas isRecording={isListening} />
-                  
-                  {/* Connected Dual-Pill STT Button */}
-                  <button onClick={toggleListening} className="btn-dual-pill">
-                    <div className="icon-badge">
-                      {isListening ? <MicOff className="w-4 h-4 text-coral" /> : <Mic className="w-4 h-4 text-charcoal" />}
-                    </div>
-                    <span className="btn-label">{isListening ? 'Recording...' : 'Speak Response'}</span>
-                  </button>
+                  <label className="text-xs font-black text-charcoal uppercase tracking-wider flex items-center gap-2">
+                    <Code2 className="w-4 h-4 text-coral" /> Candidate Response
+                  </label>
+
+                  {/* Modality Selector Pills */}
+                  <div className="flex items-center gap-1.5 p-1 bg-white border border-charcoal/10 rounded-full text-[10px] font-black">
+                    {[
+                      { id: 'spoken', label: 'Voice' },
+                      { id: 'written', label: 'Keyboard' },
+                    ].map(mode => (
+                      <button
+                        key={mode.id}
+                        type="button"
+                        onClick={() => {
+                          if (isListening) {
+                            try { recognitionRef.current?.stop(); } catch {}
+                            setIsListening(false);
+                          }
+                          setInputMode(mode.id as any);
+                        }}
+                        className={`px-3 py-1 rounded-full cursor-pointer transition ${
+                          inputMode === mode.id 
+                            ? 'bg-charcoal text-cream shadow-sm' 
+                            : 'text-charcoal/60 hover:text-charcoal'
+                        }`}
+                      >
+                        {mode.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
+
+                {inputMode === 'spoken' && (
+                  <div className="flex items-center gap-3">
+                    <AudioWaveformCanvas isRecording={isListening} />
+                    
+                    {/* Connected Dual-Pill STT Button */}
+                    <button onClick={toggleListening} className="btn-dual-pill">
+                      <div className="icon-badge">
+                        {isListening ? <MicOff className="w-4 h-4 text-coral" /> : <Mic className="w-4 h-4 text-charcoal" />}
+                      </div>
+                      <span className="btn-label">{isListening ? 'Recording...' : 'Speak Response'}</span>
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="relative">

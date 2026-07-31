@@ -8,6 +8,7 @@ import {
   AlertTriangle, Play, Pause, RefreshCw, Volume2, User, Users, GraduationCap
 } from 'lucide-react';
 import { InterviewSession } from '@/types';
+import { computeSentenceHighlights } from '@/lib/gemini';
 import confetti from 'canvas-confetti';
 import { 
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, 
@@ -17,6 +18,45 @@ import {
 interface ResultsViewProps {
   session: InterviewSession;
 }
+
+// ─── Explainable AI Answer Renderer ─────────────────────────
+const ExplainableAnswer: React.FC<{ userAnswer: string; highlights?: any[]; keyPoints?: string[] }> = ({ userAnswer, highlights, keyPoints = [] }) => {
+  const finalHighlights = highlights && highlights.length > 0
+    ? highlights
+    : computeSentenceHighlights(userAnswer, keyPoints);
+
+  return (
+    <div className="leading-relaxed font-semibold text-xs text-charcoal bg-cream p-3.5 rounded-xl border border-charcoal/5 font-mono select-none">
+      {finalHighlights.map((hl, i) => {
+        if (hl.status === 'strong') {
+          return (
+            <span key={i} className="relative group cursor-help transition bg-emerald-500/10 border-b-2 border-emerald-500 hover:bg-emerald-500/20 px-1 py-0.5 rounded mr-1">
+              {hl.text}
+              <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 bg-charcoal text-cream text-[10px] p-2.5 rounded-xl shadow-xl opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 font-sans font-bold leading-normal text-left">
+                <strong className="block text-emerald-400 mb-0.5">✓ Technical Strength</strong>
+                {hl.reason}
+                <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-charcoal"></span>
+              </span>
+            </span>
+          );
+        }
+        if (hl.status === 'weak') {
+          return (
+            <span key={i} className="relative group cursor-help transition bg-amber-500/10 border-b-2 border-amber-500 hover:bg-amber-500/20 px-1 py-0.5 rounded mr-1">
+              {hl.text}
+              <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 bg-charcoal text-cream text-[10px] p-2.5 rounded-xl shadow-xl opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 font-sans font-bold leading-normal text-left">
+                <strong className="block text-coral mb-0.5">⚠ Improvement Area</strong>
+                {hl.reason}
+                <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-charcoal"></span>
+              </span>
+            </span>
+          );
+        }
+        return <span key={i} className="text-charcoal/80 mr-1">{hl.text}</span>;
+      })}
+    </div>
+  );
+};
 
 // ─── Animated SVG Score Ring Gauge ───────────────────────────
 const ScoreRing: React.FC<{ score: number }> = ({ score }) => {
@@ -320,12 +360,19 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ session }) => {
                       <div className="p-6 border-t border-charcoal/10 bg-white/60 space-y-5 text-xs animate-fade-in">
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                           <div className="p-4 rounded-2xl bg-white border border-charcoal/10 space-y-2">
-                            <span className="text-[10px] font-black uppercase text-charcoal/60 flex items-center gap-1.5">
-                              <FileText className="w-3.5 h-3.5 text-coral" /> Your Given Response
-                            </span>
-                            <p className="text-charcoal leading-relaxed font-mono whitespace-pre-line bg-cream p-3 rounded-xl border border-charcoal/5">
-                              {ev.userAnswer}
-                            </p>
+                            <div className="flex items-center justify-between text-[10px] font-black uppercase text-charcoal/60">
+                              <span className="flex items-center gap-1.5"><FileText className="w-3.5 h-3.5 text-coral" /> Your Given Response</span>
+                              {ev.inputMode && (
+                                <span className="px-2 py-0.5 rounded-full bg-charcoal/5 border border-charcoal/10 text-[9px] font-extrabold text-charcoal/70">
+                                  {ev.inputMode === 'spoken' ? '🎤 Voice Response' : '⌨ Keyboard Input'}
+                                </span>
+                              )}
+                            </div>
+                            <ExplainableAnswer 
+                              userAnswer={ev.userAnswer} 
+                              highlights={ev.sentenceHighlights} 
+                              keyPoints={q.expectedKeyPoints} 
+                            />
                           </div>
 
                           <div className="p-4 rounded-2xl bg-white border border-charcoal/10 space-y-2">

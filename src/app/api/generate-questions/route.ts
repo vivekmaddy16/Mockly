@@ -4,7 +4,7 @@ import { generateInterviewQuestions } from '@/lib/gemini';
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { targetRole, experienceLevel, resumeText, jobDescriptionText, questionCount, difficultyMode, roundType } = body;
+    const { targetRole, experienceLevel, resumeText, jobDescriptionText, questionCount, difficultyMode, roundType, aiEngine } = body;
 
     if (!targetRole) {
       return NextResponse.json({ error: 'targetRole is required' }, { status: 400 });
@@ -17,7 +17,8 @@ export async function POST(req: Request) {
       jobDescriptionText || '',
       questionCount || 3,
       difficultyMode || 'Medium',
-      roundType || 'technical_screen'
+      roundType || 'technical_screen',
+      aiEngine || 'gemini'
     );
 
     return NextResponse.json(result);
