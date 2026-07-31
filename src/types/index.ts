@@ -21,12 +21,26 @@ export interface QuestionEvaluation {
   structureScore: number; // 0 - 100
   technicalScore: number; // 0 - 100
   clarityScore: number; // 0 - 100
+  confidenceScore?: number; // 0 - 100 (webcam analysis metric)
+  confidenceMetrics?: {
+    eyeContact: number; // percentage
+    stability: number; // facial movement stability percentage
+    pacing: number; // speech speed words-per-minute
+    emotion: string; // dominant emotion e.g. "Confident", "Focused", "Nervous"
+  };
   keyPointsCovered: string[];
   keyPointsMissed: string[];
   feedback: string;
   positiveHighlights: string[];
   areasToImprove: string[];
   modelAnswer: string;
+}
+
+export interface ReplayCoachingMoment {
+  timestamp: string; // MM:SS format
+  type: 'strength' | 'weakness' | 'coaching_tip';
+  text: string;
+  title: string;
 }
 
 export interface InterviewSession {
@@ -44,6 +58,8 @@ export interface InterviewSession {
   currentQuestionIndex: number;
   status: 'draft' | 'in_progress' | 'completed';
   totalScore?: number;
+  overallConfidence?: number; // average confidence score across evaluations
+  coachingTimeline?: ReplayCoachingMoment[]; // consolidated coaching points
   overallFeedback?: {
     summary: string;
     strengths: string[];

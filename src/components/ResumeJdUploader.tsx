@@ -11,6 +11,8 @@ import { generateInterviewQuestions } from '@/lib/gemini';
 import { saveSession } from '@/lib/storage';
 import { useAuth } from '@/context/AuthContext';
 import { AuthBlocker } from './AuthBlocker';
+import { parsePdf, parseDocx } from '@/lib/fileParser';
+import { Loader2 } from 'lucide-react';
 
 const LOADING_STEPS = [
   { icon: Brain, text: 'Analyzing your resume & job description...', color: 'text-charcoal' },
@@ -30,6 +32,8 @@ export const ResumeJdUploader: React.FC = () => {
   const [difficultyMode, setDifficultyMode] = useState<'Easy' | 'Medium' | 'Hard'>('Medium');
   const [roundType, setRoundType] = useState<'technical_screen' | 'dsa' | 'system_design' | 'behavioral'>('technical_screen');
   const [isLoading, setIsLoading] = useState(false);
+  const [isParsingResume, setIsParsingResume] = useState(false);
+  const [isParsingJd, setIsParsingJd] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
   const [errorMsg, setErrorMsg] = useState('');
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
@@ -51,24 +55,44 @@ export const ResumeJdUploader: React.FC = () => {
     return () => clearInterval(interval);
   }, [isLoading]);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, type: 'resume' | 'jd') => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'resume' | 'jd') => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const ext = file.name.split('.').pop()?.toLowerCase();
-    if (ext === 'pdf' || ext === 'doc' || ext === 'docx') {
-      setErrorMsg(`PDF and DOCX files contain binary layout encoding. Please open your ${file.name} file, copy the plain text, and paste it directly into the box below.`);
-      return;
-    }
+    const setParsing = type === 'resume' ? setIsParsingResume : setIsParsingJd;
+    const setText = type === 'resume' ? setResumeText : setJobDescriptionText;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const content = event.target?.result as string;
-      if (type === 'resume') setResumeText(content);
-      else setJobDescriptionText(content);
-      setErrorMsg('');
-    };
-    reader.readAsText(file);
+    setParsing(true);
+    setErrorMsg('');
+
+    try {
+      const ext = file.name.split('.').pop()?.toLowerCase();
+      let extractedText = '';
+
+      if (ext === 'pdf') {
+        extractedText = await parsePdf(file);
+      } else if (ext === 'docx') {
+        extractedText = await parseDocx(file);
+      } else {
+        extractedText = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (event) => resolve(event.target?.result as string);
+          reader.onerror = (err) => reject(err);
+          reader.readAsText(file);
+        });
+      }
+
+      if (extractedText.trim().length === 0) {
+        throw new Error('No readable text content found in document.');
+      }
+
+      setText(extractedText);
+    } catch (err: any) {
+      console.error(err);
+      setErrorMsg(`Failed to extract text from ${file.name}. ${err.message || 'Please copy-paste manually.'}`);
+    } finally {
+      setParsing(false);
+    }
   };
 
   const handleGenerate = async () => {
@@ -381,37 +405,57 @@ export const ResumeJdUploader: React.FC = () => {
                 Resume / Bio {resumeText && <CheckCircle2 className="w-4 h-4 text-emerald-600" />}
               </label>
               <label className="cursor-pointer text-xs font-black text-coral hover:underline flex items-center gap-1">
-                <Upload className="w-3.5 h-3.5" /> Upload
-                <input type="file" accept=".txt,.md,.json" onChange={(e) => handleFileUpload(e, 'resume')} className="hidden" />
+                {isParsingResume ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                {isParsingResume ? 'Parsing...' : 'Upload (.pdf, .docx, .txt)'}
+                <input type="file" accept=".pdf,.docx,.txt,.md,.json" onChange={(e) => handleFileUpload(e, 'resume')} className="hidden" disabled={isParsingResume} />
               </label>
             </div>
-            <textarea
-              rows={4}
-              value={resumeText}
-              onChange={(e) => setResumeText(e.target.value)}
-              placeholder="Paste your resume summary, tech stack, past projects..."
-              className="w-full px-4 py-3 bg-white border border-charcoal/10 rounded-2xl text-charcoal text-xs font-medium focus:outline-none focus:border-charcoal resize-none"
-            />
+            <div className="relative">
+              <textarea
+                rows={4}
+                value={resumeText}
+                onChange={(e) => setResumeText(e.target.value)}
+                placeholder="Paste your resume summary, tech stack, past projects, or upload a document..."
+                className="w-full px-4 py-3 bg-white border border-charcoal/10 rounded-2xl text-charcoal text-xs font-medium focus:outline-none focus:border-charcoal resize-none"
+                disabled={isParsingResume}
+              />
+              {isParsingResume && (
+                <div className="absolute inset-0 bg-white/70 rounded-2xl flex items-center justify-center text-xs font-extrabold text-charcoal gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin text-coral" />
+                  <span>Extracting resume text...</span>
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* JD */}
+          {/* Job Description */}
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="text-xs font-extrabold text-charcoal flex items-center gap-1.5">
                 Job Description {jobDescriptionText && <CheckCircle2 className="w-4 h-4 text-emerald-600" />}
               </label>
               <label className="cursor-pointer text-xs font-black text-coral hover:underline flex items-center gap-1">
-                <Upload className="w-3.5 h-3.5" /> Upload
-                <input type="file" accept=".txt,.md,.json" onChange={(e) => handleFileUpload(e, 'jd')} className="hidden" />
+                {isParsingJd ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                {isParsingJd ? 'Parsing...' : 'Upload (.pdf, .docx, .txt)'}
+                <input type="file" accept=".pdf,.docx,.txt,.md,.json" onChange={(e) => handleFileUpload(e, 'jd')} className="hidden" disabled={isParsingJd} />
               </label>
             </div>
-            <textarea
-              rows={4}
-              value={jobDescriptionText}
-              onChange={(e) => setJobDescriptionText(e.target.value)}
-              placeholder="Paste the target job description requirements..."
-              className="w-full px-4 py-3 bg-white border border-charcoal/10 rounded-2xl text-charcoal text-xs font-medium focus:outline-none focus:border-charcoal resize-none"
-            />
+            <div className="relative">
+              <textarea
+                rows={4}
+                value={jobDescriptionText}
+                onChange={(e) => setJobDescriptionText(e.target.value)}
+                placeholder="Paste the target job description requirements, or upload a document..."
+                className="w-full px-4 py-3 bg-white border border-charcoal/10 rounded-2xl text-charcoal text-xs font-medium focus:outline-none focus:border-charcoal resize-none"
+                disabled={isParsingJd}
+              />
+              {isParsingJd && (
+                <div className="absolute inset-0 bg-white/70 rounded-2xl flex items-center justify-center text-xs font-extrabold text-charcoal gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin text-coral" />
+                  <span>Extracting requirements...</span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

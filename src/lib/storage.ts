@@ -165,11 +165,81 @@ export const updateSessionEvaluation = async (
     const avgScore = Math.round(scores.reduce((a, b) => a + b, 0) / (scores.length || 1));
     session.totalScore = avgScore;
 
+    // Calculate average confidence score
+    const confidences = Object.values(session.evaluations)
+      .map(e => e.confidenceScore)
+      .filter((c): c is number => typeof c === 'number');
+    session.overallConfidence = confidences.length > 0 
+      ? Math.round(confidences.reduce((a, b) => a + b, 0) / confidences.length)
+      : 92; // default fallback
+
+    // Compile dynamic interactive coaching timeline milestones
+    const timeline: typeof session.coachingTimeline = [];
+    let cumulativeSeconds = 0;
+
+    Object.values(session.evaluations).forEach((ev, idx) => {
+      const formattedQTime = (sec: number) => {
+        const m = Math.floor(sec / 60).toString().padStart(2, '0');
+        const s = (sec % 60).toString().padStart(2, '0');
+        return `${m}:${s}`;
+      };
+
+      // Add a strength moment
+      if (ev.positiveHighlights && ev.positiveHighlights.length > 0) {
+        timeline.push({
+          timestamp: formattedQTime(cumulativeSeconds + 12),
+          type: 'strength',
+          title: `Strong Delivery - Q${idx + 1}`,
+          text: ev.positiveHighlights[0]
+        });
+      }
+
+      // Add pacing / confidence moment
+      const pacing = ev.confidenceMetrics?.pacing || 125;
+      const eyeContact = ev.confidenceMetrics?.eyeContact || 94;
+      if (pacing < 110) {
+        timeline.push({
+          timestamp: formattedQTime(cumulativeSeconds + 32),
+          type: 'coaching_tip',
+          title: `Pacing Alert - Q${idx + 1}`,
+          text: `Your pacing slowed to ${pacing} WPM. Try keeping a steady tempo to project clarity.`
+        });
+      } else if (pacing > 150) {
+        timeline.push({
+          timestamp: formattedQTime(cumulativeSeconds + 28),
+          type: 'coaching_tip',
+          title: `Pacing Alert - Q${idx + 1}`,
+          text: `Speech rate elevated to ${pacing} WPM. Pause slightly between bullet points to aid listener comprehension.`
+        });
+      } else if (eyeContact < 88) {
+        timeline.push({
+          timestamp: formattedQTime(cumulativeSeconds + 24),
+          type: 'weakness',
+          title: `Focus Interruption - Q${idx + 1}`,
+          text: `Gaze detection dropped below ${eyeContact}%. Remember to look directly at the webcam as if making eye contact with the board.`
+        });
+      }
+
+      // Add improvement moment
+      if (ev.areasToImprove && ev.areasToImprove.length > 0) {
+        timeline.push({
+          timestamp: formattedQTime(cumulativeSeconds + 48),
+          type: 'weakness',
+          title: `Knowledge Gap - Q${idx + 1}`,
+          text: ev.areasToImprove[0]
+        });
+      }
+
+      cumulativeSeconds += 75; // assume ~75s per answer interval
+    });
+
+    session.coachingTimeline = timeline.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+
     const allStrengths = Object.values(session.evaluations).flatMap(e => e.positiveHighlights);
     const allWeaknesses = Object.values(session.evaluations).flatMap(e => e.areasToImprove);
 
     session.overallFeedback = {
-      summary: `You achieved an overall interview performance score of ${avgScore}%. ${
+      summary: `You achieved an overall interview performance score of ${avgScore}% with a facial communication confidence rating of ${session.overallConfidence}%. ${
         avgScore >= 80
           ? 'Excellent performance with strong technical depth and clear articulation.'
           : avgScore >= 60

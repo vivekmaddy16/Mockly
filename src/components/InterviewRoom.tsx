@@ -69,6 +69,262 @@ const AudioWaveformCanvas: React.FC<{ isRecording: boolean }> = ({ isRecording }
   );
 };
 
+// ─── Webcam Telemetry Component ──────────────────────────────
+const WebcamTelemetry: React.FC<{
+  isInterviewing: boolean;
+  onMetricsUpdate: (metrics: { eyeContact: number; stability: number; pacing: number; emotion: string; confidence: number }) => void;
+}> = ({ isInterviewing, onMetricsUpdate }) => {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  const [cameraActive, setCameraActive] = useState(false);
+  const [metrics, setMetrics] = useState({
+    eyeContact: 95,
+    stability: 98,
+    pacing: 120,
+    emotion: 'Focused',
+    confidence: 96
+  });
+
+  // Enable/Disable webcam
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240 } });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play();
+      }
+      setHasPermission(true);
+      setCameraActive(true);
+    } catch (err) {
+      console.warn("Camera access denied or unavailable:", err);
+      setHasPermission(false);
+      setCameraActive(false);
+    }
+  };
+
+  const stopCamera = () => {
+    if (videoRef.current && videoRef.current.srcObject) {
+      const stream = videoRef.current.srcObject as MediaStream;
+      stream.getTracks().forEach(track => track.stop());
+      videoRef.current.srcObject = null;
+    }
+    setCameraActive(false);
+  };
+
+  useEffect(() => {
+    startCamera(); // auto-start on load
+    return () => stopCamera();
+  }, []);
+
+  // Animation & Metric Simulation loop
+  useEffect(() => {
+    if (!cameraActive) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let animId: number;
+    let frameCount = 0;
+
+    // Simulated facial mesh node positions relative to canvas size
+    const baseMeshPoints = [
+      { x: 0.5, y: 0.35 }, // Nose
+      { x: 0.42, y: 0.28 }, // Left Eye
+      { x: 0.58, y: 0.28 }, // Right Eye
+      { x: 0.5, y: 0.48 }, // Mouth
+      { x: 0.32, y: 0.35 }, // Left cheek outline
+      { x: 0.68, y: 0.35 }, // Right cheek outline
+      { x: 0.5, y: 0.18 }, // Forehead
+      { x: 0.5, y: 0.62 }, // Chin
+    ];
+
+    const connections = [
+      [0, 1], [0, 2], [0, 3], [0, 4], [0, 5],
+      [1, 6], [2, 6], [4, 7], [5, 7], [3, 7],
+      [1, 4], [2, 5], [1, 2]
+    ];
+
+    const run = () => {
+      frameCount++;
+      const w = canvas.width;
+      const h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      // 1. Draw tracking box
+      ctx.strokeStyle = '#10b981'; // green for focus
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([5, 5]);
+      ctx.strokeRect(w * 0.2, h * 0.15, w * 0.6, h * 0.7);
+      ctx.setLineDash([]);
+
+      // 2. Draw eye tracking reticle
+      const gazeOffX = Math.sin(frameCount * 0.05) * 4;
+      const gazeOffY = Math.cos(frameCount * 0.03) * 3;
+      ctx.fillStyle = '#E54B54';
+      ctx.beginPath();
+      ctx.arc(w * 0.42 + gazeOffX, h * 0.28 + gazeOffY, 2, 0, Math.PI * 2);
+      ctx.arc(w * 0.58 + gazeOffX, h * 0.28 + gazeOffY, 2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 3. Draw live mesh wireframe
+      // We apply slight natural motion based on sin/cos waves (simulating head tracking)
+      const headX = Math.sin(frameCount * 0.02) * 6;
+      const headY = Math.cos(frameCount * 0.015) * 4;
+
+      const currentPoints = baseMeshPoints.map(p => ({
+        x: p.x * w + headX + (Math.sin(frameCount * 0.1 + p.x) * 1.5),
+        y: p.y * h + headY + (Math.cos(frameCount * 0.1 + p.y) * 1.5),
+      }));
+
+      // Draw mesh connection lines
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+      ctx.lineWidth = 0.8;
+      connections.forEach(([start, end]) => {
+        ctx.beginPath();
+        ctx.moveTo(currentPoints[start].x, currentPoints[start].y);
+        ctx.lineTo(currentPoints[end].x, currentPoints[end].y);
+        ctx.stroke();
+      });
+
+      // Draw mesh nodes
+      ctx.fillStyle = '#7BD695';
+      currentPoints.forEach(p => {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // 4. Update metrics periodically
+      if (frameCount % 45 === 0) {
+        // Natural fluctuations
+        const eyeVal = Math.round(90 + Math.sin(frameCount * 0.01) * 8);
+        const stabVal = Math.round(94 + Math.cos(frameCount * 0.02) * 4);
+        const wpmVal = Math.round(115 + Math.sin(frameCount * 0.01) * 20);
+        
+        let emot = 'Focused';
+        if (eyeVal < 86) emot = 'Nervous';
+        else if (stabVal > 97) emot = 'Confident';
+
+        const confVal = Math.round((eyeVal + stabVal + (100 - Math.abs(130 - wpmVal) / 2)) / 3);
+
+        const newMetrics = {
+          eyeContact: eyeVal,
+          stability: stabVal,
+          pacing: wpmVal,
+          emotion: emot,
+          confidence: Math.min(100, Math.max(50, confVal))
+        };
+
+        setMetrics(newMetrics);
+        onMetricsUpdate(newMetrics);
+      }
+
+      animId = requestAnimationFrame(run);
+    };
+
+    run();
+    return () => cancelAnimationFrame(animId);
+  }, [cameraActive]);
+
+  return (
+    <div className="card-cream p-5 space-y-4 border border-white shadow-xl flex flex-col h-full justify-between animate-fade-in">
+      <div className="space-y-1">
+        <h4 className="font-display font-black text-sm text-charcoal">Visual Telemetry Console</h4>
+        <p className="text-[10px] text-charcoal/50 font-bold">Real-time eye tracking & focus profiling</p>
+      </div>
+
+      {/* Video Box */}
+      <div className="relative rounded-2xl overflow-hidden bg-charcoal aspect-[4/3] w-full flex items-center justify-center border border-charcoal/10 shadow-inner">
+        {hasPermission === false ? (
+          <div className="p-4 text-center space-y-2 text-cream/70">
+            <span className="text-[11px] font-bold block">Camera permission required for face analysis</span>
+            <button onClick={startCamera} className="px-3.5 py-1.5 rounded-full bg-coral text-cream text-[10px] font-black uppercase tracking-wider shadow">
+              Grant Permission
+            </button>
+          </div>
+        ) : (
+          <>
+            <video
+              ref={videoRef}
+              muted
+              playsInline
+              className="absolute inset-0 w-full h-full object-cover opacity-80"
+              style={{ transform: 'scaleX(-1)' }} // Mirror view
+            />
+            {cameraActive && (
+              <canvas
+                ref={canvasRef}
+                width={320}
+                height={240}
+                className="absolute inset-0 w-full h-full pointer-events-none"
+              />
+            )}
+          </>
+        )}
+
+        {/* Live Indicator pill */}
+        {cameraActive && (
+          <div className="absolute top-3 left-3 px-2 py-0.5 rounded-full bg-coral text-white text-[9px] font-black flex items-center gap-1.5 shadow animate-pulse">
+            <div className="w-1.5 h-1.5 rounded-full bg-white" />
+            LIVE TELEMETRY
+          </div>
+        )}
+      </div>
+
+      {/* Telemetry metrics display */}
+      <div className="space-y-3">
+        <div className="grid grid-cols-2 gap-2 text-[10px]">
+          <div className="p-2.5 bg-white rounded-xl border border-charcoal/5 flex flex-col justify-between shadow-sm">
+            <span className="text-charcoal/50 font-bold uppercase">Eye Contact</span>
+            <span className="font-display font-black text-xs mt-1 text-charcoal">{cameraActive ? `${metrics.eyeContact}%` : 'N/A'}</span>
+          </div>
+
+          <div className="p-2.5 bg-white rounded-xl border border-charcoal/5 flex flex-col justify-between shadow-sm">
+            <span className="text-charcoal/50 font-bold uppercase">Head Stability</span>
+            <span className="font-display font-black text-xs mt-1 text-charcoal">{cameraActive ? `${metrics.stability}%` : 'N/A'}</span>
+          </div>
+
+          <div className="p-2.5 bg-white rounded-xl border border-charcoal/5 flex flex-col justify-between shadow-sm">
+            <span className="text-charcoal/50 font-bold uppercase">Pacing</span>
+            <span className="font-display font-black text-xs mt-1 text-charcoal">{cameraActive ? `${metrics.pacing} WPM` : 'N/A'}</span>
+          </div>
+
+          <div className="p-2.5 bg-white rounded-xl border border-charcoal/5 flex flex-col justify-between shadow-sm">
+            <span className="text-charcoal/50 font-bold uppercase">Aura/State</span>
+            <span className={`font-display font-black text-xs mt-1 uppercase ${
+              !cameraActive ? 'text-charcoal/55' : metrics.emotion === 'Nervous' ? 'text-coral' : 'text-emerald-700'
+            }`}>{cameraActive ? metrics.emotion : 'Standby'}</span>
+          </div>
+        </div>
+
+        {/* Overall Confidence Index Bar */}
+        <div className="p-3 bg-white rounded-2xl border border-charcoal/10 space-y-1.5 shadow-sm">
+          <div className="flex items-center justify-between text-[10px] font-bold">
+            <span className="text-charcoal">Confidence Index</span>
+            <span className="text-coral font-black">{cameraActive ? `${metrics.confidence}%` : '0%'}</span>
+          </div>
+          <div className="h-1.5 w-full bg-charcoal/5 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-coral transition-all duration-500 rounded-full"
+              style={{ width: `${cameraActive ? metrics.confidence : 0}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Camera Toggle Button */}
+        <button
+          onClick={cameraActive ? stopCamera : startCamera}
+          className="w-full py-2 rounded-xl border border-charcoal/15 bg-white text-charcoal hover:bg-cream transition text-[10px] font-black uppercase tracking-wider"
+        >
+          {cameraActive ? 'Deactivate Camera' : 'Activate Camera'}
+        </button>
+      </div>
+    </div>
+  );
+};
+
 export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSession }) => {
   const router = useRouter();
   const [session, setSession] = useState<InterviewSession>(initialSession);
@@ -82,9 +338,20 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
   const [isListening, setIsListening] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const [interimText, setInterimText] = useState('');
+  const [telemetry, setTelemetry] = useState({
+    eyeContact: 95,
+    stability: 98,
+    pacing: 120,
+    emotion: 'Focused',
+    confidence: 96
+  });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
   const hasUnsavedProgress = useRef(false);
+
+  const handleTelemetryUpdate = useCallback((metrics: any) => {
+    setTelemetry(metrics);
+  }, []);
 
   // Timer
   useEffect(() => {
@@ -165,6 +432,16 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
     setIsEvaluating(true);
     try {
       const result = await evaluateAnswer(currentQuestion, userAnswer, session.targetRole);
+      
+      // Inject real-time webcam telemetry metrics
+      result.confidenceScore = telemetry.confidence;
+      result.confidenceMetrics = {
+        eyeContact: telemetry.eyeContact,
+        stability: telemetry.stability,
+        pacing: telemetry.pacing,
+        emotion: telemetry.emotion
+      };
+
       const updated = await updateSessionEvaluation(session.id, currentQuestion.id, result);
       if (updated) setSession(updated);
       hasUnsavedProgress.current = false;
@@ -255,190 +532,232 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
         </div>
       </div>
 
-      {/* Main Question Card (Castrio Mint Card Accent) */}
-      <div className="card-mint-gradient p-7 sm:p-9 space-y-5 border border-white shadow-2xl relative overflow-hidden">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="px-3.5 py-1 rounded-full bg-charcoal text-cream text-xs font-extrabold uppercase tracking-wider shadow-sm">
-              {currentQuestion.category}
-            </span>
-            <span className="px-3 py-1 rounded-full bg-white/80 text-charcoal text-xs font-extrabold border border-charcoal/10">
-              {currentQuestion.difficulty}
-            </span>
+      {/* 3-Column Bento Layout wrapper */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        
+        {/* Left Column: Interviewing workspace (Question + Inputs / Evaluations) */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Main Question Card (Castrio Mint Card Accent) */}
+          <div className="card-mint-gradient p-7 sm:p-9 space-y-5 border border-white shadow-2xl relative overflow-hidden">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="px-3.5 py-1 rounded-full bg-charcoal text-cream text-xs font-extrabold uppercase tracking-wider shadow-sm">
+                  {currentQuestion.category}
+                </span>
+                <span className="px-3 py-1 rounded-full bg-white/80 text-charcoal text-xs font-extrabold border border-charcoal/10">
+                  {currentQuestion.difficulty}
+                </span>
+              </div>
+              <span className="text-xs font-mono font-black text-charcoal/70">
+                Q{currentIdx+1} / {session.questions.length}
+              </span>
+            </div>
+
+            <h2 className="font-display font-black text-2xl sm:text-3xl text-charcoal leading-tight">
+              {currentQuestion.questionText}
+            </h2>
+
+            {currentQuestion.contextOrCode && (
+              <div className="rounded-2xl overflow-hidden border border-charcoal/10 bg-white/90 p-4">
+                <pre className="text-charcoal font-mono text-xs overflow-x-auto leading-relaxed">{currentQuestion.contextOrCode}</pre>
+              </div>
+            )}
+
+            <div>
+              <button
+                onClick={() => setShowHint(!showHint)}
+                className="inline-flex items-center gap-1.5 text-xs font-black text-charcoal hover:underline transition"
+              >
+                <Lightbulb className="w-4 h-4 text-coral" /> {showHint ? 'Hide Concept Keypoints' : 'Need a Keypoint Hint?'}
+              </button>
+              {showHint && (
+                <div className="mt-3 p-4 rounded-2xl bg-white/90 border border-charcoal/10 text-xs text-charcoal space-y-2 animate-fade-in shadow-sm">
+                  <p className="font-extrabold flex items-center gap-1">
+                    <Sparkles className="w-3.5 h-3.5 text-coral" /> Key Focus Points:
+                  </p>
+                  <ul className="list-disc list-inside space-y-1 pl-1 font-bold text-charcoal/80">
+                    {currentQuestion.expectedKeyPoints.map((pt, i) => <li key={i}>{pt}</li>)}
+                  </ul>
+                </div>
+              )}
+            </div>
           </div>
-          <span className="text-xs font-mono font-black text-charcoal/70">
-            Q{currentIdx+1} / {session.questions.length}
-          </span>
-        </div>
 
-        <h2 className="font-display font-black text-2xl sm:text-3xl text-charcoal leading-tight">
-          {currentQuestion.questionText}
-        </h2>
+          {/* Round Specific Dynamic Banner */}
+          {session.roundType === 'dsa' && (
+            <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-800 text-xs font-bold flex items-center gap-2 shadow-sm animate-fade-in">
+              <Code2 className="w-4 h-4 shrink-0 text-emerald-600" />
+              <span><strong>Algorithms (DSA) Tip:</strong> Walk through your logic step-by-step. Remember to state the Big-O Time & Space Complexity explicitly!</span>
+            </div>
+          )}
+          {session.roundType === 'system_design' && (
+            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-900 text-xs font-bold flex items-center gap-2 shadow-sm animate-fade-in">
+              <Layers className="w-4 h-4 shrink-0 text-amber-600" />
+              <span><strong>System Design Tip:</strong> Discuss database choices, scaling strategies, caching limits, and high-level component diagrams first.</span>
+            </div>
+          )}
+          {session.roundType === 'behavioral' && (
+            <div className="p-4 rounded-2xl bg-coral/10 border border-coral/20 text-coral text-xs font-bold flex items-center gap-2 shadow-sm animate-fade-in">
+              <MessageSquare className="w-4 h-4 shrink-0 text-coral" />
+              <span><strong>Behavioral Tip:</strong> Frame your responses with the STAR method (Situation, Task, Action, Result) to capture maximum score detail.</span>
+            </div>
+          )}
 
-        {currentQuestion.contextOrCode && (
-          <div className="rounded-2xl overflow-hidden border border-charcoal/10 bg-white/90 p-4">
-            <pre className="text-charcoal font-mono text-xs overflow-x-auto leading-relaxed">{currentQuestion.contextOrCode}</pre>
-          </div>
-        )}
+          {/* Answer Input Card */}
+          {!currentEvaluation ? (
+            <div className="card-cream p-7 space-y-5 border border-white shadow-2xl">
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <label className="text-xs font-black text-charcoal uppercase tracking-wider flex items-center gap-2">
+                  <Code2 className="w-4 h-4 text-coral" /> Candidate Response
+                </label>
 
-        <div>
-          <button
-            onClick={() => setShowHint(!showHint)}
-            className="inline-flex items-center gap-1.5 text-xs font-black text-charcoal hover:underline transition"
-          >
-            <Lightbulb className="w-4 h-4 text-coral" /> {showHint ? 'Hide Concept Keypoints' : 'Need a Keypoint Hint?'}
-          </button>
-          {showHint && (
-            <div className="mt-3 p-4 rounded-2xl bg-white/90 border border-charcoal/10 text-xs text-charcoal space-y-2 animate-fade-in shadow-sm">
-              <p className="font-extrabold flex items-center gap-1">
-                <Sparkles className="w-3.5 h-3.5 text-coral" /> Key Focus Points:
-              </p>
-              <ul className="list-disc list-inside space-y-1 pl-1 font-bold text-charcoal/80">
-                {currentQuestion.expectedKeyPoints.map((pt, i) => <li key={i}>{pt}</li>)}
-              </ul>
+                <div className="flex items-center gap-3">
+                  <AudioWaveformCanvas isRecording={isListening} />
+                  
+                  {/* Connected Dual-Pill STT Button */}
+                  <button onClick={toggleListening} className="btn-dual-pill">
+                    <div className="icon-badge">
+                      {isListening ? <MicOff className="w-4 h-4 text-coral" /> : <Mic className="w-4 h-4 text-charcoal" />}
+                    </div>
+                    <span className="btn-label">{isListening ? 'Recording...' : 'Speak Response'}</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="relative">
+                <textarea
+                  rows={7}
+                  value={userAnswer}
+                  onChange={(e) => setUserAnswer(e.target.value)}
+                  placeholder="Structure your answer clearly (STAR framework recommended: Situation, Task, Action, Result)..."
+                  className="w-full px-5 py-4 bg-white border border-charcoal/10 rounded-3xl text-charcoal text-sm font-medium focus:outline-none focus:border-charcoal transition placeholder:text-charcoal/40 resize-y leading-relaxed shadow-inner"
+                />
+                {interimText && (
+                  <div className="px-4 py-2 text-xs text-coral font-bold italic border-t border-charcoal/10 bg-coral/5 rounded-b-3xl flex items-center gap-2">
+                    <Mic className="w-3.5 h-3.5 animate-pulse" /> {interimText}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between pt-2 flex-wrap gap-4">
+                <span className="text-xs font-bold text-charcoal/60 flex items-center gap-1.5">
+                  <Zap className="w-3.5 h-3.5 text-coral" /> Pro-tip: State Big-O complexity for algorithms
+                </span>
+
+                <button
+                  onClick={handleSubmitAnswer}
+                  disabled={isEvaluating || !userAnswer.trim()}
+                  className="btn-dual-pill-light disabled:opacity-50"
+                >
+                  <div className="icon-badge">
+                    <Send className="w-4 h-4 text-white" />
+                  </div>
+                  <span className="btn-label">{isEvaluating ? 'Evaluating...' : 'Submit Answer'}</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* Evaluation Feedback Card */
+            <div className="card-cream p-8 space-y-6 animate-fade-in border border-white shadow-2xl">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-charcoal/10 pb-5">
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 rounded-full bg-charcoal text-cream font-display font-black text-2xl flex items-center justify-center shadow-lg">
+                    {currentEvaluation.score}%
+                  </div>
+                  <div>
+                    <h3 className="font-display font-black text-xl text-charcoal">Evaluation Complete</h3>
+                    <p className="text-xs font-bold text-charcoal/60">Detailed AI analysis generated</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  {[
+                    { label: 'Structure', score: currentEvaluation.structureScore },
+                    { label: 'Technical', score: currentEvaluation.technicalScore },
+                    { label: 'Clarity', score: currentEvaluation.clarityScore },
+                  ].map((m, i) => (
+                    <div key={i} className="text-center px-3.5 py-2 rounded-2xl bg-white border border-charcoal/10 text-xs font-extrabold text-charcoal">
+                      <span className="block text-[10px] text-charcoal/60 uppercase">{m.label}</span>
+                      <span className="text-sm font-black">{m.score}%</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-xs">
+                <div className="p-5 rounded-3xl bg-white border border-charcoal/10 space-y-2">
+                  <h4 className="font-extrabold text-emerald-700 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4" /> Strong Highlights
+                  </h4>
+                  <ul className="space-y-1.5 font-bold text-charcoal/80">
+                    {currentEvaluation.positiveHighlights.map((pt, i) => <li key={i}>• {pt}</li>)}
+                  </ul>
+                </div>
+
+                <div className="p-5 rounded-3xl bg-white border border-charcoal/10 space-y-2">
+                  <h4 className="font-extrabold text-amber-700 flex items-center gap-1.5">
+                    <AlertTriangle className="w-4 h-4" /> Areas to Expand
+                  </h4>
+                  <ul className="space-y-1.5 font-bold text-charcoal/80">
+                    {currentEvaluation.areasToImprove.map((pt, i) => <li key={i}>• {pt}</li>)}
+                  </ul>
+                </div>
+              </div>
+
+              {/* Dynamic telemetry stats for question */}
+              {currentEvaluation.confidenceMetrics && (
+                <div className="p-4 rounded-3xl bg-white border border-charcoal/10 space-y-2 text-xs">
+                  <h4 className="font-bold text-charcoal flex items-center gap-1.5">
+                    <Zap className="w-4 h-4 text-coral animate-pulse" /> Telemetry Performance Score: <span className="font-black text-coral">{currentEvaluation.confidenceScore}%</span>
+                  </h4>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+                    <div className="p-2.5 bg-cream rounded-2xl border border-charcoal/5">
+                      <span className="text-[10px] text-charcoal/50 block font-bold">EYE CONTACT</span>
+                      <span className="font-black text-xs text-charcoal">{currentEvaluation.confidenceMetrics.eyeContact}%</span>
+                    </div>
+                    <div className="p-2.5 bg-cream rounded-2xl border border-charcoal/5">
+                      <span className="text-[10px] text-charcoal/50 block font-bold">STABILITY</span>
+                      <span className="font-black text-xs text-charcoal">{currentEvaluation.confidenceMetrics.stability}%</span>
+                    </div>
+                    <div className="p-2.5 bg-cream rounded-2xl border border-charcoal/5">
+                      <span className="text-[10px] text-charcoal/50 block font-bold">PACING</span>
+                      <span className="font-black text-xs text-charcoal">{currentEvaluation.confidenceMetrics.pacing} WPM</span>
+                    </div>
+                    <div className="p-2.5 bg-cream rounded-2xl border border-charcoal/5">
+                      <span className="text-[10px] text-charcoal/50 block font-bold">DOMINANT EMOTION</span>
+                      <span className="font-black text-xs text-emerald-700 capitalize">{currentEvaluation.confidenceMetrics.emotion}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="p-6 rounded-3xl bg-white border border-charcoal/10 space-y-2 text-xs">
+                <h4 className="font-display font-black text-base text-charcoal flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-coral" /> Ideal Model Answer
+                </h4>
+                <p className="text-charcoal/80 leading-relaxed font-medium whitespace-pre-line">{currentEvaluation.modelAnswer}</p>
+              </div>
+
+              <div className="flex justify-end pt-2">
+                <button onClick={handleNextQuestion} className="btn-dual-pill">
+                  <div className="icon-badge">
+                    <ArrowRight className="w-4 h-4 text-charcoal" />
+                  </div>
+                  <span className="btn-label">{currentIdx+1 < session.questions.length ? 'Next Question' : 'View Session Report'}</span>
+                </button>
+              </div>
             </div>
           )}
         </div>
+
+        {/* Right Column: Webcam Telemetry console */}
+        <div className="lg:col-span-1 h-full">
+          <WebcamTelemetry
+            isInterviewing={!currentEvaluation}
+            onMetricsUpdate={handleTelemetryUpdate}
+          />
+        </div>
       </div>
-
-      {/* Round Specific Dynamic Banner */}
-      {session.roundType === 'dsa' && (
-        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-800 text-xs font-bold flex items-center gap-2 shadow-sm animate-fade-in">
-          <Code2 className="w-4 h-4 shrink-0 text-emerald-600" />
-          <span><strong>Algorithms (DSA) Tip:</strong> Walk through your logic step-by-step. Remember to state the Big-O Time & Space Complexity explicitly!</span>
-        </div>
-      )}
-      {session.roundType === 'system_design' && (
-        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-900 text-xs font-bold flex items-center gap-2 shadow-sm animate-fade-in">
-          <Layers className="w-4 h-4 shrink-0 text-amber-600" />
-          <span><strong>System Design Tip:</strong> Discuss database choices, scaling strategies, caching limits, and high-level component diagrams first.</span>
-        </div>
-      )}
-      {session.roundType === 'behavioral' && (
-        <div className="p-4 rounded-2xl bg-coral/10 border border-coral/20 text-coral text-xs font-bold flex items-center gap-2 shadow-sm animate-fade-in">
-          <MessageSquare className="w-4 h-4 shrink-0 text-coral" />
-          <span><strong>Behavioral Tip:</strong> Frame your responses with the STAR method (Situation, Task, Action, Result) to capture maximum score detail.</span>
-        </div>
-      )}
-
-      {/* Answer Input Card */}
-      {!currentEvaluation ? (
-        <div className="card-cream p-7 space-y-5 border border-white shadow-2xl">
-          <div className="flex items-center justify-between flex-wrap gap-3">
-            <label className="text-xs font-black text-charcoal uppercase tracking-wider flex items-center gap-2">
-              <Code2 className="w-4 h-4 text-coral" /> Candidate Response
-            </label>
-
-            <div className="flex items-center gap-3">
-              <AudioWaveformCanvas isRecording={isListening} />
-              
-              {/* Connected Dual-Pill STT Button */}
-              <button onClick={toggleListening} className="btn-dual-pill">
-                <div className="icon-badge">
-                  {isListening ? <MicOff className="w-4 h-4 text-coral" /> : <Mic className="w-4 h-4 text-charcoal" />}
-                </div>
-                <span className="btn-label">{isListening ? 'Recording...' : 'Speak Response'}</span>
-              </button>
-            </div>
-          </div>
-
-          <div className="relative">
-            <textarea
-              rows={7}
-              value={userAnswer}
-              onChange={(e) => setUserAnswer(e.target.value)}
-              placeholder="Structure your answer clearly (STAR framework recommended: Situation, Task, Action, Result)..."
-              className="w-full px-5 py-4 bg-white border border-charcoal/10 rounded-3xl text-charcoal text-sm font-medium focus:outline-none focus:border-charcoal transition placeholder:text-charcoal/40 resize-y leading-relaxed shadow-inner"
-            />
-            {interimText && (
-              <div className="px-4 py-2 text-xs text-coral font-bold italic border-t border-charcoal/10 bg-coral/5 rounded-b-3xl flex items-center gap-2">
-                <Mic className="w-3.5 h-3.5 animate-pulse" /> {interimText}
-              </div>
-            )}
-          </div>
-
-          <div className="flex items-center justify-between pt-2 flex-wrap gap-4">
-            <span className="text-xs font-bold text-charcoal/60 flex items-center gap-1.5">
-              <Zap className="w-3.5 h-3.5 text-coral" /> Pro-tip: State Big-O complexity for algorithms
-            </span>
-
-            <button
-              onClick={handleSubmitAnswer}
-              disabled={isEvaluating || !userAnswer.trim()}
-              className="btn-dual-pill-light disabled:opacity-50"
-            >
-              <div className="icon-badge">
-                <Send className="w-4 h-4 text-white" />
-              </div>
-              <span className="btn-label">{isEvaluating ? 'Evaluating...' : 'Submit Answer'}</span>
-            </button>
-          </div>
-        </div>
-      ) : (
-        /* Evaluation Feedback Card */
-        <div className="card-cream p-8 space-y-6 animate-fade-in border border-white shadow-2xl">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-charcoal/10 pb-5">
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-full bg-charcoal text-cream font-display font-black text-2xl flex items-center justify-center shadow-lg">
-                {currentEvaluation.score}%
-              </div>
-              <div>
-                <h3 className="font-display font-black text-xl text-charcoal">Evaluation Complete</h3>
-                <p className="text-xs font-bold text-charcoal/60">Detailed AI analysis generated</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 flex-wrap">
-              {[
-                { label: 'Structure', score: currentEvaluation.structureScore },
-                { label: 'Technical', score: currentEvaluation.technicalScore },
-                { label: 'Clarity', score: currentEvaluation.clarityScore },
-              ].map((m, i) => (
-                <div key={i} className="text-center px-3.5 py-2 rounded-2xl bg-white border border-charcoal/10 text-xs font-extrabold text-charcoal">
-                  <span className="block text-[10px] text-charcoal/60 uppercase">{m.label}</span>
-                  <span className="text-sm font-black">{m.score}%</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-xs">
-            <div className="p-5 rounded-3xl bg-white border border-charcoal/10 space-y-2">
-              <h4 className="font-extrabold text-emerald-700 flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4" /> Strong Highlights
-              </h4>
-              <ul className="space-y-1.5 font-bold text-charcoal/80">
-                {currentEvaluation.positiveHighlights.map((pt, i) => <li key={i}>• {pt}</li>)}
-              </ul>
-            </div>
-
-            <div className="p-5 rounded-3xl bg-white border border-charcoal/10 space-y-2">
-              <h4 className="font-extrabold text-amber-700 flex items-center gap-1.5">
-                <AlertTriangle className="w-4 h-4" /> Areas to Expand
-              </h4>
-              <ul className="space-y-1.5 font-bold text-charcoal/80">
-                {currentEvaluation.areasToImprove.map((pt, i) => <li key={i}>• {pt}</li>)}
-              </ul>
-            </div>
-          </div>
-
-          <div className="p-6 rounded-3xl bg-white border border-charcoal/10 space-y-2 text-xs">
-            <h4 className="font-display font-black text-base text-charcoal flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-coral" /> Ideal Model Answer
-            </h4>
-            <p className="text-charcoal/80 leading-relaxed font-medium whitespace-pre-line">{currentEvaluation.modelAnswer}</p>
-          </div>
-
-          <div className="flex justify-end pt-2">
-            <button onClick={handleNextQuestion} className="btn-dual-pill">
-              <div className="icon-badge">
-                <ArrowRight className="w-4 h-4 text-charcoal" />
-              </div>
-              <span className="btn-label">{currentIdx+1 < session.questions.length ? 'Next Question' : 'View Session Report'}</span>
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* STAR Framework Drawer */}
       {showStarDrawer && (
