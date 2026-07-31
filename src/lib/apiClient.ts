@@ -230,6 +230,8 @@ export const interviewApi = {
     sessionId?: string;
     targetRole: string;
     experienceLevel: string;
+    difficultyMode?: string;
+    roundType?: string;
     resumeText?: string;
     jobDescriptionText?: string;
     extractedSkills?: string[];

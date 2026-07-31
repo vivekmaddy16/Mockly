@@ -210,6 +210,7 @@ export const DEMO_INITIAL_SESSION: InterviewSession = {
   createdAt: new Date().toISOString(),
   targetRole: 'Full Stack Web Developer',
   experienceLevel: 'Mid-Level (2-4 yrs)',
+  difficultyMode: 'Medium',
   extractedSkills: ['React', 'Next.js', 'Node.js', 'REST APIs', 'PostgreSQL', 'System Design'],
   questions: [
     {

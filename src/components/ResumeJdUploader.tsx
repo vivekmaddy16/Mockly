@@ -4,11 +4,13 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   FileText, Briefcase, Upload, CheckCircle2, AlertCircle, Brain, 
-  Zap, Sparkles, Cpu, MessageSquare, Mic
+  Zap, Sparkles, Cpu, MessageSquare, Mic, Code2, Layers
 } from 'lucide-react';
 import { ExperienceLevel, InterviewSession } from '@/types';
 import { generateInterviewQuestions } from '@/lib/gemini';
 import { saveSession } from '@/lib/storage';
+import { useAuth } from '@/context/AuthContext';
+import { AuthBlocker } from './AuthBlocker';
 
 const LOADING_STEPS = [
   { icon: Brain, text: 'Analyzing your resume & job description...', color: 'text-charcoal' },
@@ -25,9 +27,12 @@ export const ResumeJdUploader: React.FC = () => {
   const [resumeText, setResumeText] = useState('');
   const [jobDescriptionText, setJobDescriptionText] = useState('');
   const [questionCount, setQuestionCount] = useState<number>(3);
+  const [difficultyMode, setDifficultyMode] = useState<'Easy' | 'Medium' | 'Hard'>('Medium');
+  const [roundType, setRoundType] = useState<'technical_screen' | 'dsa' | 'system_design' | 'behavioral'>('technical_screen');
   const [isLoading, setIsLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
   const [errorMsg, setErrorMsg] = useState('');
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
 
   const quickRoles = [
     'Full Stack Web Developer',
@@ -75,13 +80,15 @@ export const ResumeJdUploader: React.FC = () => {
     setIsLoading(true);
     try {
       const { questions, extractedSkills } = await generateInterviewQuestions(
-        targetRole, experienceLevel, resumeText, jobDescriptionText, questionCount
+        targetRole, experienceLevel, resumeText, jobDescriptionText, questionCount, difficultyMode, roundType
       );
       const newSession: InterviewSession = {
         id: `sess_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
         createdAt: new Date().toISOString(),
         targetRole: targetRole.trim(),
         experienceLevel,
+        difficultyMode,
+        roundType,
         resumeText: resumeText.trim() || undefined,
         jobDescriptionText: jobDescriptionText.trim() || undefined,
         extractedSkills,
@@ -98,6 +105,24 @@ export const ResumeJdUploader: React.FC = () => {
       setIsLoading(false);
     }
   };
+
+  // Authentication Gate
+  if (isAuthLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="w-8 h-8 border-2 border-charcoal border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <AuthBlocker
+        title="Mock Interview Setup Locked"
+        description="You must be signed in to configure and start an AI mock interview. Sign in or register below to build your customized session."
+      />
+    );
+  }
 
   // Castrio Loading Overlay
   if (isLoading) {
@@ -166,6 +191,71 @@ export const ResumeJdUploader: React.FC = () => {
         </div>
       )}
 
+      {/* Step 0: Choose Your Round (Full Width Bento-style Card) */}
+      <div className="card-cream p-7 sm:p-9 border border-white shadow-2xl space-y-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-charcoal text-cream flex items-center justify-center font-bold">
+            <Zap className="w-5 h-5 text-coral" />
+          </div>
+          <div>
+            <h3 className="font-display font-black text-lg text-charcoal">Interview Round Type</h3>
+            <p className="text-xs font-bold text-charcoal/60">Choose which round you want to practice today</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[
+            {
+              id: 'technical_screen',
+              title: 'Technical Screen',
+              desc: 'General screening of tech stack, resume details, and light coding.',
+              icon: Brain,
+            },
+            {
+              id: 'dsa',
+              title: 'Algorithms & DSA',
+              desc: 'Core algorithmic round (Arrays, Trees, Graphs) with space/time complexity.',
+              icon: Code2,
+            },
+            {
+              id: 'system_design',
+              title: 'System Design',
+              desc: 'Distributed systems design, scale limits, caching, and databases.',
+              icon: Layers,
+            },
+            {
+              id: 'behavioral',
+              title: 'Behavioral & HR',
+              desc: 'Culture fit, conflict management, and STAR method leadership scenarios.',
+              icon: MessageSquare,
+            }
+          ].map(round => {
+            const Icon = round.icon;
+            const active = roundType === round.id;
+            return (
+              <button
+                key={round.id}
+                type="button"
+                onClick={() => setRoundType(round.id as any)}
+                className={`p-5 rounded-3xl border text-left flex flex-col justify-between h-40 transition-all ${
+                  active
+                    ? 'bg-charcoal text-cream border-charcoal shadow-lg scale-[1.03]'
+                    : 'bg-white text-charcoal/80 border-charcoal/10 hover:bg-cream hover:border-charcoal/30'
+                }`}
+              >
+                <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${active ? 'bg-cream text-charcoal' : 'bg-charcoal/5'} transition-all`}>
+                  <Icon className="w-5 h-5 text-coral" />
+                </div>
+                <div className="space-y-1 mt-3">
+                  <h4 className={`font-display font-black text-sm ${active ? 'text-cream' : 'text-charcoal'}`}>{round.title}</h4>
+                  <p className={`text-[10px] leading-tight font-medium ${active ? 'text-cream/75' : 'text-charcoal/50'}`}>{round.desc}</p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Main Grid Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         
@@ -223,6 +313,26 @@ export const ResumeJdUploader: React.FC = () => {
                   }`}
                 >
                   {level}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-extrabold text-charcoal mb-2">Difficulty Mode</label>
+            <div className="flex gap-2">
+              {(['Easy', 'Medium', 'Hard'] as const).map(mode => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setDifficultyMode(mode)}
+                  className={`flex-1 py-2.5 rounded-2xl text-xs font-black border transition ${
+                    difficultyMode === mode
+                      ? 'bg-charcoal text-cream border-charcoal'
+                      : 'bg-white text-charcoal/70 border-charcoal/10 hover:bg-cream'
+                  }`}
+                >
+                  {mode}
                 </button>
               ))}
             </div>
