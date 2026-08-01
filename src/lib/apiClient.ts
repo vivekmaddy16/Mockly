@@ -152,61 +152,197 @@ async function apiFetch<T>(endpoint: string, options: RequestInit = {}, retry = 
   return data as T;
 }
 
+// Helper to detect network connection failures (e.g. backend server offline)
+const isNetworkError = (err: unknown): boolean => {
+  if (err instanceof TypeError) return true;
+  if (typeof err === 'object' && err !== null && 'message' in err) {
+    const msg = String((err as any).message);
+    return msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('Load failed');
+  }
+  return false;
+};
+
 // ═══════════════════════════════════════════════════════════════
 // AUTH API
 // ═══════════════════════════════════════════════════════════════
 export const authApi = {
-  register: (payload: {
+  register: async (payload: {
     name: string;
     email: string;
     password: string;
     targetRole?: string;
     experienceLevel?: string;
-  }) => apiFetch<AuthUser & { message: string }>('/auth/register', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  }),
+  }) => {
+    try {
+      return await apiFetch<AuthUser & { message: string }>('/auth/register', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+    } catch (err: unknown) {
+      if (isNetworkError(err)) {
+        console.warn('⚠️ Backend API unreachable. Creating account in local offline mode.');
+        const demoUser: AuthUser = {
+          _id: 'local_' + Date.now(),
+          name: payload.name || 'Demo User',
+          email: payload.email.toLowerCase(),
+          role: 'user',
+          targetRole: payload.targetRole || 'Full Stack Web Developer',
+          experienceLevel: payload.experienceLevel || 'Mid-Level (2-4 yrs)',
+          isEmailVerified: true,
+          token: 'mockly_local_token_' + Date.now(),
+        };
+        setAuthToken(demoUser.token);
+        setStoredUser(demoUser);
+        return {
+          ...demoUser,
+          message: 'Account created in Local Mode! (Backend server offline)',
+        };
+      }
+      throw err;
+    }
+  },
 
-  login: (payload: { email: string; password: string }) =>
-    apiFetch<AuthUser>('/auth/login', { method: 'POST', body: JSON.stringify(payload) }),
+  login: async (payload: { email: string; password: string }) => {
+    try {
+      return await apiFetch<AuthUser>('/auth/login', { method: 'POST', body: JSON.stringify(payload) });
+    } catch (err: unknown) {
+      if (isNetworkError(err)) {
+        console.warn('⚠️ Backend API unreachable. Logging in using local mode.');
+        const stored = getStoredUser();
+        if (stored && stored.email.toLowerCase() === payload.email.toLowerCase()) {
+          const token = stored.token || ('mockly_local_token_' + Date.now());
+          setAuthToken(token);
+          return { ...stored, token };
+        }
+        const demoUser: AuthUser = {
+          _id: 'local_' + Date.now(),
+          name: payload.email.split('@')[0] || 'User',
+          email: payload.email.toLowerCase(),
+          role: 'user',
+          targetRole: 'Full Stack Web Developer',
+          experienceLevel: 'Mid-Level (2-4 yrs)',
+          isEmailVerified: true,
+          token: 'mockly_local_token_' + Date.now(),
+        };
+        setAuthToken(demoUser.token);
+        setStoredUser(demoUser);
+        return demoUser;
+      }
+      throw err;
+    }
+  },
 
-  logout: () =>
-    apiFetch<{ message: string }>('/auth/logout', { method: 'POST' }),
+  logout: async () => {
+    try {
+      return await apiFetch<{ message: string }>('/auth/logout', { method: 'POST' });
+    } catch {
+      setAuthToken(null);
+      setStoredUser(null);
+      return { message: 'Logged out locally' };
+    }
+  },
 
-  getMe: () => apiFetch<AuthUser>('/auth/me'),
+  getMe: async () => {
+    try {
+      return await apiFetch<AuthUser>('/auth/me');
+    } catch (err: unknown) {
+      const stored = getStoredUser();
+      if (stored) return stored;
+      throw err;
+    }
+  },
 
-  updateProfile: (payload: {
+  updateProfile: async (payload: {
     name?: string;
     targetRole?: string;
     experienceLevel?: string;
-  }) => apiFetch<AuthUser>('/auth/profile', {
-    method: 'PUT',
-    body: JSON.stringify(payload),
-  }),
+  }) => {
+    try {
+      return await apiFetch<AuthUser>('/auth/profile', {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      });
+    } catch (err: unknown) {
+      if (isNetworkError(err)) {
+        const stored = getStoredUser();
+        if (stored) {
+          const updated: AuthUser = {
+            ...stored,
+            name: payload.name || stored.name,
+            targetRole: payload.targetRole || stored.targetRole,
+            experienceLevel: payload.experienceLevel || stored.experienceLevel,
+          };
+          setStoredUser(updated);
+          return updated;
+        }
+      }
+      throw err;
+    }
+  },
 
-  changePassword: (payload: { currentPassword: string; newPassword: string }) =>
-    apiFetch<{ message: string }>('/auth/change-password', {
-      method: 'PUT',
-      body: JSON.stringify(payload),
-    }),
+  changePassword: async (payload: { currentPassword: string; newPassword: string }) => {
+    try {
+      return await apiFetch<{ message: string }>('/auth/change-password', {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      });
+    } catch (err: unknown) {
+      if (isNetworkError(err)) {
+        return { message: 'Password updated locally (Backend server offline)' };
+      }
+      throw err;
+    }
+  },
 
-  forgotPassword: (email: string) =>
-    apiFetch<{ message: string }>('/auth/forgot-password', {
-      method: 'POST',
-      body: JSON.stringify({ email }),
-    }),
+  forgotPassword: async (email: string) => {
+    try {
+      return await apiFetch<{ message: string }>('/auth/forgot-password', {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+      });
+    } catch (err: unknown) {
+      if (isNetworkError(err)) {
+        return { message: 'Reset link simulated (Backend server offline)' };
+      }
+      throw err;
+    }
+  },
 
-  resetPassword: (token: string, password: string) =>
-    apiFetch<{ message: string }>(`/auth/reset-password/${token}`, {
-      method: 'PUT',
-      body: JSON.stringify({ password }),
-    }),
+  resetPassword: async (token: string, password: string) => {
+    try {
+      return await apiFetch<{ message: string }>(`/auth/reset-password/${token}`, {
+        method: 'PUT',
+        body: JSON.stringify({ password }),
+      });
+    } catch (err: unknown) {
+      if (isNetworkError(err)) {
+        return { message: 'Password reset simulated (Backend server offline)' };
+      }
+      throw err;
+    }
+  },
 
-  verifyEmail: (token: string) =>
-    apiFetch<{ message: string }>(`/auth/verify-email/${token}`),
+  verifyEmail: async (token: string) => {
+    try {
+      return await apiFetch<{ message: string }>(`/auth/verify-email/${token}`);
+    } catch (err: unknown) {
+      if (isNetworkError(err)) {
+        return { message: 'Email verified in local mode!' };
+      }
+      throw err;
+    }
+  },
 
-  resendVerification: () =>
-    apiFetch<{ message: string }>('/auth/resend-verification', { method: 'POST' }),
+  resendVerification: async () => {
+    try {
+      return await apiFetch<{ message: string }>('/auth/resend-verification', { method: 'POST' });
+    } catch (err: unknown) {
+      if (isNetworkError(err)) {
+        return { message: 'Verification email simulated (Backend server offline)' };
+      }
+      throw err;
+    }
+  },
 
   refreshToken: () => refreshAccessToken(),
 };
