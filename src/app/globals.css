@@ -154,6 +154,19 @@
   border-radius: 32px;
 }
 
+.card-dark {
+  background-color: var(--dark-charcoal);
+  color: #FFFFFF;
+  border-radius: 32px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 12px 36px rgba(27, 30, 22, 0.25);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-dark:hover {
+  box-shadow: 0 16px 48px rgba(27, 30, 22, 0.35);
+}
+
 /* Castrio Dual-Pill Connected Buttons */
 
 /* 1. Black Dual Pill */
@@ -297,6 +310,33 @@
   padding: 3px;
   box-shadow: 0 4px 15px rgba(27, 30, 22, 0.05);
   z-index: 10;
+}
+
+/* 5. Yellow/Amber Action Button */
+.btn-yellow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background-color: #FBBF24;
+  color: var(--dark-charcoal);
+  border: none;
+  border-radius: 9999px;
+  font-weight: 700;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
+}
+
+.btn-yellow:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(251, 191, 36, 0.4);
+  background-color: #F59E0B;
+}
+
+.btn-yellow:active {
+  transform: scale(0.98);
 }
 
 .btn-connected-pill .login-btn,
