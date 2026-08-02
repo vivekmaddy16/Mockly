@@ -85,8 +85,8 @@ export const DashboardView: React.FC = () => {
     <div className="w-full max-w-5xl mx-auto space-y-8 animate-fade-in py-4">
       
       {/* Header */}
-      <div className="text-center space-y-3">
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-charcoal/10 text-charcoal text-xs font-extrabold shadow-sm">
+      <div className="rounded-[32px] border border-white/70 bg-white/80 p-6 sm:p-8 text-center space-y-3 shadow-[0_20px_60px_rgba(27,30,22,0.06)] backdrop-blur-xl">
+        <div className="section-chip mx-auto text-charcoal text-xs font-extrabold">
           <BarChart3 className="w-4 h-4 text-coral" /> Candidate Readiness Dashboard
         </div>
         <h1 className="font-display font-black text-3xl sm:text-5xl text-charcoal tracking-tight">
@@ -99,7 +99,7 @@ export const DashboardView: React.FC = () => {
 
       {/* Tabs */}
       <div className="flex justify-center">
-        <div className="flex bg-white p-1 rounded-2xl border border-charcoal/10 shadow-sm font-black text-xs">
+        <div className="flex bg-white/80 p-1 rounded-full border border-charcoal/10 shadow-sm font-black text-xs backdrop-blur-xl">
           <button
             onClick={() => setDashboardTab('my_progress')}
             className={`px-5 py-2.5 rounded-xl cursor-pointer transition ${
@@ -139,7 +139,7 @@ export const DashboardView: React.FC = () => {
           ].map((stat, i) => {
             const Icon = stat.icon;
             return (
-              <div key={i} className={`${stat.bg} p-6 space-y-2 border border-white shadow-xl`}>
+              <div key={i} className={`${stat.bg} p-6 space-y-2 border border-white/70 rounded-[24px] shadow-[0_12px_35px_rgba(27,30,22,0.06)]`}>
                 <div className="flex items-center gap-2">
                   <Icon className="w-4 h-4 text-charcoal" />
                   <span className="text-[10px] font-extrabold uppercase tracking-wider text-charcoal/60">{stat.label}</span>

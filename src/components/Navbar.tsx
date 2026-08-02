@@ -28,8 +28,8 @@ export const Navbar: React.FC = () => {
 
   return (
     <>
-      <header className="w-full py-4 px-4 sm:px-8 bg-transparent">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
+      <header className="w-full py-4 px-4 sm:px-8">
+        <div className="max-w-7xl mx-auto flex items-center justify-between rounded-full border border-white/70 bg-white/75 px-4 py-3 shadow-[0_14px_45px_rgba(27,30,22,0.06)] backdrop-blur-xl">
           
           {/* Logo — Mockly Brand with Castrio Design Style */}
           <Link href="/" className="flex items-center gap-2.5 group shrink-0">
@@ -53,8 +53,8 @@ export const Navbar: React.FC = () => {
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`text-xs font-extrabold tracking-tight transition-colors ${
-                    isActive ? 'text-charcoal border-b-2 border-charcoal pb-0.5' : 'text-charcoal/70 hover:text-charcoal'
+                  className={`rounded-full px-3.5 py-2 text-xs font-extrabold tracking-[0.2em] uppercase transition-all ${
+                    isActive ? 'bg-cream text-charcoal shadow-sm' : 'text-charcoal/70 hover:bg-cream/70 hover:text-charcoal'
                   }`}
                 >
                   {item.name}
@@ -106,7 +106,7 @@ export const Navbar: React.FC = () => {
 
         {/* Mobile Drawer */}
         {isMobileMenuOpen && (
-          <div className="md:hidden mt-3 p-5 modal-card-castrio space-y-3 shadow-2xl animate-fade-in">
+          <div className="md:hidden mt-3 rounded-[28px] border border-white/70 bg-white/90 p-5 shadow-[0_16px_50px_rgba(27,30,22,0.08)] backdrop-blur-xl space-y-3 animate-fade-in">
             {navLinks.map((item) => (
               <Link
                 key={item.name}

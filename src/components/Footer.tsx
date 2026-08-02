@@ -6,8 +6,8 @@ import { Heart, Sparkles, Shield, Cpu, BookOpen, Layers } from 'lucide-react';
 
 export const Footer: React.FC = () => {
   return (
-    <footer className="w-full border-t border-charcoal/10 bg-white py-12 px-4 sm:px-8 mt-12">
-      <div className="max-w-7xl mx-auto space-y-10">
+    <footer className="w-full px-4 sm:px-8 mt-12">
+      <div className="max-w-7xl mx-auto space-y-8 rounded-[36px] border border-white/70 bg-white/80 p-6 sm:p-8 shadow-[0_20px_60px_rgba(27,30,22,0.06)] backdrop-blur-xl">
         
         <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
           
