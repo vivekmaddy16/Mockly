@@ -198,8 +198,8 @@ export const ResumeJdUploader: React.FC = () => {
     <div className="w-full max-w-4xl mx-auto space-y-8 animate-fade-in py-4">
       
       {/* Header */}
-      <div className="text-center space-y-3">
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-charcoal/10 text-charcoal text-xs font-extrabold shadow-sm">
+      <div className="page-shell rounded-[36px] p-6 sm:p-8 text-center space-y-3 shadow-[0_20px_60px_rgba(27,30,22,0.06)]">
+        <div className="section-chip mx-auto text-charcoal text-xs font-extrabold">
           <Brain className="w-4 h-4 text-coral" /> AI Interview Setup
         </div>
         <h1 className="font-display font-black text-3xl sm:text-5xl text-charcoal tracking-tight">
@@ -218,7 +218,7 @@ export const ResumeJdUploader: React.FC = () => {
       )}
 
       {/* Step 0: Choose Your Round (Full Width Bento-style Card) */}
-      <div className="card-cream p-7 sm:p-9 border border-white shadow-2xl space-y-6">
+      <div className="soft-card p-7 sm:p-9 space-y-6">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-2xl bg-charcoal text-cream flex items-center justify-center font-bold">
             <Zap className="w-5 h-5 text-coral" />

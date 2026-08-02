@@ -466,7 +466,7 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
     <div className="w-full max-w-5xl mx-auto space-y-6 animate-fade-in py-4">
       
       {/* Top HUD Header (Castrio Cream Container) */}
-      <div className="card-cream p-4 flex items-center justify-between gap-4 border border-white shadow-xl">
+      <div className="soft-card p-4 flex items-center justify-between gap-4 rounded-[28px]">
         <div className="flex items-center gap-3">
           <div className={`w-11 h-11 rounded-full bg-charcoal text-cream flex items-center justify-center font-bold shadow-md transition-transform ${
             isSpeaking ? 'scale-110 ring-4 ring-coral/30' : ''
@@ -540,7 +540,7 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
         {/* Left Column: Interviewing workspace (Question + Inputs / Evaluations) */}
         <div className="lg:col-span-2 space-y-6">
           {/* Main Question Card (Castrio Mint Card Accent) */}
-          <div className="card-mint-gradient p-7 sm:p-9 space-y-5 border border-white shadow-2xl relative overflow-hidden">
+          <div className="soft-card p-7 sm:p-9 space-y-5 relative overflow-hidden bg-gradient-to-br from-[#a8e0ac] via-[#dff5db] to-[#f7fff8]">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="px-3.5 py-1 rounded-full bg-charcoal text-cream text-xs font-extrabold uppercase tracking-wider shadow-sm">
@@ -607,7 +607,7 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
 
           {/* Answer Input Card */}
           {!currentEvaluation ? (
-            <div className="card-cream p-7 space-y-5 border border-white shadow-2xl">
+            <div className="soft-card p-7 space-y-5">
               <div className="flex items-center justify-between flex-wrap gap-3">
                 <div className="flex items-center gap-3">
                   <label className="text-xs font-black text-charcoal uppercase tracking-wider flex items-center gap-2">
@@ -691,7 +691,7 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
             </div>
           ) : (
             /* Evaluation Feedback Card */
-            <div className="card-cream p-8 space-y-6 animate-fade-in border border-white shadow-2xl">
+            <div className="soft-card p-8 space-y-6 animate-fade-in">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-charcoal/10 pb-5">
                 <div className="flex items-center gap-4">
                   <div className="w-16 h-16 rounded-full bg-charcoal text-cream font-display font-black text-2xl flex items-center justify-center shadow-lg">

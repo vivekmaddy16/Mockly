@@ -191,8 +191,8 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ session }) => {
     <div className="w-full max-w-5xl mx-auto space-y-8 animate-fade-in py-4">
       
       {/* Header */}
-      <div className="text-center space-y-3">
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-charcoal/10 text-charcoal text-xs font-extrabold shadow-sm">
+      <div className="page-shell rounded-[36px] p-6 sm:p-8 text-center space-y-3 shadow-[0_20px_60px_rgba(27,30,22,0.06)]">
+        <div className="section-chip mx-auto text-charcoal text-xs font-extrabold">
           <Trophy className="w-4 h-4 text-coral" /> Executive Interview Scorecard
         </div>
         <h1 className="font-display font-black text-3xl sm:text-5xl text-charcoal tracking-tight">

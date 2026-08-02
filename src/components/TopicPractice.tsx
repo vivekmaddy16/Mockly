@@ -156,8 +156,8 @@ export const TopicPractice: React.FC = () => {
     <div className="w-full max-w-5xl mx-auto space-y-8 animate-fade-in py-4">
       
       {/* Header */}
-      <div className="text-center space-y-3">
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-charcoal/10 text-charcoal text-xs font-extrabold shadow-sm">
+      <div className="page-shell rounded-[36px] p-6 sm:p-8 text-center space-y-3 shadow-[0_20px_60px_rgba(27,30,22,0.06)]">
+        <div className="section-chip mx-auto text-charcoal text-xs font-extrabold">
           <Brain className="w-4 h-4 text-coral" /> CS Fundamentals & Prep Hub
         </div>
         <h1 className="font-display font-black text-3xl sm:text-5xl text-charcoal tracking-tight">
@@ -201,7 +201,7 @@ export const TopicPractice: React.FC = () => {
       ) : (
         <div className="space-y-6">
           {/* Bento Search and Category Filter Toolbar */}
-          <div className="card-cream p-5 border border-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="soft-card p-5 flex flex-col md:flex-row items-center justify-between gap-4">
             {/* Category Buttons */}
             <div className="flex flex-wrap gap-1.5 w-full md:w-auto">
               {[
@@ -263,7 +263,7 @@ export const TopicPractice: React.FC = () => {
                       setEvaluation(null);
                       setAnswer('');
                     }}
-                    className={`card-cream p-6 border cursor-pointer transition-all ${
+                    className={`soft-card p-6 cursor-pointer transition-all ${
                       isSelected ? 'ring-2 ring-charcoal bg-white shadow-xl scale-[1.02]' : 'hover:scale-[1.01]'
                     }`}
                   >
@@ -283,7 +283,7 @@ export const TopicPractice: React.FC = () => {
 
           {/* Questions Bank List */}
           {selectedTopic && (
-            <div className="card-cream p-7 sm:p-9 space-y-6 border border-white shadow-2xl animate-fade-in">
+            <div className="soft-card p-7 sm:p-9 space-y-6 animate-fade-in">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-charcoal/10 pb-4">
                 <h3 className="font-display font-black text-lg text-charcoal flex items-center gap-2">
                   <BookOpen className="w-5 h-5 text-coral" /> Questions: {selectedTopic}

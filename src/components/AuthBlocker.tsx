@@ -17,7 +17,7 @@ export const AuthBlocker: React.FC<AuthBlockerProps> = ({
 
   return (
     <div className="w-full max-w-xl mx-auto py-16 animate-fade-in">
-      <div className="card-cream p-10 sm:p-12 space-y-6 text-center shadow-2xl border border-white">
+      <div className="soft-card p-10 sm:p-12 space-y-6 text-center">
         <div className="w-20 h-20 rounded-full bg-coral/10 text-coral flex items-center justify-center mx-auto shadow-md">
           <ShieldAlert className="w-10 h-10" />
         </div>
