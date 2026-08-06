@@ -170,39 +170,39 @@ export const TopicPractice: React.FC = () => {
       </div>
 
       {/* Castrio Tab Selector Pills */}
-      <div className="flex justify-center">
-        <div className="inline-flex items-center gap-2 p-1.5 rounded-full bg-white border border-charcoal/10 shadow-md">
+      <div className="flex justify-center w-full px-2">
+        <div className="inline-flex items-center gap-1.5 p-1.5 rounded-full bg-white border border-charcoal/10 shadow-md max-w-full overflow-x-auto scrollbar-none">
           <button
             onClick={() => setActiveTab('practice')}
-            className={`px-6 py-2.5 rounded-full text-xs font-black transition-all flex items-center gap-2 ${
+            className={`px-4 sm:px-6 py-2 sm:py-2.5 rounded-full text-xs font-black transition-all flex items-center gap-1.5 sm:gap-2 whitespace-nowrap ${
               activeTab === 'practice'
                 ? 'bg-charcoal text-cream shadow-md'
                 : 'text-charcoal/70 hover:text-charcoal'
             }`}
           >
-            <Target className="w-4 h-4" /> Practice Questions
+            <Target className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Practice Questions
           </button>
 
           <button
             onClick={() => setActiveTab('dsa-sheet')}
-            className={`px-6 py-2.5 rounded-full text-xs font-black transition-all flex items-center gap-2 ${
+            className={`px-4 sm:px-6 py-2 sm:py-2.5 rounded-full text-xs font-black transition-all flex items-center gap-1.5 sm:gap-2 whitespace-nowrap ${
               activeTab === 'dsa-sheet'
                 ? 'bg-charcoal text-cream shadow-md'
                 : 'text-charcoal/70 hover:text-charcoal'
             }`}
           >
-            <FileText className="w-4 h-4" /> DSA Sheet
+            <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> DSA Sheet
           </button>
 
           <button
             onClick={() => setActiveTab('roadmap')}
-            className={`px-6 py-2.5 rounded-full text-xs font-black transition-all flex items-center gap-2 ${
+            className={`px-4 sm:px-6 py-2 sm:py-2.5 rounded-full text-xs font-black transition-all flex items-center gap-1.5 sm:gap-2 whitespace-nowrap ${
               activeTab === 'roadmap'
                 ? 'bg-charcoal text-cream shadow-md'
                 : 'text-charcoal/70 hover:text-charcoal'
             }`}
           >
-            <GitBranch className="w-4 h-4" /> CS Roadmap Tree
+            <GitBranch className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> CS Roadmap Tree
           </button>
         </div>
       </div>

@@ -340,9 +340,9 @@ export const DSASheet: React.FC = () => {
       </div>
 
       {/* ───── Filters Bar ───── */}
-      <div className="soft-card p-5 flex flex-col md:flex-row items-center justify-between gap-4">
+      <div className="soft-card p-4 sm:p-5 space-y-4 md:space-y-0 md:flex md:items-center md:justify-between md:gap-4">
         {/* Topic Select */}
-        <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-1">
+        <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-1 scrollbar-none">
           <Filter className="w-4 h-4 text-charcoal/40 shrink-0" />
           <button
             onClick={() => setSelectedTopic('All')}
@@ -378,13 +378,13 @@ export const DSASheet: React.FC = () => {
         </div>
 
         {/* Difficulty + Search */}
-        <div className="flex items-center gap-3 w-full md:w-auto shrink-0">
-          <div className="flex items-center gap-1 p-1 bg-white border border-charcoal/10 rounded-full text-[10px] font-black">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto shrink-0">
+          <div className="flex items-center justify-between sm:justify-start gap-1 p-1 bg-white border border-charcoal/10 rounded-full text-[10px] font-black">
             {(['All', 'Easy', 'Medium', 'Hard'] as const).map(diff => (
               <button
                 key={diff}
                 onClick={() => setSelectedDifficulty(diff)}
-                className={`px-3 py-1 rounded-full cursor-pointer transition ${
+                className={`flex-1 sm:flex-none px-3 py-1.5 sm:py-1 rounded-full cursor-pointer transition text-center ${
                   selectedDifficulty === diff
                     ? 'bg-charcoal text-cream shadow-sm'
                     : 'text-charcoal/60 hover:text-charcoal'
@@ -395,7 +395,7 @@ export const DSASheet: React.FC = () => {
             ))}
           </div>
 
-          <div className="relative w-full md:w-56">
+          <div className="relative w-full sm:w-56">
             <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
               <Search className="w-4 h-4 text-charcoal/40" />
             </span>
@@ -521,7 +521,7 @@ export const DSASheet: React.FC = () => {
                               href={problem.leetcodeUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="w-7 h-7 rounded-lg bg-white border border-charcoal/10 flex items-center justify-center text-charcoal/40 hover:text-coral hover:border-coral/30 transition-all opacity-0 group-hover:opacity-100"
+                              className="w-7 h-7 rounded-lg bg-white border border-charcoal/10 flex items-center justify-center text-charcoal/40 hover:text-coral hover:border-coral/30 transition-all sm:opacity-0 group-hover:opacity-100"
                               title="Open on LeetCode"
                             >
                               <ArrowUpRight className="w-3.5 h-3.5" />
