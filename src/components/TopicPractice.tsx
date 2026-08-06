@@ -5,11 +5,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   BookOpen, Code2, Database, Cpu, Network, Layers, 
   ChevronDown, ChevronUp, CheckCircle2, Send, Sparkles, 
-  Brain, GitBranch, Target, Building2, Server, Terminal, Search, AlertCircle
+  Brain, GitBranch, Target, Building2, Server, Terminal, Search, AlertCircle, FileText
 } from 'lucide-react';
 import { QuestionEvaluation } from '@/types';
 import { evaluateAnswer } from '@/lib/gemini';
 import { RoadmapView } from '@/components/RoadmapView';
+import { DSASheet } from '@/components/DSASheet';
 import { useAuth } from '@/context/AuthContext';
 import { AuthBlocker } from './AuthBlocker';
 
@@ -102,7 +103,7 @@ const topicBank: Record<string, TopicData> = {
 };
 
 export const TopicPractice: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'practice' | 'roadmap'>('practice');
+  const [activeTab, setActiveTab] = useState<'practice' | 'roadmap' | 'dsa-sheet'>('practice');
   const [selectedCategoryType, setSelectedCategoryType] = useState<'cs_fundamental' | 'company_prep' | 'role_domain'>('cs_fundamental');
   const [selectedDifficulty, setSelectedDifficulty] = useState<'All' | 'Easy' | 'Medium' | 'Hard'>('All');
   const [searchQuery, setSearchQuery] = useState('');
@@ -183,6 +184,17 @@ export const TopicPractice: React.FC = () => {
           </button>
 
           <button
+            onClick={() => setActiveTab('dsa-sheet')}
+            className={`px-6 py-2.5 rounded-full text-xs font-black transition-all flex items-center gap-2 ${
+              activeTab === 'dsa-sheet'
+                ? 'bg-charcoal text-cream shadow-md'
+                : 'text-charcoal/70 hover:text-charcoal'
+            }`}
+          >
+            <FileText className="w-4 h-4" /> DSA Sheet
+          </button>
+
+          <button
             onClick={() => setActiveTab('roadmap')}
             className={`px-6 py-2.5 rounded-full text-xs font-black transition-all flex items-center gap-2 ${
               activeTab === 'roadmap'
@@ -198,6 +210,8 @@ export const TopicPractice: React.FC = () => {
       {/* Render Tab Content */}
       {activeTab === 'roadmap' ? (
         <RoadmapView />
+      ) : activeTab === 'dsa-sheet' ? (
+        <DSASheet />
       ) : (
         <div className="space-y-6">
           {/* Bento Search and Category Filter Toolbar */}
