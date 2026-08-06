@@ -32,9 +32,18 @@ const setRefreshTokenCookie = (res, refreshToken) => {
   res.cookie('refreshToken', refreshToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+    sameSite: process.env.COOKIE_SAME_SITE || (process.env.NODE_ENV === 'production' ? 'none' : 'lax'),
     maxAge,
     path: '/api/auth',
+  });
+};
+
+// Clear refresh token cookie helper
+const clearRefreshTokenCookie = (res) => {
+  res.clearCookie('refreshToken', {
+    path: '/api/auth',
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.COOKIE_SAME_SITE || (process.env.NODE_ENV === 'production' ? 'none' : 'lax'),
   });
 };
 
@@ -231,7 +240,7 @@ exports.refreshToken = async (req, res) => {
       // Token reuse detected — potential theft. Invalidate ALL refresh tokens.
       user.refreshTokens = [];
       await user.save({ validateBeforeSave: false });
-      res.clearCookie('refreshToken', { path: '/api/auth' });
+      clearRefreshTokenCookie(res);
       return res.status(401).json({
         error: 'Refresh token reuse detected. All sessions have been invalidated for security.',
         code: 'TOKEN_REUSE_DETECTED',
@@ -295,7 +304,7 @@ exports.logoutUser = async (req, res) => {
       }
     }
 
-    res.clearCookie('refreshToken', { path: '/api/auth' });
+    clearRefreshTokenCookie(res);
     res.json({ message: 'Logged out successfully' });
   } catch (error) {
     res.status(500).json({ error: error.message || 'Server Error' });
@@ -440,7 +449,7 @@ exports.resetPassword = async (req, res) => {
 
     await user.save();
 
-    res.clearCookie('refreshToken', { path: '/api/auth' });
+    clearRefreshTokenCookie(res);
     res.json({ message: 'Password reset successful! Please login with your new password.' });
   } catch (error) {
     res.status(500).json({ error: error.message || 'Server Error' });
