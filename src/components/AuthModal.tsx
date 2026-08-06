@@ -138,7 +138,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMo
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
               transition={{ type: 'spring', duration: 0.4 }}
-              className="relative w-full max-w-md modal-card-castrio p-8 shadow-2xl h-[540px] flex flex-col justify-between"
+              className="relative w-full max-w-md modal-card-castrio p-6 sm:p-8 shadow-2xl min-h-[480px] max-h-[90vh] overflow-y-auto flex flex-col justify-between"
               onClick={(e) => e.stopPropagation()}
             >
               <button onClick={onClose} className="absolute top-6 right-6 p-2 rounded-full hover:bg-black/5 text-charcoal z-30">
@@ -220,7 +220,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMo
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
               transition={{ type: 'spring', duration: 0.4 }}
-              className="relative w-full max-w-md modal-card-castrio p-8 shadow-2xl h-[540px] flex flex-col justify-between"
+              className="relative w-full max-w-md modal-card-castrio p-6 sm:p-8 shadow-2xl min-h-[480px] max-h-[90vh] overflow-y-auto flex flex-col justify-between"
               onClick={(e) => e.stopPropagation()}
             >
               <button onClick={onClose} className="absolute top-6 right-6 p-2 rounded-full hover:bg-black/5 text-charcoal z-30">

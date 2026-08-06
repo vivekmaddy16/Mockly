@@ -98,11 +98,11 @@ export const DashboardView: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex justify-center">
-        <div className="flex bg-white/80 p-1 rounded-full border border-charcoal/10 shadow-sm font-black text-xs backdrop-blur-xl">
+      <div className="flex justify-center w-full px-2">
+        <div className="flex bg-white/80 p-1 rounded-full border border-charcoal/10 shadow-sm font-black text-xs backdrop-blur-xl max-w-full overflow-x-auto scrollbar-none">
           <button
             onClick={() => setDashboardTab('my_progress')}
-            className={`px-5 py-2.5 rounded-xl cursor-pointer transition ${
+            className={`px-4 sm:px-5 py-2.5 rounded-full cursor-pointer transition whitespace-nowrap ${
               dashboardTab === 'my_progress'
                 ? 'bg-charcoal text-cream shadow-sm'
                 : 'text-charcoal/60 hover:text-charcoal'
@@ -112,7 +112,7 @@ export const DashboardView: React.FC = () => {
           </button>
           <button
             onClick={() => setDashboardTab('user_study')}
-            className={`px-5 py-2.5 rounded-xl cursor-pointer transition flex items-center gap-1.5 ${
+            className={`px-4 sm:px-5 py-2.5 rounded-full cursor-pointer transition flex items-center gap-1.5 whitespace-nowrap ${
               dashboardTab === 'user_study'
                 ? 'bg-charcoal text-cream shadow-sm'
                 : 'text-charcoal/60 hover:text-charcoal'

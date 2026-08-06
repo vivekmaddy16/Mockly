@@ -114,7 +114,7 @@ export const RoadmapView: React.FC = () => {
     <div className="space-y-6 animate-fade-in">
       
       {/* Category Pills */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-charcoal/10">
+      <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-charcoal/10 scrollbar-none">
         {categories.map((cat) => (
           <button
             key={cat}
