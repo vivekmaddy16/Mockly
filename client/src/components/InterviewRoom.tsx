@@ -92,7 +92,13 @@ const WebcamTelemetry: React.FC<{
       const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240 } });
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        videoRef.current.play();
+        const playPromise = videoRef.current.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(error => {
+            // Auto-play was interrupted by stopCamera/unmount
+            console.log("Webcam video play interrupted or prevented:", error.message);
+          });
+        }
       }
       setHasPermission(true);
       setCameraActive(true);
@@ -350,12 +356,21 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
   const recognitionRef = useRef<any>(null);
   const hasUnsavedProgress = useRef(false);
 
+  // Proctoring and Security States
+  const [hasStarted, setHasStarted] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [infractions, setInfractions] = useState(0);
+  const [showBlurWarning, setShowBlurWarning] = useState(false);
+  const [showScreenshotWarning, setShowScreenshotWarning] = useState(false);
+  const [isWindowFocused, setIsWindowFocused] = useState(true);
+
   const handleTelemetryUpdate = useCallback((metrics: any) => {
     setTelemetry(metrics);
   }, []);
 
-  // Timer
+  // Timer (only active when interview has started)
   useEffect(() => {
+    if (!hasStarted) return;
     const interval = setInterval(() => setSeconds(p => p + 1), 1000);
     return () => {
       clearInterval(interval);
@@ -366,7 +381,7 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
         try { recognitionRef.current.stop(); } catch { /* ignore */ }
       }
     };
-  }, []);
+  }, [hasStarted]);
 
   // Warn before leaving mid-interview
   useEffect(() => {
@@ -383,6 +398,103 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
   useEffect(() => {
     hasUnsavedProgress.current = userAnswer.trim().length > 0;
   }, [userAnswer]);
+
+  // Enforce fullscreen state change listeners
+  useEffect(() => {
+    if (!hasStarted) return;
+
+    const handleFullscreenChange = () => {
+      const isFull = !!document.fullscreenElement;
+      setIsFullscreen(isFull);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, [hasStarted]);
+
+
+
+  // Monitor Window Focus / Tab Switching
+  useEffect(() => {
+    if (!hasStarted) return;
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        setIsWindowFocused(false);
+        setInfractions(p => p + 1);
+        setShowBlurWarning(true);
+      } else {
+        if (!showBlurWarning && !showScreenshotWarning) {
+          setIsWindowFocused(true);
+        }
+      }
+    };
+
+    const handleWindowBlur = () => {
+      setIsWindowFocused(false);
+      setInfractions(p => p + 1);
+      setShowBlurWarning(true);
+    };
+
+    const handleWindowFocus = () => {
+      if (!showBlurWarning && !showScreenshotWarning) {
+        setIsWindowFocused(true);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('blur', handleWindowBlur);
+    window.addEventListener('focus', handleWindowFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('blur', handleWindowBlur);
+      window.removeEventListener('focus', handleWindowFocus);
+    };
+  }, [hasStarted, showBlurWarning, showScreenshotWarning]);
+
+  // Prevent Screenshot Shortcuts & Page Printing (Global)
+  useEffect(() => {
+    if (!hasStarted) return;
+
+    const triggerScreenshotAttempt = () => {
+      setShowScreenshotWarning(true);
+      setIsWindowFocused(false);
+      try {
+        navigator.clipboard.writeText('Screenshots are disabled during this interview.');
+      } catch {}
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Obscure immediately on OS/Meta key press to block Snipping Tool capture buffer
+      if (e.key === 'Meta' || e.key === 'OS' || e.keyCode === 91 || e.keyCode === 92) {
+        setIsWindowFocused(false);
+      }
+      // Block Print Screen key
+      if (e.key === 'PrintScreen' || e.keyCode === 44) {
+        e.preventDefault();
+        triggerScreenshotAttempt();
+      }
+      // Block Print shortcut (Ctrl + P / Cmd + P)
+      if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+        e.preventDefault();
+        triggerScreenshotAttempt();
+      }
+      // Block OS screenshot combos: Cmd+Shift+3, Cmd+Shift+4, Win+Shift+S (Meta/Ctrl + Shift + S/3/4)
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === 's' || e.key === 'S' || e.key === '3' || e.key === '4')) {
+        e.preventDefault();
+        triggerScreenshotAttempt();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [hasStarted]);
 
   const speakQuestion = useCallback(() => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
@@ -426,7 +538,19 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
     recognitionRef.current = r; r.start(); setIsListening(true);
   }, [isListening]);
 
+  const preventCopy = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    try {
+      e.clipboardData?.setData('text/plain', 'Copying is disabled during this interview.');
+    } catch {}
+  };
+
+  const preventContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+  };
+
   const currentEvaluation: QuestionEvaluation | undefined = session.evaluations[currentQuestion.id];
+  const isObscured = !isWindowFocused || showBlurWarning || showScreenshotWarning;
 
   const handleSubmitAnswer = async () => {
     if (!userAnswer.trim()) return;
@@ -462,8 +586,171 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
   const fmt = (s: number) => `${Math.floor(s/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`;
   const progress = ((currentIdx + 1) / session.questions.length) * 100;
 
+  if (!hasStarted) {
+    return (
+      <div className="w-full max-w-2xl mx-auto py-12 animate-fade-in px-4">
+        <div className="card-cream p-8 sm:p-12 space-y-8 text-center shadow-2xl border border-white rounded-[36px]">
+          <div className="w-20 h-20 rounded-full bg-charcoal text-cream flex items-center justify-center mx-auto shadow-xl">
+            <Award className="w-10 h-10 text-coral animate-pulse" />
+          </div>
+
+          <div className="space-y-3">
+            <h2 className="font-display font-black text-3xl text-charcoal">Secure AI Interview Room</h2>
+            <p className="text-sm font-bold text-charcoal/60">
+              Mockly Proctoring & Security protocols are active for this session.
+            </p>
+          </div>
+
+          <div className="p-6 rounded-3xl bg-white border border-charcoal/10 text-left space-y-4 max-w-md mx-auto shadow-inner">
+            <h4 className="font-display font-extrabold text-sm text-charcoal uppercase tracking-wider flex items-center gap-2">
+              <Zap className="w-4 h-4 text-coral animate-pulse" /> Rules of Engagement:
+            </h4>
+            <ul className="space-y-3 text-xs font-bold text-charcoal/70">
+              <li className="flex items-start gap-2.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                <span><strong>Fullscreen Mode:</strong> The interview must be completed in fullscreen. Exiting will trigger an infraction.</span>
+              </li>
+              <li className="flex items-start gap-2.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                <span><strong>Tab & Focus Lock:</strong> Changing tabs or minimizing the window will trigger an infraction.</span>
+              </li>
+              <li className="flex items-start gap-2.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                <span><strong>Content Protection:</strong> Screenshots, copy/paste, and right-clicks are disabled.</span>
+              </li>
+            </ul>
+          </div>
+
+          <div className="flex justify-center">
+            <button
+              onClick={() => {
+                const element = document.documentElement;
+                if (element.requestFullscreen) {
+                  element.requestFullscreen().then(() => {
+                    setHasStarted(true);
+                    setIsFullscreen(true);
+                  }).catch((err) => {
+                    console.error("Fullscreen request failed:", err);
+                    setHasStarted(true);
+                  });
+                } else {
+                  setHasStarted(true);
+                }
+              }}
+              className="btn-dual-pill scale-110"
+            >
+              <div className="icon-badge">
+                <ArrowRight className="w-5 h-5 text-charcoal" />
+              </div>
+              <span className="btn-label">Start Secure Interview</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="w-full max-w-5xl mx-auto space-y-6 animate-fade-in py-4">
+    <div className="w-full max-w-5xl mx-auto space-y-6 animate-fade-in py-4 relative">
+      
+      {/* Fullscreen blocker overlay */}
+      {hasStarted && !isFullscreen && (
+        <div className="fixed inset-0 bg-charcoal/95 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+          <div className="card-cream p-8 max-w-md w-full text-center space-y-6 shadow-2xl border border-white rounded-[32px] animate-fade-in">
+            <div className="w-16 h-16 rounded-full bg-coral/10 text-coral flex items-center justify-center mx-auto">
+              <AlertTriangle className="w-8 h-8 animate-pulse" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="font-display font-black text-2xl text-charcoal">Fullscreen Mode Required</h3>
+              <p className="text-xs font-bold text-charcoal/60 leading-relaxed">
+                To proceed with your mock interview, please re-enter fullscreen mode.
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                const element = document.documentElement;
+                if (element.requestFullscreen) {
+                  element.requestFullscreen().then(() => {
+                    setIsFullscreen(true);
+                  }).catch(err => console.error(err));
+                }
+              }}
+              className="w-full py-3 rounded-2xl bg-charcoal text-cream font-black hover:bg-charcoal/90 transition text-xs uppercase tracking-wider shadow"
+            >
+              Re-enter Fullscreen
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Tab Focus Loss Infraction Warning */}
+      {showBlurWarning && (
+        <div className="fixed inset-0 bg-charcoal/80 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
+          <div className="card-cream p-8 max-w-md w-full text-center space-y-6 shadow-2xl border border-white rounded-[32px] animate-fade-in">
+            <div className="w-16 h-16 rounded-full bg-coral/10 text-coral flex items-center justify-center mx-auto">
+              <AlertTriangle className="w-8 h-8 animate-bounce" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="font-display font-black text-xl text-charcoal">Proctoring Warning</h3>
+              <p className="text-xs font-bold text-charcoal/60 leading-relaxed">
+                You exited the interview window or switched tabs. This infraction has been logged.
+              </p>
+              <div className="p-3 bg-coral/5 rounded-2xl border border-coral/10 text-coral font-black text-xs">
+                Infraction Count: {infractions}
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                setShowBlurWarning(false);
+                setIsWindowFocused(true);
+                // Force fullscreen if lost
+                if (!document.fullscreenElement) {
+                  const element = document.documentElement;
+                  if (element.requestFullscreen) {
+                    element.requestFullscreen().then(() => setIsFullscreen(true)).catch(err => console.error(err));
+                  }
+                }
+              }}
+              className="w-full py-3 rounded-2xl bg-coral text-cream font-black hover:bg-coral/90 transition text-xs uppercase tracking-wider shadow"
+            >
+              Resume Interview
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Screenshot Warning Blocker */}
+      {showScreenshotWarning && (
+        <div className="fixed inset-0 bg-charcoal/95 backdrop-blur-md z-[120] flex items-center justify-center p-4">
+          <div className="card-cream p-8 max-w-md w-full text-center space-y-6 shadow-2xl border border-white rounded-[32px] animate-fade-in">
+            <div className="w-16 h-16 rounded-full bg-coral/10 text-coral flex items-center justify-center mx-auto">
+              <X className="w-8 h-8" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="font-display font-black text-xl text-charcoal">Screenshot Blocked</h3>
+              <p className="text-xs font-bold text-charcoal/60 leading-relaxed">
+                Screenshots are strictly prohibited during the interview to protect the integrity of the questions.
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                setShowScreenshotWarning(false);
+                setIsWindowFocused(true);
+                // Force fullscreen if lost
+                if (!document.fullscreenElement) {
+                  const element = document.documentElement;
+                  if (element.requestFullscreen) {
+                    element.requestFullscreen().then(() => setIsFullscreen(true)).catch(err => console.error(err));
+                  }
+                }
+              }}
+              className="w-full py-3 rounded-2xl bg-charcoal text-cream font-black hover:bg-charcoal/90 transition text-xs uppercase tracking-wider shadow"
+            >
+              Acknowledge & Resume
+            </button>
+          </div>
+        </div>
+      )}
       
       {/* Top HUD Header (Castrio Cream Container) */}
       <div className="soft-card p-4 flex items-center justify-between gap-4 rounded-[28px]">
@@ -511,6 +798,13 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
 
         {/* Controls Right */}
         <div className="flex items-center gap-2">
+          {infractions > 0 && (
+            <div className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-coral/10 border border-coral/20 text-xs font-extrabold text-coral animate-pulse">
+              <AlertTriangle className="w-3.5 h-3.5 text-coral" />
+              <span>{infractions} Infractions</span>
+            </div>
+          )}
+
           <button
             onClick={() => setShowStarDrawer(!showStarDrawer)}
             className="px-3 py-2 rounded-full bg-white border border-charcoal/10 text-charcoal hover:bg-cream text-xs font-extrabold flex items-center gap-1.5 transition"
@@ -540,7 +834,14 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
         {/* Left Column: Interviewing workspace (Question + Inputs / Evaluations) */}
         <div className="lg:col-span-2 space-y-6">
           {/* Main Question Card (Castrio Mint Card Accent) */}
-          <div className="soft-card p-7 sm:p-9 space-y-5 relative overflow-hidden bg-gradient-to-br from-[#a8e0ac] via-[#dff5db] to-[#f7fff8]">
+          <div 
+            onCopy={preventCopy}
+            onCut={preventCopy}
+            onContextMenu={preventContextMenu}
+            className={`soft-card p-7 sm:p-9 space-y-5 relative overflow-hidden bg-gradient-to-br from-[#a8e0ac] via-[#dff5db] to-[#f7fff8] select-none transition-all duration-150 ${
+              isObscured ? 'filter blur-[24px] pointer-events-none scale-[0.98]' : ''
+            }`}
+          >
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="px-3.5 py-1 rounded-full bg-charcoal text-cream text-xs font-extrabold uppercase tracking-wider shadow-sm">
@@ -764,7 +1065,14 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
                 </div>
               )}
 
-              <div className="p-6 rounded-3xl bg-white border border-charcoal/10 space-y-2 text-xs">
+              <div 
+                onCopy={preventCopy}
+                onCut={preventCopy}
+                onContextMenu={preventContextMenu}
+                className={`p-6 rounded-3xl bg-white border border-charcoal/10 space-y-2 text-xs select-none transition-all duration-150 ${
+                  isObscured ? 'filter blur-[24px] pointer-events-none scale-[0.98]' : ''
+                }`}
+              >
                 <h4 className="font-display font-black text-base text-charcoal flex items-center gap-1.5">
                   <Sparkles className="w-4 h-4 text-coral" /> Ideal Model Answer
                 </h4>
