@@ -78,6 +78,9 @@ export const fetchAllSessionsAsync = async (): Promise<InterviewSession[]> => {
       status: s.status || 'in_progress',
       totalScore: s.totalScore,
       overallFeedback: s.overallFeedback,
+      proctoringMode: s.proctoringMode || 'standard',
+      infractions: s.infractions || 0,
+      proctoringFailed: s.proctoringFailed || false,
     }));
   } catch (err) {
     console.warn('Failed to fetch sessions from API, using localStorage:', err);
@@ -115,6 +118,9 @@ export const fetchSessionByIdAsync = async (id: string): Promise<InterviewSessio
       status: s.status || 'in_progress',
       totalScore: s.totalScore,
       overallFeedback: s.overallFeedback,
+      proctoringMode: s.proctoringMode || 'standard',
+      infractions: s.infractions || 0,
+      proctoringFailed: s.proctoringFailed || false,
     };
   } catch {
     return getSessionById(id);
@@ -138,6 +144,7 @@ export const saveSession = async (session: InterviewSession): Promise<void> => {
         jobDescriptionText: session.jobDescriptionText,
         extractedSkills: session.extractedSkills,
         questions: session.questions,
+        proctoringMode: session.proctoringMode || 'standard',
       });
     } catch (err) {
       console.warn('Failed to save session to API:', err);
@@ -261,10 +268,21 @@ export const updateSessionEvaluation = async (
   // Sync to backend
   if (isAuthenticated()) {
     try {
-      await interviewApi.updateEvaluation(sessionId, questionId, evaluation);
+      await interviewApi.updateEvaluation(
+        sessionId,
+        questionId,
+        evaluation,
+        session.infractions,
+        session.proctoringFailed
+      );
 
       if (session.status === 'completed') {
-        await interviewApi.completeSession(sessionId, session.overallFeedback);
+        await interviewApi.completeSession(
+          sessionId,
+          session.overallFeedback,
+          session.infractions,
+          session.proctoringFailed
+        );
       }
     } catch (err) {
       console.warn('Failed to sync evaluation to API:', err);

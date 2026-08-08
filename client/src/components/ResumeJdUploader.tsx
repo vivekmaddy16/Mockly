@@ -32,6 +32,7 @@ export const ResumeJdUploader: React.FC = () => {
   const [difficultyMode, setDifficultyMode] = useState<'Easy' | 'Medium' | 'Hard'>('Medium');
   const [roundType, setRoundType] = useState<'technical_screen' | 'dsa' | 'system_design' | 'behavioral'>('technical_screen');
   const [aiEngine, setAiEngine] = useState<'gemini' | 'ollama'>('gemini');
+  const [proctoringMode, setProctoringMode] = useState<'off' | 'standard' | 'strict'>('standard');
   const [isLoading, setIsLoading] = useState(false);
   const [isParsingResume, setIsParsingResume] = useState(false);
   const [isParsingJd, setIsParsingJd] = useState(false);
@@ -121,7 +122,10 @@ export const ResumeJdUploader: React.FC = () => {
         questions,
         evaluations: {},
         currentQuestionIndex: 0,
-        status: 'in_progress'
+        status: 'in_progress',
+        proctoringMode,
+        infractions: 0,
+        proctoringFailed: false,
       };
       saveSession(newSession);
       router.push(`/interview/${newSession.id}`);
@@ -408,6 +412,38 @@ export const ResumeJdUploader: React.FC = () => {
                   }`}
                 >
                   {engine.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-extrabold text-charcoal mb-2 flex items-center justify-between">
+              <span>Proctoring Security Mode</span>
+              <span className="text-coral font-black">
+                {proctoringMode === 'off' ? 'Disabled' : proctoringMode === 'strict' ? 'Strict Lock' : 'Standard'}
+              </span>
+            </label>
+            <div className="flex gap-2">
+              {[
+                { id: 'off', label: 'Off', desc: 'No rules' },
+                { id: 'standard', label: 'Standard', desc: '3 infractions' },
+                { id: 'strict', label: 'Strict', desc: '1 infraction' },
+              ].map(mode => (
+                <button
+                  key={mode.id}
+                  type="button"
+                  onClick={() => setProctoringMode(mode.id as any)}
+                  className={`flex-1 py-2 rounded-2xl text-xs font-black border transition flex flex-col items-center justify-center ${
+                    proctoringMode === mode.id
+                      ? 'bg-charcoal text-cream border-charcoal shadow-sm'
+                      : 'bg-white text-charcoal/70 border-charcoal/10 hover:bg-cream'
+                  }`}
+                >
+                  <span>{mode.label}</span>
+                  <span className={`text-[8px] font-bold ${proctoringMode === mode.id ? 'text-cream/70' : 'text-charcoal/40'}`}>
+                    {mode.desc}
+                  </span>
                 </button>
               ))}
             </div>

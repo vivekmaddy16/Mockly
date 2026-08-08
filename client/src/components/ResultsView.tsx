@@ -244,6 +244,61 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ session }) => {
       {/* Render tab content dynamically */}
       {activeTab === 'scorecard' && (
         <div className="space-y-8 animate-fade-in">
+          {/* Proctoring Verification Alert Box */}
+          {session.proctoringFailed && (
+            <div className="p-5 rounded-3xl bg-coral/10 border border-coral/25 text-coral text-xs font-bold flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm animate-pulse-slow">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-coral text-cream flex items-center justify-center shrink-0 shadow-md">
+                  <AlertTriangle className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h4 className="font-display font-black text-sm text-charcoal">Proctoring Verification Failed</h4>
+                  <p className="text-[10px] text-charcoal/60 mt-0.5">
+                    This interview was terminated early due to security infractions under the <strong className="uppercase">{session.proctoringMode}</strong> profile.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-coral text-white text-[11px] font-black uppercase tracking-wider self-start sm:self-auto shadow-sm">
+                <span>{session.infractions || 0} Infraction(s) Logged</span>
+              </div>
+            </div>
+          )}
+
+          {!session.proctoringFailed && session.proctoringMode && session.proctoringMode !== 'off' && (
+            <div className="p-4 rounded-3xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-800 text-xs font-bold flex items-center justify-between gap-4 shadow-sm">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0">
+                  <CheckCircle2 className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <h5 className="font-display font-black text-xs text-charcoal">Proctoring Verification Passed</h5>
+                  <p className="text-[10px] text-charcoal/50">
+                    The candidate successfully completed the interview matching the <strong className="uppercase">{session.proctoringMode}</strong> security checks.
+                  </p>
+                </div>
+              </div>
+              <div className="text-[10px] font-extrabold text-emerald-600 bg-white border border-emerald-300 px-3 py-1 rounded-full">
+                {session.infractions || 0} Infractions
+              </div>
+            </div>
+          )}
+
+          {session.proctoringMode === 'off' && (
+            <div className="p-4 rounded-3xl bg-black/5 border border-black/10 text-charcoal/80 text-xs font-bold flex items-center justify-between gap-4 shadow-sm">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-charcoal/10 text-charcoal flex items-center justify-center shrink-0">
+                  <CheckCircle2 className="w-4 h-4 text-charcoal/60" />
+                </div>
+                <div>
+                  <h5 className="font-display font-black text-xs text-charcoal">Practice Mode (No Proctoring)</h5>
+                  <p className="text-[10px] text-charcoal/50">
+                    Proctoring controls and distraction monitoring were deactivated for this prep session.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Executive Score Summary Card */}
           <div className="card-cream p-7 sm:p-9 border border-white shadow-2xl space-y-6">
             <div className="flex flex-col md:flex-row items-center justify-between gap-8">

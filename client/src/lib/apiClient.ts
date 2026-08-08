@@ -372,6 +372,7 @@ export const interviewApi = {
     jobDescriptionText?: string;
     extractedSkills?: string[];
     questions?: any[];
+    proctoringMode?: string;
   }) => apiFetch<any>('/interviews', {
     method: 'POST',
     body: JSON.stringify(payload),
@@ -385,16 +386,16 @@ export const interviewApi = {
 
   getSessionById: (id: string) => apiFetch<any>(`/interviews/${id}`),
 
-  updateEvaluation: (sessionId: string, questionId: string, evaluation: any) =>
+  updateEvaluation: (sessionId: string, questionId: string, evaluation: any, infractions?: number, proctoringFailed?: boolean) =>
     apiFetch<any>(`/interviews/${sessionId}/eval`, {
       method: 'PUT',
-      body: JSON.stringify({ questionId, evaluation }),
+      body: JSON.stringify({ questionId, evaluation, infractions, proctoringFailed }),
     }),
 
-  completeSession: (sessionId: string, overallFeedback?: any) =>
+  completeSession: (sessionId: string, overallFeedback?: any, infractions?: number, proctoringFailed?: boolean) =>
     apiFetch<any>(`/interviews/${sessionId}/complete`, {
       method: 'PUT',
-      body: JSON.stringify({ overallFeedback }),
+      body: JSON.stringify({ overallFeedback, infractions, proctoringFailed }),
     }),
 
   deleteSession: (sessionId: string) =>

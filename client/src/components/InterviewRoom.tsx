@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { InterviewSession, QuestionEvaluation } from '@/types';
 import { evaluateAnswer } from '@/lib/gemini';
-import { updateSessionEvaluation } from '@/lib/storage';
+import { updateSessionEvaluation, saveSession } from '@/lib/storage';
 
 interface InterviewRoomProps {
   session: InterviewSession;
@@ -359,10 +359,56 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
   // Proctoring and Security States
   const [hasStarted, setHasStarted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [infractions, setInfractions] = useState(0);
+  const [infractions, setInfractions] = useState(session.infractions || 0);
   const [showBlurWarning, setShowBlurWarning] = useState(false);
   const [showScreenshotWarning, setShowScreenshotWarning] = useState(false);
   const [isWindowFocused, setIsWindowFocused] = useState(true);
+  const [proctoringFailed, setProctoringFailed] = useState(session.proctoringFailed || false);
+
+  const maxAllowedInfractions = session.proctoringMode === 'strict' ? 1 : 3;
+
+  // Proctoring early auto-termination logic
+  const terminateSessionDueToProctoring = useCallback(async (finalInfractions: number) => {
+    if (session.status === 'completed') return;
+
+    // Update local state
+    const updatedSession = {
+      ...session,
+      status: 'completed' as const,
+      infractions: finalInfractions,
+      proctoringFailed: true,
+      completedAt: new Date().toISOString()
+    };
+
+    // Calculate total score for evaluated answers
+    const evals = Object.values(updatedSession.evaluations);
+    if (evals.length > 0) {
+      updatedSession.totalScore = Math.round(
+        evals.reduce((acc, ev) => acc + (ev.score || 0), 0) / evals.length
+      );
+    } else {
+      updatedSession.totalScore = 0;
+    }
+
+    updatedSession.overallFeedback = {
+      summary: `This interview session was terminated early under the ${session.proctoringMode} proctoring configuration due to security violations. A total of ${finalInfractions} infraction(s) were logged.`,
+      strengths: [],
+      weaknesses: [`Exceeded the infraction limit in ${session.proctoringMode} proctoring mode.`],
+      actionableAdvice: [
+        'Ensure you stay inside the active browser tab and maintain fullscreen mode for secure interviews.',
+        'Do not press system shortcuts (PrintScreen, Ctrl/Cmd + P, Win+Shift+S) or switch tabs during tests.'
+      ]
+    };
+
+    setSession(updatedSession);
+    setProctoringFailed(true);
+
+    try {
+      await saveSession(updatedSession);
+    } catch (err) {
+      console.warn('Failed to save terminated session:', err);
+    }
+  }, [session]);
 
   const handleTelemetryUpdate = useCallback((metrics: any) => {
     setTelemetry(metrics);
@@ -401,7 +447,7 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
 
   // Enforce fullscreen state change listeners
   useEffect(() => {
-    if (!hasStarted) return;
+    if (!hasStarted || session.proctoringMode === 'off' || proctoringFailed) return;
 
     const handleFullscreenChange = () => {
       const isFull = !!document.fullscreenElement;
@@ -412,18 +458,24 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
     };
-  }, [hasStarted]);
+  }, [hasStarted, session.proctoringMode, proctoringFailed]);
 
 
 
   // Monitor Window Focus / Tab Switching
   useEffect(() => {
-    if (!hasStarted) return;
+    if (!hasStarted || session.proctoringMode === 'off' || proctoringFailed) return;
 
     const handleVisibilityChange = () => {
       if (document.hidden) {
         setIsWindowFocused(false);
-        setInfractions(p => p + 1);
+        setInfractions(p => {
+          const next = p + 1;
+          if (next >= maxAllowedInfractions) {
+            terminateSessionDueToProctoring(next);
+          }
+          return next;
+        });
         setShowBlurWarning(true);
       } else {
         if (!showBlurWarning && !showScreenshotWarning) {
@@ -434,7 +486,13 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
 
     const handleWindowBlur = () => {
       setIsWindowFocused(false);
-      setInfractions(p => p + 1);
+      setInfractions(p => {
+        const next = p + 1;
+        if (next >= maxAllowedInfractions) {
+          terminateSessionDueToProctoring(next);
+        }
+        return next;
+      });
       setShowBlurWarning(true);
     };
 
@@ -453,15 +511,22 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
       window.removeEventListener('blur', handleWindowBlur);
       window.removeEventListener('focus', handleWindowFocus);
     };
-  }, [hasStarted, showBlurWarning, showScreenshotWarning]);
+  }, [hasStarted, showBlurWarning, showScreenshotWarning, session.proctoringMode, proctoringFailed, maxAllowedInfractions, terminateSessionDueToProctoring]);
 
   // Prevent Screenshot Shortcuts & Page Printing (Global)
   useEffect(() => {
-    if (!hasStarted) return;
+    if (!hasStarted || session.proctoringMode === 'off' || proctoringFailed) return;
 
     const triggerScreenshotAttempt = () => {
       setShowScreenshotWarning(true);
       setIsWindowFocused(false);
+      setInfractions(p => {
+        const next = p + 1;
+        if (next >= maxAllowedInfractions) {
+          terminateSessionDueToProctoring(next);
+        }
+        return next;
+      });
       try {
         navigator.clipboard.writeText('Screenshots are disabled during this interview.');
       } catch {}
@@ -494,7 +559,7 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [hasStarted]);
+  }, [hasStarted, session.proctoringMode, proctoringFailed, maxAllowedInfractions, terminateSessionDueToProctoring]);
 
   const speakQuestion = useCallback(() => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
@@ -597,33 +662,56 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
           <div className="space-y-3">
             <h2 className="font-display font-black text-3xl text-charcoal">Secure AI Interview Room</h2>
             <p className="text-sm font-bold text-charcoal/60">
-              Mockly Proctoring & Security protocols are active for this session.
+              {session.proctoringMode === 'off' ? 'Mockly Practice Session' : 'Mockly Proctoring & Security protocols are active for this session.'}
             </p>
           </div>
 
           <div className="p-6 rounded-3xl bg-white border border-charcoal/10 text-left space-y-4 max-w-md mx-auto shadow-inner">
             <h4 className="font-display font-extrabold text-sm text-charcoal uppercase tracking-wider flex items-center gap-2">
-              <Zap className="w-4 h-4 text-coral animate-pulse" /> Rules of Engagement:
+              <Zap className="w-4 h-4 text-coral animate-pulse" /> {session.proctoringMode === 'off' ? 'Practice Mode Details:' : 'Rules of Engagement:'}
             </h4>
             <ul className="space-y-3 text-xs font-bold text-charcoal/70">
-              <li className="flex items-start gap-2.5">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                <span><strong>Fullscreen Mode:</strong> The interview must be completed in fullscreen. Exiting will trigger an infraction.</span>
-              </li>
-              <li className="flex items-start gap-2.5">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                <span><strong>Tab & Focus Lock:</strong> Changing tabs or minimizing the window will trigger an infraction.</span>
-              </li>
-              <li className="flex items-start gap-2.5">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                <span><strong>Content Protection:</strong> Screenshots, copy/paste, and right-clicks are disabled.</span>
-              </li>
+              {session.proctoringMode === 'off' ? (
+                <>
+                  <li className="flex items-start gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <span><strong>No Proctoring:</strong> Feel free to exit fullscreen or switch tabs to check references as needed.</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <span><strong>Facial Analysis:</strong> Visual telemetry (eye contact, confidence tracking) is active if camera is enabled.</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <span><strong>Protected Content:</strong> Screenshots and right-clicks are disabled for security.</span>
+                  </li>
+                </>
+              ) : (
+                <>
+                  <li className="flex items-start gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <span><strong>Fullscreen Mode:</strong> The interview must be completed in fullscreen. Exiting will trigger an infraction.</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <span><strong>Tab & Focus Lock:</strong> Changing tabs or minimizing the window will trigger an infraction. (Limit: {maxAllowedInfractions})</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <span><strong>Content Protection:</strong> Screenshots, copy/paste, and right-clicks are disabled.</span>
+                  </li>
+                </>
+              )}
             </ul>
           </div>
 
           <div className="flex justify-center">
             <button
               onClick={() => {
+                if (session.proctoringMode === 'off') {
+                  setHasStarted(true);
+                  return;
+                }
                 const element = document.documentElement;
                 if (element.requestFullscreen) {
                   element.requestFullscreen().then(() => {
@@ -642,7 +730,7 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
               <div className="icon-badge">
                 <ArrowRight className="w-5 h-5 text-charcoal" />
               </div>
-              <span className="btn-label">Start Secure Interview</span>
+              <span className="btn-label">{session.proctoringMode === 'off' ? 'Start Practice Session' : 'Start Secure Interview'}</span>
             </button>
           </div>
         </div>
@@ -653,8 +741,37 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
   return (
     <div className="w-full max-w-5xl mx-auto space-y-6 animate-fade-in py-4 relative">
       
+      {/* Proctoring Failure / Session Terminated Blocker */}
+      {proctoringFailed && (
+        <div className="fixed inset-0 bg-charcoal/95 backdrop-blur-md z-[200] flex items-center justify-center p-4">
+          <div className="card-cream p-8 max-w-md w-full text-center space-y-6 shadow-2xl border border-white rounded-[32px] animate-fade-in">
+            <div className="w-16 h-16 rounded-full bg-coral/10 text-coral flex items-center justify-center mx-auto">
+              <AlertTriangle className="w-8 h-8 animate-pulse" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="font-display font-black text-2xl text-charcoal">Session Terminated</h3>
+              <p className="text-xs font-bold text-charcoal/60 leading-relaxed">
+                You have exceeded the maximum allowed infractions ({maxAllowedInfractions}) under the <strong className="uppercase">{session.proctoringMode}</strong> proctoring profile.
+              </p>
+              <div className="p-3.5 bg-coral/5 rounded-2xl border border-coral/10 text-coral font-black text-xs space-y-1">
+                <div>Total Infractions Logged: {infractions}</div>
+                <div className="text-[10px] text-coral/75 uppercase tracking-wider">Security Violation Limit Reached</div>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                router.push(`/interview/${session.id}/results`);
+              }}
+              className="w-full py-3 rounded-2xl bg-charcoal text-cream font-black hover:bg-charcoal/90 transition text-xs uppercase tracking-wider shadow"
+            >
+              View Results Scorecard
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Fullscreen blocker overlay */}
-      {hasStarted && !isFullscreen && (
+      {hasStarted && !isFullscreen && session.proctoringMode !== 'off' && !proctoringFailed && (
         <div className="fixed inset-0 bg-charcoal/95 backdrop-blur-md z-[100] flex items-center justify-center p-4">
           <div className="card-cream p-8 max-w-md w-full text-center space-y-6 shadow-2xl border border-white rounded-[32px] animate-fade-in">
             <div className="w-16 h-16 rounded-full bg-coral/10 text-coral flex items-center justify-center mx-auto">
@@ -684,7 +801,7 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
       )}
 
       {/* Tab Focus Loss Infraction Warning */}
-      {showBlurWarning && (
+      {showBlurWarning && !proctoringFailed && (
         <div className="fixed inset-0 bg-charcoal/80 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
           <div className="card-cream p-8 max-w-md w-full text-center space-y-6 shadow-2xl border border-white rounded-[32px] animate-fade-in">
             <div className="w-16 h-16 rounded-full bg-coral/10 text-coral flex items-center justify-center mx-auto">
@@ -696,7 +813,7 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
                 You exited the interview window or switched tabs. This infraction has been logged.
               </p>
               <div className="p-3 bg-coral/5 rounded-2xl border border-coral/10 text-coral font-black text-xs">
-                Infraction Count: {infractions}
+                Infraction Count: {infractions} / {maxAllowedInfractions}
               </div>
             </div>
             <button
@@ -720,7 +837,7 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
       )}
 
       {/* Screenshot Warning Blocker */}
-      {showScreenshotWarning && (
+      {showScreenshotWarning && !proctoringFailed && (
         <div className="fixed inset-0 bg-charcoal/95 backdrop-blur-md z-[120] flex items-center justify-center p-4">
           <div className="card-cream p-8 max-w-md w-full text-center space-y-6 shadow-2xl border border-white rounded-[32px] animate-fade-in">
             <div className="w-16 h-16 rounded-full bg-coral/10 text-coral flex items-center justify-center mx-auto">
@@ -731,6 +848,9 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
               <p className="text-xs font-bold text-charcoal/60 leading-relaxed">
                 Screenshots are strictly prohibited during the interview to protect the integrity of the questions.
               </p>
+              <div className="p-3 bg-coral/5 rounded-2xl border border-coral/10 text-coral font-black text-xs">
+                Infraction Count: {infractions} / {maxAllowedInfractions}
+              </div>
             </div>
             <button
               onClick={() => {
@@ -773,6 +893,13 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
                    session.roundType === 'behavioral' ? 'Behavioral Round' : 'Tech Screen'}
                 </span>
               )}
+              <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-extrabold border uppercase ${
+                session.proctoringMode === 'off' ? 'bg-black/5 text-charcoal/60 border-black/10' :
+                session.proctoringMode === 'strict' ? 'bg-red-500/10 text-red-700 border-red-500/20' :
+                'bg-emerald-500/10 text-emerald-700 border-emerald-500/20'
+              }`}>
+                Proctor: {session.proctoringMode || 'standard'}
+              </span>
             </div>
             <p className="text-xs font-bold text-charcoal/60">{session.experienceLevel}</p>
           </div>
@@ -798,10 +925,10 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
 
         {/* Controls Right */}
         <div className="flex items-center gap-2">
-          {infractions > 0 && (
+          {infractions > 0 && session.proctoringMode !== 'off' && (
             <div className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-coral/10 border border-coral/20 text-xs font-extrabold text-coral animate-pulse">
               <AlertTriangle className="w-3.5 h-3.5 text-coral" />
-              <span>{infractions} Infractions</span>
+              <span>{infractions} / {maxAllowedInfractions} Infractions</span>
             </div>
           )}
 

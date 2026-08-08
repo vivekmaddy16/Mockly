@@ -18,6 +18,7 @@ exports.createSession = async (req, res) => {
       jobDescriptionText,
       extractedSkills,
       questions,
+      proctoringMode,
     } = req.body;
 
     const newSession = await InterviewSession.create({
@@ -33,6 +34,9 @@ exports.createSession = async (req, res) => {
       questions: questions || [],
       evaluations: {},
       status: 'in_progress',
+      proctoringMode: proctoringMode || 'standard',
+      infractions: 0,
+      proctoringFailed: false,
     });
 
     res.status(201).json(newSession);
@@ -112,7 +116,7 @@ exports.getSessionById = async (req, res) => {
 // ══════════════════════════════════════════════════════════════
 exports.updateEvaluation = async (req, res) => {
   try {
-    const { questionId, evaluation } = req.body;
+    const { questionId, evaluation, infractions, proctoringFailed } = req.body;
     const session = await InterviewSession.findOne({
       sessionId: req.params.id,
       user: req.user._id,
@@ -137,6 +141,13 @@ exports.updateEvaluation = async (req, res) => {
     if (evals.length >= session.questions.length) {
       session.status = 'completed';
       session.completedAt = new Date();
+    }
+
+    if (typeof infractions === 'number') {
+      session.infractions = infractions;
+    }
+    if (typeof proctoringFailed === 'boolean') {
+      session.proctoringFailed = proctoringFailed;
     }
 
     await session.save();
@@ -176,7 +187,7 @@ exports.completeSession = async (req, res) => {
       return res.status(404).json({ error: 'Interview session not found' });
     }
 
-    const { overallFeedback } = req.body;
+    const { overallFeedback, infractions, proctoringFailed } = req.body;
 
     session.status = 'completed';
     session.completedAt = new Date();
@@ -191,6 +202,13 @@ exports.completeSession = async (req, res) => {
       session.totalScore = Math.round(
         evals.reduce((acc, ev) => acc + (ev.score || 0), 0) / evals.length
       );
+    }
+
+    if (typeof infractions === 'number') {
+      session.infractions = infractions;
+    }
+    if (typeof proctoringFailed === 'boolean') {
+      session.proctoringFailed = proctoringFailed;
     }
 
     await session.save();
