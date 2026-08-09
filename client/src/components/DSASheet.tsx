@@ -340,16 +340,16 @@ export const DSASheet: React.FC = () => {
       </div>
 
       {/* ───── Filters Bar ───── */}
-      <div className="soft-card p-4 sm:p-5 space-y-4 md:space-y-0 md:flex md:items-center md:justify-between md:gap-4">
+      <div className="card-cream p-4 sm:p-5 space-y-4 md:space-y-0 md:flex md:items-center md:justify-between md:gap-4">
         {/* Topic Select */}
         <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-1 scrollbar-none">
-          <Filter className="w-4 h-4 text-charcoal/40 shrink-0" />
+          <Filter className="w-4 h-4 text-vast-ink/50 shrink-0" />
           <button
             onClick={() => setSelectedTopic('All')}
-            className={`px-3.5 py-1.5 rounded-full text-[11px] font-black whitespace-nowrap transition-all ${
+            className={`px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all border-2 border-vast-ink ${
               selectedTopic === 'All'
-                ? 'bg-charcoal text-cream shadow-sm'
-                : 'bg-white text-charcoal/60 border border-charcoal/10 hover:bg-cream'
+                ? 'bg-vast-ink text-lumen-cream font-semibold'
+                : 'bg-lumen-cream text-vast-ink hover:bg-lumen-stone/50'
             }`}
           >
             All Topics
@@ -361,16 +361,16 @@ export const DSASheet: React.FC = () => {
               <button
                 key={topic}
                 onClick={() => setSelectedTopic(topic)}
-                className={`px-3.5 py-1.5 rounded-full text-[11px] font-black whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                className={`px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 border-2 border-vast-ink ${
                   selectedTopic === topic
-                    ? 'bg-charcoal text-cream shadow-sm'
-                    : 'bg-white text-charcoal/60 border border-charcoal/10 hover:bg-cream'
+                    ? 'bg-vast-ink text-lumen-cream font-semibold'
+                    : 'bg-lumen-cream text-vast-ink hover:bg-lumen-stone/50'
                 }`}
               >
                 {TOPIC_ICONS[topic]}
                 <span>{topic}</span>
-                <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${
-                  selectedTopic === topic ? 'bg-white/20' : 'bg-charcoal/5'
+                <span className={`text-[10px] px-2 py-0.5 rounded-full ${
+                  selectedTopic === topic ? 'bg-lumen-cream/20 text-lumen-cream' : 'bg-vast-ink/10 text-vast-ink'
                 }`}>{topicSolved}/{count}</span>
               </button>
             );

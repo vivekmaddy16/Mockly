@@ -9,6 +9,7 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        // Wispr Flow Core Tokens
         'lavender-whisper': '#f0d7ff',
         'forest-ink': '#034f46',
         'ember-glow': '#ffa946',
@@ -16,8 +17,23 @@ module.exports = {
         'lumen-cream': '#ffffeb',
         'lumen-stone': '#e4e4d0',
         'fog': '#8a8a80',
-        'charcoal': '#222222',
+        'charcoal': '#1a1a1a',
         'pure-white': '#ffffff',
+
+        // Color aliases for backwards compatibility
+        cream: {
+          DEFAULT: '#ffffeb',
+          pure: '#ffffff',
+          dark: '#e4e4d0',
+        },
+        coral: {
+          DEFAULT: '#ffa946',
+          dark: '#034f46',
+        },
+        mint: {
+          light: '#f0d7ff',
+          DEFAULT: '#034f46',
+        },
         
         // Named surface aliases
         surface: {

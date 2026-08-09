@@ -114,29 +114,29 @@ export const RoadmapView: React.FC = () => {
     <div className="space-y-6 animate-fade-in">
       
       {/* Category Pills */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-charcoal/10 scrollbar-none">
+      <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b-2 border-vast-ink/10 scrollbar-none">
         {categories.map((cat) => (
           <button
             key={cat}
             onClick={() => { setActiveCategory(cat); setSelectedStep(null); }}
-            className={`px-4 py-2.5 rounded-full text-xs font-black whitespace-nowrap transition-all flex items-center gap-2 ${
+            className={`px-5 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-2 border-2 border-vast-ink ${
               activeCategory === cat
-                ? 'bg-charcoal text-cream shadow-md'
-                : 'bg-white text-charcoal/70 border border-charcoal/10 hover:bg-cream'
+                ? 'bg-vast-ink text-lumen-cream font-semibold'
+                : 'bg-lumen-cream text-vast-ink hover:bg-lumen-stone/50'
             }`}
           >
-            <GitBranch className="w-3.5 h-3.5" />
+            <GitBranch className="w-3.5 h-3.5 text-forest-ink" />
             {cat}
           </button>
         ))}
       </div>
 
       {/* Progress Header */}
-      <div className="card-mint-gradient p-6 border border-white flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className="card-forest-panel flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="space-y-1 text-center sm:text-left">
-          <span className="text-[10px] font-black uppercase text-charcoal/60 tracking-wider">Milestone Progress</span>
-          <h3 className="font-display font-black text-xl text-charcoal">{activeCategory} Learning Path</h3>
-          <p className="text-xs font-bold text-charcoal/70">
+          <span className="text-xs font-semibold uppercase text-lavender-whisper tracking-wider">Milestone Progress</span>
+          <h3 className="font-garamond font-normal text-2xl text-lumen-cream">{activeCategory} Learning Path</h3>
+          <p className="text-sm font-normal text-lumen-stone">
             {completedCount} of {currentCategorySteps.length} Milestones Completed
           </p>
         </div>

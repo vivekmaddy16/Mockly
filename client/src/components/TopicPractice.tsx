@@ -202,6 +202,7 @@ export const TopicPractice: React.FC = () => {
                 : 'text-vast-ink hover:bg-lumen-stone/50'
             }`}
           >
+            <GitBranch className="w-4 h-4" /> CS Roadmap Tree
           </button>
         </div>
       </div>
@@ -214,9 +215,9 @@ export const TopicPractice: React.FC = () => {
       ) : (
         <div className="space-y-6">
           {/* Bento Search and Category Filter Toolbar */}
-          <div className="soft-card p-5 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="card-cream p-5 flex flex-col md:flex-row items-center justify-between gap-4">
             {/* Category Buttons */}
-            <div className="flex flex-wrap gap-1.5 w-full md:w-auto">
+            <div className="flex flex-wrap gap-2 w-full md:w-auto">
               {[
                 { id: 'cs_fundamental', label: 'CS Fundamentals' },
                 { id: 'company_prep', label: 'Company Spec Prep' },
@@ -230,10 +231,10 @@ export const TopicPractice: React.FC = () => {
                     setSelectedQuestion(null);
                     setEvaluation(null);
                   }}
-                  className={`px-4 py-2 rounded-full text-xs font-black transition-all cursor-pointer ${
+                  className={`px-4 py-2 rounded-full text-xs font-semibold transition-all cursor-pointer border-2 border-vast-ink ${
                     selectedCategoryType === cat.id
-                      ? 'bg-charcoal text-cream shadow-sm'
-                      : 'bg-white text-charcoal/65 hover:bg-cream border border-charcoal/10'
+                      ? 'bg-vast-ink text-lumen-cream font-semibold'
+                      : 'bg-lumen-cream text-vast-ink hover:bg-lumen-stone/50'
                   }`}
                 >
                   {cat.label}
@@ -244,19 +245,19 @@ export const TopicPractice: React.FC = () => {
             {/* Live Search Box */}
             <div className="relative w-full md:w-64">
               <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                <Search className="w-4 h-4 text-charcoal/40" />
+                <Search className="w-4 h-4 text-vast-ink/50" />
               </span>
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search practice topics..."
-                className="w-full pl-10 pr-4 py-2 bg-white border border-charcoal/10 rounded-full text-xs font-bold text-charcoal focus:outline-none focus:border-charcoal placeholder:text-charcoal/40"
+                className="input-wispr pl-10 py-2 text-xs"
               />
             </div>
           </div>
 
-          {/* Topic Selector Grid (Filtered by selected category and search query) */}
+          {/* Topic Selector Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {Object.entries(topicBank)
               .filter(([topic, data]) => {
@@ -276,17 +277,19 @@ export const TopicPractice: React.FC = () => {
                       setEvaluation(null);
                       setAnswer('');
                     }}
-                    className={`soft-card p-6 cursor-pointer transition-all ${
-                      isSelected ? 'ring-2 ring-charcoal bg-white shadow-xl scale-[1.02]' : 'hover:scale-[1.01]'
+                    className={`p-5 rounded-3xl border-2 border-vast-ink cursor-pointer transition-all ${
+                      isSelected ? 'bg-vast-ink text-lumen-cream' : 'bg-lumen-cream text-vast-ink hover:bg-lumen-stone/30'
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-2xl bg-charcoal text-cream flex items-center justify-center font-bold shrink-0">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold shrink-0 ${
+                        isSelected ? 'bg-lavender-whisper text-vast-ink' : 'bg-forest-ink text-lumen-cream'
+                      }`}>
                         {data.icon}
                       </div>
                       <div>
-                        <h3 className="font-display font-black text-sm text-charcoal">{topic}</h3>
-                        <span className="text-[10px] text-charcoal/60 font-bold">{data.questions.length} Core Questions</span>
+                        <h3 className="font-garamond font-normal text-lg">{topic}</h3>
+                        <span className={`text-xs font-normal ${isSelected ? 'text-lumen-stone' : 'text-fog'}`}>{data.questions.length} Core Questions</span>
                       </div>
                     </div>
                   </div>
