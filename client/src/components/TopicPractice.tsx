@@ -157,52 +157,51 @@ export const TopicPractice: React.FC = () => {
     <div className="w-full max-w-5xl mx-auto space-y-8 animate-fade-in py-4">
       
       {/* Header */}
-      <div className="page-shell rounded-[36px] p-6 sm:p-8 text-center space-y-3 shadow-[0_20px_60px_rgba(27,30,22,0.06)]">
-        <div className="section-chip mx-auto text-charcoal text-xs font-extrabold">
-          <Brain className="w-4 h-4 text-coral" /> CS Fundamentals & Prep Hub
+      <div className="card-cream text-center space-y-3">
+        <div className="badge-teal mx-auto">
+          <Brain className="w-4 h-4 text-lavender-whisper" /> CS Fundamentals & Prep Hub
         </div>
-        <h1 className="font-display font-black text-3xl sm:text-5xl text-charcoal tracking-tight">
+        <h1 className="font-garamond font-normal text-4xl sm:text-6xl text-vast-ink tracking-tight">
           Topic Practice & CS Roadmap
         </h1>
-        <p className="text-sm font-bold text-charcoal/60 max-w-xl mx-auto">
+        <p className="text-base text-vast-ink/75 max-w-xl mx-auto font-normal">
           Deep-dive into core Computer Science topics or follow a structured step-by-step interview roadmap path.
         </p>
       </div>
 
-      {/* Castrio Tab Selector Pills */}
+      {/* Tab Selector Pills */}
       <div className="flex justify-center w-full px-2">
-        <div className="inline-flex items-center gap-1.5 p-1.5 rounded-full bg-white border border-charcoal/10 shadow-md max-w-full overflow-x-auto scrollbar-none">
+        <div className="inline-flex items-center gap-1 p-1 rounded-full bg-lumen-cream border-2 border-vast-ink">
           <button
             onClick={() => setActiveTab('practice')}
-            className={`px-4 sm:px-6 py-2 sm:py-2.5 rounded-full text-xs font-black transition-all flex items-center gap-1.5 sm:gap-2 whitespace-nowrap ${
+            className={`px-5 py-2 rounded-full text-xs font-semibold transition-all flex items-center gap-2 ${
               activeTab === 'practice'
-                ? 'bg-charcoal text-cream shadow-md'
-                : 'text-charcoal/70 hover:text-charcoal'
+                ? 'bg-vast-ink text-lumen-cream font-semibold'
+                : 'text-vast-ink hover:bg-lumen-stone/50'
             }`}
           >
-            <Target className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Practice Questions
+            <Target className="w-4 h-4" /> Practice Questions
           </button>
 
           <button
             onClick={() => setActiveTab('dsa-sheet')}
-            className={`px-4 sm:px-6 py-2 sm:py-2.5 rounded-full text-xs font-black transition-all flex items-center gap-1.5 sm:gap-2 whitespace-nowrap ${
+            className={`px-5 py-2 rounded-full text-xs font-semibold transition-all flex items-center gap-2 ${
               activeTab === 'dsa-sheet'
-                ? 'bg-charcoal text-cream shadow-md'
-                : 'text-charcoal/70 hover:text-charcoal'
+                ? 'bg-vast-ink text-lumen-cream font-semibold'
+                : 'text-vast-ink hover:bg-lumen-stone/50'
             }`}
           >
-            <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> DSA Sheet
+            <FileText className="w-4 h-4" /> DSA Sheet
           </button>
 
           <button
             onClick={() => setActiveTab('roadmap')}
-            className={`px-4 sm:px-6 py-2 sm:py-2.5 rounded-full text-xs font-black transition-all flex items-center gap-1.5 sm:gap-2 whitespace-nowrap ${
+            className={`px-5 py-2 rounded-full text-xs font-semibold transition-all flex items-center gap-2 ${
               activeTab === 'roadmap'
-                ? 'bg-charcoal text-cream shadow-md'
-                : 'text-charcoal/70 hover:text-charcoal'
+                ? 'bg-vast-ink text-lumen-cream font-semibold'
+                : 'text-vast-ink hover:bg-lumen-stone/50'
             }`}
           >
-            <GitBranch className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> CS Roadmap Tree
           </button>
         </div>
       </div>
