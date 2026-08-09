@@ -267,14 +267,16 @@ export const ResumeJdUploader: React.FC = () => {
                 key={round.id}
                 type="button"
                 onClick={() => setRoundType(round.id as any)}
-                className={`p-5 rounded-3xl border-2 border-vast-ink text-left flex flex-col justify-between h-40 transition-all ${
+                className={`p-5 rounded-3xl border-2 border-vast-ink text-left flex flex-col justify-between h-44 transition-all ${
                   active
-                    ? 'bg-vast-ink text-lumen-cream font-semibold scale-[1.02]'
+                    ? 'bg-vast-ink text-lumen-cream scale-[1.02]'
                     : 'bg-lumen-cream text-vast-ink hover:bg-lumen-stone/50'
                 }`}
               >
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${active ? 'bg-lavender-whisper text-vast-ink' : 'bg-forest-ink text-lumen-cream'} transition-all`}>
-                  <Icon className="w-5 h-5" />
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 border-vast-ink ${
+                  active ? 'bg-lavender-whisper text-vast-ink' : 'bg-vast-ink text-lumen-cream'
+                } transition-all`}>
+                  <Icon className={`w-5 h-5 ${active ? 'text-vast-ink' : 'text-lumen-cream'}`} />
                 </div>
                 <div className="space-y-1 mt-3">
                   <h4 className={`font-garamond text-xl font-normal ${active ? 'text-lumen-cream' : 'text-vast-ink'}`}>{round.title}</h4>
@@ -336,10 +338,10 @@ export const ResumeJdUploader: React.FC = () => {
                   key={level}
                   type="button"
                   onClick={() => setExperienceLevel(level)}
-                  className={`px-3 py-2.5 rounded-2xl text-xs text-left font-bold border transition ${
+                  className={`px-3 py-2.5 rounded-xl text-xs text-left font-semibold border-2 border-vast-ink transition ${
                     experienceLevel === level
-                      ? 'bg-charcoal text-cream border-charcoal'
-                      : 'bg-white text-charcoal/70 border-charcoal/10 hover:bg-cream'
+                      ? 'bg-vast-ink text-lumen-cream'
+                      : 'bg-lumen-cream text-vast-ink hover:bg-lumen-stone/50'
                   }`}
                 >
                   {level}
@@ -349,17 +351,17 @@ export const ResumeJdUploader: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-extrabold text-charcoal mb-2">Difficulty Mode</label>
+            <label className="block text-xs font-semibold text-vast-ink mb-2">Difficulty Mode</label>
             <div className="flex gap-2">
               {(['Easy', 'Medium', 'Hard'] as const).map(mode => (
                 <button
                   key={mode}
                   type="button"
                   onClick={() => setDifficultyMode(mode)}
-                  className={`flex-1 py-2.5 rounded-2xl text-xs font-black border transition ${
+                  className={`flex-1 py-2.5 rounded-xl text-xs font-semibold border-2 border-vast-ink transition ${
                     difficultyMode === mode
-                      ? 'bg-charcoal text-cream border-charcoal'
-                      : 'bg-white text-charcoal/70 border-charcoal/10 hover:bg-cream'
+                      ? 'bg-vast-ink text-lumen-cream'
+                      : 'bg-lumen-cream text-vast-ink hover:bg-lumen-stone/50'
                   }`}
                 >
                   {mode}
@@ -369,9 +371,9 @@ export const ResumeJdUploader: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-extrabold text-charcoal mb-2 flex items-center justify-between">
+            <label className="block text-xs font-semibold text-vast-ink mb-2 flex items-center justify-between">
               <span>Question Count</span>
-              <span className="text-coral font-black">{questionCount} Questions</span>
+              <span className="text-forest-ink font-semibold">{questionCount} Questions</span>
             </label>
             <div className="flex gap-2">
               {[3, 5, 7].map(num => (
@@ -379,10 +381,10 @@ export const ResumeJdUploader: React.FC = () => {
                   key={num}
                   type="button"
                   onClick={() => setQuestionCount(num)}
-                  className={`flex-1 py-2.5 rounded-2xl text-xs font-black border transition ${
+                  className={`flex-1 py-2.5 rounded-xl text-xs font-semibold border-2 border-vast-ink transition ${
                     questionCount === num
-                      ? 'bg-charcoal text-cream border-charcoal'
-                      : 'bg-white text-charcoal/70 border-charcoal/10 hover:bg-cream'
+                      ? 'bg-vast-ink text-lumen-cream'
+                      : 'bg-lumen-cream text-vast-ink hover:bg-lumen-stone/50'
                   }`}
                 >
                   {num} Qs
@@ -392,9 +394,9 @@ export const ResumeJdUploader: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-extrabold text-charcoal mb-2 flex items-center justify-between">
+            <label className="block text-xs font-semibold text-vast-ink mb-2 flex items-center justify-between">
               <span>AI Model Engine</span>
-              <span className="text-coral font-black">{aiEngine === 'gemini' ? 'Gemini 1.5 Flash' : 'Ollama Local Host'}</span>
+              <span className="text-forest-ink font-semibold">{aiEngine === 'gemini' ? 'Gemini 1.5 Flash' : 'Ollama Local Host'}</span>
             </label>
             <div className="flex gap-2">
               {[
@@ -405,10 +407,10 @@ export const ResumeJdUploader: React.FC = () => {
                   key={engine.id}
                   type="button"
                   onClick={() => setAiEngine(engine.id as any)}
-                  className={`flex-1 py-2.5 rounded-2xl text-xs font-black border transition ${
+                  className={`flex-1 py-2.5 rounded-xl text-xs font-semibold border-2 border-vast-ink transition ${
                     aiEngine === engine.id
-                      ? 'bg-charcoal text-cream border-charcoal'
-                      : 'bg-white text-charcoal/70 border-charcoal/10 hover:bg-cream'
+                      ? 'bg-vast-ink text-lumen-cream'
+                      : 'bg-lumen-cream text-vast-ink hover:bg-lumen-stone/50'
                   }`}
                 >
                   {engine.label}
@@ -418,9 +420,9 @@ export const ResumeJdUploader: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-extrabold text-charcoal mb-2 flex items-center justify-between">
+            <label className="block text-xs font-semibold text-vast-ink mb-2 flex items-center justify-between">
               <span>Proctoring Security Mode</span>
-              <span className="text-coral font-black">
+              <span className="text-forest-ink font-semibold">
                 {proctoringMode === 'off' ? 'Disabled' : proctoringMode === 'strict' ? 'Strict Lock' : 'Standard'}
               </span>
             </label>
@@ -434,14 +436,14 @@ export const ResumeJdUploader: React.FC = () => {
                   key={mode.id}
                   type="button"
                   onClick={() => setProctoringMode(mode.id as any)}
-                  className={`flex-1 py-2 rounded-2xl text-xs font-black border transition flex flex-col items-center justify-center ${
+                  className={`flex-1 py-2 rounded-xl text-xs font-semibold border-2 border-vast-ink transition flex flex-col items-center justify-center ${
                     proctoringMode === mode.id
-                      ? 'bg-charcoal text-cream border-charcoal shadow-sm'
-                      : 'bg-white text-charcoal/70 border-charcoal/10 hover:bg-cream'
+                      ? 'bg-vast-ink text-lumen-cream'
+                      : 'bg-lumen-cream text-vast-ink hover:bg-lumen-stone/50'
                   }`}
                 >
                   <span>{mode.label}</span>
-                  <span className={`text-[8px] font-bold ${proctoringMode === mode.id ? 'text-cream/70' : 'text-charcoal/40'}`}>
+                  <span className={`text-[9px] font-normal ${proctoringMode === mode.id ? 'text-lumen-stone' : 'text-fog'}`}>
                     {mode.desc}
                   </span>
                 </button>
@@ -453,12 +455,12 @@ export const ResumeJdUploader: React.FC = () => {
         {/* Step 2: Resume & JD */}
         <div className="card-cream p-7 space-y-6">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-charcoal text-cream flex items-center justify-center font-bold">
+            <div className="w-10 h-10 rounded-full bg-forest-ink text-lumen-cream flex items-center justify-center font-bold">
               <FileText className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-display font-black text-lg text-charcoal">Resume & Job Context</h3>
-              <p className="text-xs font-bold text-charcoal/60">Paste text or upload file (.txt, .md)</p>
+              <h3 className="font-garamond font-normal text-2xl text-vast-ink">Resume & Job Context</h3>
+              <p className="text-xs text-fog font-normal">Paste text or upload file (.txt, .md)</p>
             </div>
           </div>
 
