@@ -199,37 +199,37 @@ export const ResumeJdUploader: React.FC = () => {
   }
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-8 animate-fade-in py-4">
+    <div className="w-full max-w-5xl mx-auto space-y-8 animate-fade-in pt-24 pb-8">
       
       {/* Header */}
-      <div className="page-shell rounded-[36px] p-6 sm:p-8 text-center space-y-3 shadow-[0_20px_60px_rgba(27,30,22,0.06)]">
-        <div className="section-chip mx-auto text-charcoal text-xs font-extrabold">
-          <Brain className="w-4 h-4 text-coral" /> AI Interview Setup
+      <div className="card-cream text-center space-y-3">
+        <div className="badge-teal mx-auto">
+          <Sparkles className="w-4 h-4 text-lavender-whisper" /> AI Interview Setup
         </div>
-        <h1 className="font-display font-black text-3xl sm:text-5xl text-charcoal tracking-tight">
+        <h1 className="font-garamond font-normal text-4xl sm:text-6xl text-vast-ink tracking-tight">
           Create Your Mock Interview
         </h1>
-        <p className="text-sm font-bold text-charcoal/60 max-w-xl mx-auto">
+        <p className="text-base text-vast-ink/75 max-w-xl mx-auto font-normal">
           Specify your target role and paste your resume & JD to generate role-tailored interview questions.
         </p>
       </div>
 
       {errorMsg && (
-        <div className="p-4 rounded-2xl bg-coral/10 border border-coral/20 text-coral text-xs font-bold flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 shrink-0" />
+        <div className="p-4 rounded-input bg-ember-glow/10 border-2 border-vast-ink text-vast-ink text-xs font-semibold flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0 text-vast-ink" />
           <span>{errorMsg}</span>
         </div>
       )}
 
       {/* Step 0: Choose Your Round (Full Width Bento-style Card) */}
-      <div className="soft-card p-7 sm:p-9 space-y-6">
+      <div className="card-cream p-7 sm:p-9 space-y-6">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-charcoal text-cream flex items-center justify-center font-bold">
-            <Zap className="w-5 h-5 text-coral" />
+          <div className="w-10 h-10 rounded-full bg-forest-ink text-lumen-cream flex items-center justify-center font-bold">
+            <Zap className="w-5 h-5 text-lavender-whisper" />
           </div>
           <div>
-            <h3 className="font-display font-black text-lg text-charcoal">Interview Round Type</h3>
-            <p className="text-xs font-bold text-charcoal/60">Choose which round you want to practice today</p>
+            <h3 className="font-garamond font-normal text-2xl text-vast-ink">Interview Round Type</h3>
+            <p className="text-xs text-fog font-normal">Choose which round you want to practice today</p>
           </div>
         </div>
 
@@ -467,10 +467,10 @@ export const ResumeJdUploader: React.FC = () => {
           {/* Resume */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="text-xs font-extrabold text-charcoal flex items-center gap-1.5">
-                Resume / Bio {resumeText && <CheckCircle2 className="w-4 h-4 text-emerald-600" />}
+              <label className="text-xs font-semibold text-vast-ink flex items-center gap-1.5">
+                Resume / Bio {resumeText && <CheckCircle2 className="w-4 h-4 text-forest-ink" />}
               </label>
-              <label className="cursor-pointer text-xs font-black text-coral hover:underline flex items-center gap-1">
+              <label className="cursor-pointer text-xs font-semibold text-forest-ink hover:underline flex items-center gap-1">
                 {isParsingResume ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
                 {isParsingResume ? 'Parsing...' : 'Upload (.pdf, .docx, .txt)'}
                 <input type="file" accept=".pdf,.docx,.txt,.md,.json" onChange={(e) => handleFileUpload(e, 'resume')} className="hidden" disabled={isParsingResume} />
@@ -482,12 +482,12 @@ export const ResumeJdUploader: React.FC = () => {
                 value={resumeText}
                 onChange={(e) => setResumeText(e.target.value)}
                 placeholder="Paste your resume summary, tech stack, past projects, or upload a document..."
-                className="w-full px-4 py-3 bg-white border border-charcoal/10 rounded-2xl text-charcoal text-xs font-medium focus:outline-none focus:border-charcoal resize-none"
+                className="input-wispr font-normal text-xs resize-none"
                 disabled={isParsingResume}
               />
               {isParsingResume && (
-                <div className="absolute inset-0 bg-white/70 rounded-2xl flex items-center justify-center text-xs font-extrabold text-charcoal gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin text-coral" />
+                <div className="absolute inset-0 bg-lumen-cream/90 rounded-input flex items-center justify-center text-xs font-semibold text-vast-ink gap-2 border-2 border-vast-ink">
+                  <Loader2 className="w-4 h-4 animate-spin text-forest-ink" />
                   <span>Extracting resume text...</span>
                 </div>
               )}
@@ -497,10 +497,10 @@ export const ResumeJdUploader: React.FC = () => {
           {/* Job Description */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="text-xs font-extrabold text-charcoal flex items-center gap-1.5">
-                Job Description {jobDescriptionText && <CheckCircle2 className="w-4 h-4 text-emerald-600" />}
+              <label className="text-xs font-semibold text-vast-ink flex items-center gap-1.5">
+                Job Description {jobDescriptionText && <CheckCircle2 className="w-4 h-4 text-forest-ink" />}
               </label>
-              <label className="cursor-pointer text-xs font-black text-coral hover:underline flex items-center gap-1">
+              <label className="cursor-pointer text-xs font-semibold text-forest-ink hover:underline flex items-center gap-1">
                 {isParsingJd ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
                 {isParsingJd ? 'Parsing...' : 'Upload (.pdf, .docx, .txt)'}
                 <input type="file" accept=".pdf,.docx,.txt,.md,.json" onChange={(e) => handleFileUpload(e, 'jd')} className="hidden" disabled={isParsingJd} />
@@ -512,12 +512,12 @@ export const ResumeJdUploader: React.FC = () => {
                 value={jobDescriptionText}
                 onChange={(e) => setJobDescriptionText(e.target.value)}
                 placeholder="Paste the target job description requirements, or upload a document..."
-                className="w-full px-4 py-3 bg-white border border-charcoal/10 rounded-2xl text-charcoal text-xs font-medium focus:outline-none focus:border-charcoal resize-none"
+                className="input-wispr font-normal text-xs resize-none"
                 disabled={isParsingJd}
               />
               {isParsingJd && (
-                <div className="absolute inset-0 bg-white/70 rounded-2xl flex items-center justify-center text-xs font-extrabold text-charcoal gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin text-coral" />
+                <div className="absolute inset-0 bg-lumen-cream/90 rounded-input flex items-center justify-center text-xs font-semibold text-vast-ink gap-2 border-2 border-vast-ink">
+                  <Loader2 className="w-4 h-4 animate-spin text-forest-ink" />
                   <span>Extracting requirements...</span>
                 </div>
               )}
@@ -526,17 +526,15 @@ export const ResumeJdUploader: React.FC = () => {
         </div>
       </div>
 
-      {/* Start Button Dual Pill */}
-      <div className="text-center pt-2 flex justify-center">
+      {/* Start Button CTA */}
+      <div className="text-center pt-4 flex justify-center">
         <button
           onClick={handleGenerate}
           disabled={isLoading}
-          className="btn-dual-pill scale-110 disabled:opacity-50"
+          className="btn-primary-cta px-10 py-4 text-base font-semibold flex items-center gap-3 disabled:opacity-50 cursor-pointer shadow-lg"
         >
-          <div className="icon-badge">
-            <Mic className="w-5 h-5 text-charcoal" />
-          </div>
-          <span className="btn-label">Launch AI Session</span>
+          <Mic className="w-5 h-5 text-vast-ink" />
+          <span>Launch AI Session</span>
         </button>
       </div>
 
