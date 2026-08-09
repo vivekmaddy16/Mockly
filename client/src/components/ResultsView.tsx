@@ -208,10 +208,10 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ session }) => {
         <div className="inline-flex items-center gap-2 p-1.5 rounded-full bg-white border border-charcoal/10 shadow-md">
           <button
             onClick={() => setActiveTab('scorecard')}
-            className={`px-5 py-2.5 rounded-full text-xs font-black transition-all flex items-center gap-2 cursor-pointer ${
+            className={`px-5 py-2 rounded-full text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer ${
               activeTab === 'scorecard'
-                ? 'bg-charcoal text-cream shadow-md'
-                : 'text-charcoal/70 hover:text-charcoal'
+                ? 'bg-vast-ink text-lumen-cream font-semibold'
+                : 'text-vast-ink hover:bg-lumen-stone/50'
             }`}
           >
             <Trophy className="w-4 h-4" /> Scorecard Report
@@ -219,10 +219,10 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ session }) => {
 
           <button
             onClick={() => setActiveTab('benchmarks')}
-            className={`px-5 py-2.5 rounded-full text-xs font-black transition-all flex items-center gap-2 cursor-pointer ${
+            className={`px-5 py-2 rounded-full text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer ${
               activeTab === 'benchmarks'
-                ? 'bg-charcoal text-cream shadow-md'
-                : 'text-charcoal/70 hover:text-charcoal'
+                ? 'bg-vast-ink text-lumen-cream font-semibold'
+                : 'text-vast-ink hover:bg-lumen-stone/50'
             }`}
           >
             <BarChart2 className="w-4 h-4" /> Peer Benchmarks
@@ -230,13 +230,13 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ session }) => {
 
           <button
             onClick={() => setActiveTab('coaching_replay')}
-            className={`px-5 py-2.5 rounded-full text-xs font-black transition-all flex items-center gap-2 cursor-pointer ${
+            className={`px-5 py-2 rounded-full text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer ${
               activeTab === 'coaching_replay'
-                ? 'bg-charcoal text-cream shadow-md'
-                : 'text-charcoal/70 hover:text-charcoal'
+                ? 'bg-vast-ink text-lumen-cream font-semibold'
+                : 'text-vast-ink hover:bg-lumen-stone/50'
             }`}
           >
-            <Sparkles className="w-4 h-4" /> Coaching & Replay
+            <Sparkles className="w-4 h-4 text-lavender-whisper" /> Coaching & Replay
           </button>
         </div>
       </div>

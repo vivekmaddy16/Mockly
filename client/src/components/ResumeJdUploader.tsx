@@ -267,18 +267,18 @@ export const ResumeJdUploader: React.FC = () => {
                 key={round.id}
                 type="button"
                 onClick={() => setRoundType(round.id as any)}
-                className={`p-5 rounded-3xl border text-left flex flex-col justify-between h-40 transition-all ${
+                className={`p-5 rounded-3xl border-2 border-vast-ink text-left flex flex-col justify-between h-40 transition-all ${
                   active
-                    ? 'bg-charcoal text-cream border-charcoal shadow-lg scale-[1.03]'
-                    : 'bg-white text-charcoal/80 border-charcoal/10 hover:bg-cream hover:border-charcoal/30'
+                    ? 'bg-vast-ink text-lumen-cream font-semibold scale-[1.02]'
+                    : 'bg-lumen-cream text-vast-ink hover:bg-lumen-stone/50'
                 }`}
               >
-                <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${active ? 'bg-cream text-charcoal' : 'bg-charcoal/5'} transition-all`}>
-                  <Icon className="w-5 h-5 text-coral" />
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${active ? 'bg-lavender-whisper text-vast-ink' : 'bg-forest-ink text-lumen-cream'} transition-all`}>
+                  <Icon className="w-5 h-5" />
                 </div>
                 <div className="space-y-1 mt-3">
-                  <h4 className={`font-display font-black text-sm ${active ? 'text-cream' : 'text-charcoal'}`}>{round.title}</h4>
-                  <p className={`text-[10px] leading-tight font-medium ${active ? 'text-cream/75' : 'text-charcoal/50'}`}>{round.desc}</p>
+                  <h4 className={`font-garamond text-xl font-normal ${active ? 'text-lumen-cream' : 'text-vast-ink'}`}>{round.title}</h4>
+                  <p className={`text-xs leading-tight font-normal ${active ? 'text-lumen-stone' : 'text-fog'}`}>{round.desc}</p>
                 </div>
               </button>
             );
@@ -292,23 +292,23 @@ export const ResumeJdUploader: React.FC = () => {
         {/* Step 1: Role & Experience */}
         <div className="card-cream p-7 space-y-6">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-charcoal text-cream flex items-center justify-center font-bold">
+            <div className="w-10 h-10 rounded-full bg-forest-ink text-lumen-cream flex items-center justify-center font-bold">
               <Briefcase className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-display font-black text-lg text-charcoal">Target Position</h3>
-              <p className="text-xs font-bold text-charcoal/60">Specify role & seniority</p>
+              <h3 className="font-garamond font-normal text-2xl text-vast-ink">Target Position</h3>
+              <p className="text-xs text-fog font-normal">Specify role & seniority level</p>
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-extrabold text-charcoal mb-2">Target Job Title</label>
+            <label className="block text-xs font-semibold text-vast-ink mb-2">Target Job Title</label>
             <input
               type="text"
               value={targetRole}
               onChange={(e) => setTargetRole(e.target.value)}
               placeholder="e.g. Senior Full Stack Engineer"
-              className="input-castrio"
+              className="input-wispr"
             />
             <div className="mt-3 flex flex-wrap gap-2">
               {quickRoles.map(role => (
@@ -316,10 +316,10 @@ export const ResumeJdUploader: React.FC = () => {
                   key={role}
                   type="button"
                   onClick={() => setTargetRole(role)}
-                  className={`text-[11px] px-3 py-1.5 rounded-full font-bold transition ${
+                  className={`text-xs px-3.5 py-1.5 rounded-full font-semibold border-2 border-vast-ink transition ${
                     targetRole === role
-                      ? 'bg-charcoal text-cream shadow-sm'
-                      : 'bg-white text-charcoal/70 border border-charcoal/10 hover:bg-cream'
+                      ? 'bg-vast-ink text-lumen-cream'
+                      : 'bg-lumen-cream text-vast-ink hover:bg-lumen-stone/50'
                   }`}
                 >
                   {role}
