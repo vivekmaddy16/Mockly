@@ -470,9 +470,9 @@ export const ResumeJdUploader: React.FC = () => {
               <label className="text-xs font-semibold text-vast-ink flex items-center gap-1.5">
                 Resume / Bio {resumeText && <CheckCircle2 className="w-4 h-4 text-forest-ink" />}
               </label>
-              <label className="cursor-pointer text-xs font-semibold text-forest-ink hover:underline flex items-center gap-1">
-                {isParsingResume ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-                {isParsingResume ? 'Parsing...' : 'Upload (.pdf, .docx, .txt)'}
+              <label className="cursor-pointer text-xs font-semibold text-vast-ink bg-lumen-cream hover:bg-lumen-stone/50 border-2 border-vast-ink px-3 py-1 rounded-full flex items-center gap-1.5 transition-all">
+                {isParsingResume ? <Loader2 className="w-3.5 h-3.5 animate-spin text-forest-ink" /> : <Upload className="w-3.5 h-3.5 text-forest-ink" />}
+                <span>{isParsingResume ? 'Parsing...' : 'Upload (.pdf, .docx, .txt)'}</span>
                 <input type="file" accept=".pdf,.docx,.txt,.md,.json" onChange={(e) => handleFileUpload(e, 'resume')} className="hidden" disabled={isParsingResume} />
               </label>
             </div>
@@ -482,7 +482,7 @@ export const ResumeJdUploader: React.FC = () => {
                 value={resumeText}
                 onChange={(e) => setResumeText(e.target.value)}
                 placeholder="Paste your resume summary, tech stack, past projects, or upload a document..."
-                className="input-wispr font-normal text-xs resize-none"
+                className="w-full px-4 py-3 bg-lumen-cream border-2 border-vast-ink rounded-input text-vast-ink text-xs font-normal focus:outline-none placeholder:text-fog resize-none"
                 disabled={isParsingResume}
               />
               {isParsingResume && (
@@ -500,9 +500,9 @@ export const ResumeJdUploader: React.FC = () => {
               <label className="text-xs font-semibold text-vast-ink flex items-center gap-1.5">
                 Job Description {jobDescriptionText && <CheckCircle2 className="w-4 h-4 text-forest-ink" />}
               </label>
-              <label className="cursor-pointer text-xs font-semibold text-forest-ink hover:underline flex items-center gap-1">
-                {isParsingJd ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-                {isParsingJd ? 'Parsing...' : 'Upload (.pdf, .docx, .txt)'}
+              <label className="cursor-pointer text-xs font-semibold text-vast-ink bg-lumen-cream hover:bg-lumen-stone/50 border-2 border-vast-ink px-3 py-1 rounded-full flex items-center gap-1.5 transition-all">
+                {isParsingJd ? <Loader2 className="w-3.5 h-3.5 animate-spin text-forest-ink" /> : <Upload className="w-3.5 h-3.5 text-forest-ink" />}
+                <span>{isParsingJd ? 'Parsing...' : 'Upload (.pdf, .docx, .txt)'}</span>
                 <input type="file" accept=".pdf,.docx,.txt,.md,.json" onChange={(e) => handleFileUpload(e, 'jd')} className="hidden" disabled={isParsingJd} />
               </label>
             </div>
@@ -512,7 +512,7 @@ export const ResumeJdUploader: React.FC = () => {
                 value={jobDescriptionText}
                 onChange={(e) => setJobDescriptionText(e.target.value)}
                 placeholder="Paste the target job description requirements, or upload a document..."
-                className="input-wispr font-normal text-xs resize-none"
+                className="w-full px-4 py-3 bg-lumen-cream border-2 border-vast-ink rounded-input text-vast-ink text-xs font-normal focus:outline-none placeholder:text-fog resize-none"
                 disabled={isParsingJd}
               />
               {isParsingJd && (
