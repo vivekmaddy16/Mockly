@@ -85,40 +85,40 @@ export const DashboardView: React.FC = () => {
     <div className="w-full max-w-5xl mx-auto space-y-8 animate-fade-in py-4">
       
       {/* Header */}
-      <div className="rounded-[32px] border border-white/70 bg-white/80 p-6 sm:p-8 text-center space-y-3 shadow-[0_20px_60px_rgba(27,30,22,0.06)] backdrop-blur-xl">
-        <div className="section-chip mx-auto text-charcoal text-xs font-extrabold">
-          <BarChart3 className="w-4 h-4 text-coral" /> Candidate Readiness Dashboard
+      <div className="card-cream text-center space-y-3">
+        <div className="badge-teal mx-auto">
+          <BarChart3 className="w-4 h-4 text-lavender-whisper" /> Candidate Readiness Dashboard
         </div>
-        <h1 className="font-display font-black text-3xl sm:text-5xl text-charcoal tracking-tight">
+        <h1 className="font-garamond font-normal text-4xl sm:text-6xl text-vast-ink tracking-tight">
           Performance & Mastery Hub
         </h1>
-        <p className="text-sm font-bold text-charcoal/60 max-w-xl mx-auto">
-          Track interview score trends, subject domain readiness, and searchable session logs.
+        <p className="text-base text-vast-ink/75 max-w-xl mx-auto font-normal">
+          Track interview score trends, subject domain readiness, and review saved session scorecards.
         </p>
       </div>
 
       {/* Tabs */}
       <div className="flex justify-center w-full px-2">
-        <div className="flex bg-white/80 p-1 rounded-full border border-charcoal/10 shadow-sm font-black text-xs backdrop-blur-xl max-w-full overflow-x-auto scrollbar-none">
+        <div className="flex bg-lumen-cream p-1 rounded-full border-2 border-vast-ink font-semibold text-xs gap-1">
           <button
             onClick={() => setDashboardTab('my_progress')}
-            className={`px-4 sm:px-5 py-2.5 rounded-full cursor-pointer transition whitespace-nowrap ${
+            className={`px-5 py-2 rounded-full cursor-pointer transition ${
               dashboardTab === 'my_progress'
-                ? 'bg-charcoal text-cream shadow-sm'
-                : 'text-charcoal/60 hover:text-charcoal'
+                ? 'bg-vast-ink text-lumen-cream font-semibold'
+                : 'text-vast-ink hover:bg-lumen-stone/50'
             }`}
           >
             My Progress Profile
           </button>
           <button
             onClick={() => setDashboardTab('user_study')}
-            className={`px-4 sm:px-5 py-2.5 rounded-full cursor-pointer transition flex items-center gap-1.5 whitespace-nowrap ${
+            className={`px-5 py-2 rounded-full cursor-pointer transition flex items-center gap-1.5 ${
               dashboardTab === 'user_study'
-                ? 'bg-charcoal text-cream shadow-sm'
-                : 'text-charcoal/60 hover:text-charcoal'
+                ? 'bg-vast-ink text-lumen-cream font-semibold'
+                : 'text-vast-ink hover:bg-lumen-stone/50'
             }`}
           >
-            <GraduationCap className="w-4 h-4 text-coral animate-pulse" />
+            <GraduationCap className="w-4 h-4 text-lavender-whisper" />
             Cohort User Study Analytics
           </button>
         </div>
@@ -126,34 +126,39 @@ export const DashboardView: React.FC = () => {
 
       {dashboardTab === 'my_progress' ? (
         <>
-          {/* ─── Castrio Bento Box Grid ───────────────────────────── */}
+          {/* Bento Box Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         
-        {/* Bento Card 1: Extended Stat Counters */}
+        {/* Bento Card 1: Stat Counters */}
         <div className="md:col-span-2 grid grid-cols-2 gap-4">
           {[
-            { label: 'Avg Readiness Score', val: `${avgScore}%`, icon: Award, bg: 'card-cream' },
-            { label: 'Completed Sessions', val: completed.length.toString(), icon: PlayCircle, bg: 'card-cream' },
-            { label: 'Questions Answered', val: totalQuestions.toString(), icon: Target, bg: 'card-cream' },
-            { label: 'Performance Trend', val: completed.length >= 2 ? 'Upward ↑' : 'Active', icon: TrendingUp, bg: 'card-mint-gradient' },
+            { label: 'Avg Readiness Score', val: `${avgScore}%`, icon: Award, isDark: false },
+            { label: 'Completed Sessions', val: completed.length.toString(), icon: PlayCircle, isDark: false },
+            { label: 'Questions Answered', val: totalQuestions.toString(), icon: Target, isDark: false },
+            { label: 'Performance Trend', val: completed.length >= 2 ? 'Upward ↑' : 'Active', icon: TrendingUp, isDark: true },
           ].map((stat, i) => {
             const Icon = stat.icon;
             return (
-              <div key={i} className={`${stat.bg} p-6 space-y-2 border border-white/70 rounded-[24px] shadow-[0_12px_35px_rgba(27,30,22,0.06)]`}>
+              <div 
+                key={i} 
+                className={`p-6 space-y-2 rounded-3xl border-2 border-vast-ink ${
+                  stat.isDark ? 'bg-forest-ink text-lumen-cream' : 'bg-lumen-cream text-vast-ink'
+                }`}
+              >
                 <div className="flex items-center gap-2">
-                  <Icon className="w-4 h-4 text-charcoal" />
-                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-charcoal/60">{stat.label}</span>
+                  <Icon className={`w-4 h-4 ${stat.isDark ? 'text-lavender-whisper' : 'text-vast-ink'}`} />
+                  <span className={`text-xs font-semibold uppercase tracking-wider ${stat.isDark ? 'text-lumen-stone' : 'text-fog'}`}>{stat.label}</span>
                 </div>
-                <span className="font-display font-black text-3xl sm:text-4xl text-charcoal block">{stat.val}</span>
+                <span className="font-garamond font-normal text-3xl sm:text-5xl block">{stat.val}</span>
               </div>
             );
           })}
         </div>
 
-        {/* Bento Card 2: Domain Mastery Radar */}
-        <div className="card-cream p-6 border border-white shadow-xl flex flex-col justify-between space-y-2">
-          <h3 className="font-display font-black text-sm uppercase text-charcoal tracking-wider flex items-center gap-2">
-            <Activity className="w-4 h-4 text-coral" /> Skill Radar Map
+        {/* Bento Card 2: Skill Radar */}
+        <div className="card-cream flex flex-col justify-between space-y-2">
+          <h3 className="font-garamond font-normal text-2xl text-vast-ink flex items-center gap-2">
+            <Activity className="w-5 h-5 text-forest-ink" /> Skill Radar Map
           </h3>
           <div className="w-full h-44">
             <ResponsiveContainer width="100%" height="100%">
