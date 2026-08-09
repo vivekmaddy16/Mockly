@@ -9,66 +9,68 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        sage: {
-          light: '#C4D2AB',
-          DEFAULT: '#B5C49C',
-          dark: '#A0B086',
-        },
-        cream: {
-          pure: '#FFFFFF',
-          DEFAULT: '#F4F6F0',
-          dark: '#E4E8DC',
-        },
-        charcoal: {
-          light: '#282C21',
-          DEFAULT: '#1B1E16',
-          dark: '#11130E',
-        },
-        coral: {
-          DEFAULT: '#E54B54',
-          dark: '#D43841',
-        },
-        mint: {
-          light: '#A8E0AC',
-          DEFAULT: '#7BD695',
-        },
-        brand: {
-          50: '#fff9e6',
-          100: '#fff0bf',
-          200: '#ffe699',
-          300: '#ffd966',
-          400: '#f5b731',
-          500: '#E8A200',
-          600: '#c78a00',
-          700: '#a67200',
-          800: '#855b00',
-          900: '#1B1E16',
-          950: '#11130E',
-        },
-        dark: {
-          bg: '#1B1E16',
-          card: '#F4F6F0',
-          'card-hover': '#FFFFFF',
-          border: 'rgba(27,30,22,0.1)',
+        'lavender-whisper': '#f0d7ff',
+        'forest-ink': '#034f46',
+        'ember-glow': '#ffa946',
+        'vast-ink': '#1a1a1a',
+        'lumen-cream': '#ffffeb',
+        'lumen-stone': '#e4e4d0',
+        'fog': '#8a8a80',
+        'charcoal': '#222222',
+        'pure-white': '#ffffff',
+        
+        // Named surface aliases
+        surface: {
+          cream: '#ffffeb',
+          dark: '#1a1a1a',
+          lavender: '#f0d7ff',
+          forest: '#034f46',
+          stone: '#e4e4d0',
         },
       },
       fontFamily: {
-        display: ['Syne', 'Space Grotesk', 'sans-serif'],
-        sans: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
+        garamond: ['"EB Garamond"', '"Cormorant Garamond"', 'serif'],
+        display: ['"EB Garamond"', '"Cormorant Garamond"', 'serif'],
+        figtree: ['Figtree', 'Inter', 'sans-serif'],
+        sans: ['Figtree', 'Inter', 'sans-serif'],
+      },
+      fontSize: {
+        'display': ['120px', { lineHeight: '0.85', letterSpacing: '-3.6px' }],
+        'heading-lg': ['64px', { lineHeight: '0.95', letterSpacing: '-1.92px' }],
+        'heading': ['48px', { lineHeight: '0.95', letterSpacing: '0px' }],
+        'heading-sm': ['32px', { lineHeight: '1.3', letterSpacing: '-0.96px' }],
+        'subheading': ['24px', { lineHeight: '1.3' }],
+        'body-lg': ['20px', { lineHeight: '1.3' }],
+        'body-sm': ['16px', { lineHeight: '1.3' }],
+        'caption': ['14px', { lineHeight: '1.3' }],
       },
       borderRadius: {
-        '3xl': '32px',
-        '4xl': '40px',
+        'input': '12px',
+        'button': '12px',
+        'badge-sq': '8px',
+        'card': '32px',
+        'chamber': '40px',
+        'chamber-lg': '80px',
+        'pill': '9999px',
+      },
+      borderWidth: {
+        '2': '2px',
+        'ink': '2px',
       },
       animation: {
         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
         'float': 'float 4s ease-in-out infinite',
         'spin-slow': 'spin 14s linear infinite',
+        'waveform-pulse': 'waveformPulse 1.2s ease-in-out infinite alternate',
       },
       keyframes: {
         float: {
           '0%, 100%': { transform: 'translateY(0px)' },
           '50%': { transform: 'translateY(-8px)' },
+        },
+        waveformPulse: {
+          '0%': { transform: 'scaleY(0.3)' },
+          '100%': { transform: 'scaleY(1)' },
         },
       },
     },

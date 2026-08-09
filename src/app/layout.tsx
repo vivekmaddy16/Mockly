@@ -17,10 +17,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="bg-sage text-charcoal min-h-screen flex flex-col antialiased">
+      <body className="bg-lumen-cream text-vast-ink min-h-screen flex flex-col font-figtree antialiased selection:bg-vast-ink selection:text-lumen-cream">
         <AuthProvider>
           <Navbar />
-          <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-12">
+          <main className="flex-1 max-w-[1200px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-16">
             <PageTransitionWrapper>
               {children}
             </PageTransitionWrapper>

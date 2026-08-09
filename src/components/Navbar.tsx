@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { PlayCircle, BookOpen, BarChart3, Menu, X } from 'lucide-react';
+import { PlayCircle, BookOpen, BarChart3, Menu, X, Mic, User } from 'lucide-react';
 import { AuthModal } from './AuthModal';
 import { UserProfileModal } from './UserProfileModal';
 import { useAuth } from '@/context/AuthContext';
@@ -28,101 +28,102 @@ export const Navbar: React.FC = () => {
 
   return (
     <>
-      <header className="w-full py-4 px-4 sm:px-8">
-        <div className="max-w-7xl mx-auto flex items-center justify-between rounded-full border border-white/70 bg-white/75 px-4 py-3 shadow-[0_14px_45px_rgba(27,30,22,0.06)] backdrop-blur-xl">
+      <header className="sticky top-4 z-50 w-full px-4 sm:px-8 mb-6">
+        <div className="max-w-[1200px] mx-auto flex items-center justify-between rounded-full border-2 border-vast-ink bg-lumen-cream px-4 sm:px-6 py-2.5 shadow-none transition-all">
           
-          {/* Logo — Mockly Brand with Castrio Design Style */}
+          {/* Logo — Mockly Brand Wispr Flow Style */}
           <Link href="/" className="flex items-center gap-2.5 group shrink-0">
-            <div className="w-10 h-10 rounded-full bg-charcoal text-cream flex items-center justify-center font-black group-hover:scale-105 transition-transform shadow-md">
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <circle cx="12" cy="12" r="9" />
-                <path d="M8 12h8M12 8v8" />
-              </svg>
+            <div className="w-9 h-9 rounded-full bg-vast-ink text-lumen-cream flex items-center justify-center font-bold group-hover:scale-105 transition-transform">
+              <Mic className="w-4 h-4 text-lavender-whisper" />
             </div>
-            <div className="font-display font-black text-2xl tracking-tight text-charcoal flex items-center gap-0.5">
-              <span>Mockly</span>
-              <span className="text-coral">.ai</span>
+            <div className="flex items-center gap-1.5">
+              <span className="font-garamond text-2xl font-normal tracking-tight text-vast-ink">Mockly</span>
+              <span className="font-figtree text-[11px] font-semibold uppercase tracking-wider bg-forest-ink text-lumen-cream px-2 py-0.5 rounded-full">
+                AI
+              </span>
             </div>
           </Link>
 
           {/* Center Navigation Links */}
-          <div className="hidden md:flex items-center gap-8">
+          <nav className="hidden md:flex items-center gap-1 sm:gap-2">
             {navLinks.map((item) => {
               const isActive = pathname === item.href || (item.href !== '/' && pathname?.startsWith(item.href));
               return (
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`rounded-full px-3.5 py-2 text-xs font-extrabold tracking-[0.2em] uppercase transition-all ${
-                    isActive ? 'bg-cream text-charcoal shadow-sm' : 'text-charcoal/70 hover:bg-cream/70 hover:text-charcoal'
+                  className={`rounded-full px-4 py-1.5 text-sm font-medium transition-all ${
+                    isActive
+                      ? 'bg-vast-ink text-lumen-cream font-semibold'
+                      : 'text-vast-ink hover:bg-lumen-stone/50'
                   }`}
                 >
                   {item.name}
                 </Link>
               );
             })}
-          </div>
+          </nav>
 
-          {/* Right Side Connected Dual Pill `[ Login ] ( Register )` */}
+          {/* Right Action Button — Lavender Whisper CTA */}
           <div className="flex items-center gap-3">
             {isAuthenticated && user ? (
               <button
                 onClick={() => setIsProfileModalOpen(true)}
-                className="flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-charcoal/10 hover:bg-cream text-xs font-extrabold text-charcoal transition shadow-sm"
+                className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-lumen-cream border-2 border-vast-ink text-sm font-medium text-vast-ink hover:bg-lumen-stone transition"
               >
-                <div className="w-6 h-6 rounded-full bg-charcoal text-cream flex items-center justify-center font-bold text-[11px]">
+                <div className="w-6 h-6 rounded-full bg-vast-ink text-lumen-cream flex items-center justify-center font-semibold text-xs">
                   {user.name.charAt(0).toUpperCase()}
                 </div>
-                <span className="hidden sm:inline max-w-[100px] truncate">{user.name}</span>
+                <span className="hidden sm:inline max-w-[110px] truncate">{user.name}</span>
               </button>
             ) : (
-              /* Connected Pill `[ Login ] ( Register )` */
-              <div className="btn-connected-pill">
+              <div className="flex items-center gap-2">
                 <button
                   onClick={() => { setAuthMode('login'); setIsAuthModalOpen(true); }}
-                  className="login-btn"
+                  className="hidden sm:inline-flex px-3.5 py-1.5 text-sm font-medium text-vast-ink hover:underline"
                 >
-                  Login
+                  Log in
                 </button>
                 <button
                   onClick={() => { setAuthMode('register'); setIsAuthModalOpen(true); }}
-                  className="signup-btn"
+                  className="btn-primary-cta-pill"
                 >
-                  Register
+                  Get Started
                 </button>
               </div>
             )}
 
-            {/* Mobile Menu Button */}
+            {/* Mobile Menu Toggle */}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="md:hidden w-10 h-10 rounded-full bg-white border border-charcoal/10 flex items-center justify-center text-charcoal"
+              className="md:hidden w-9 h-9 rounded-full border-2 border-vast-ink bg-lumen-cream flex items-center justify-center text-vast-ink"
+              aria-label="Toggle Navigation Menu"
             >
-              {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              {isMobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
             </button>
           </div>
 
         </div>
 
-        {/* Mobile Drawer */}
+        {/* Mobile Menu Drawer */}
         {isMobileMenuOpen && (
-          <div className="md:hidden mt-3 rounded-[28px] border border-white/70 bg-white/90 p-5 shadow-[0_16px_50px_rgba(27,30,22,0.08)] backdrop-blur-xl space-y-3 animate-fade-in">
+          <div className="md:hidden mt-2 rounded-[24px] border-2 border-vast-ink bg-lumen-cream p-4 space-y-2 shadow-none animate-fade-in max-w-[1200px] mx-auto">
             {navLinks.map((item) => (
               <Link
                 key={item.name}
                 href={item.href}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="block px-4 py-3 rounded-2xl text-xs font-extrabold text-charcoal hover:bg-black/5"
+                className="block px-4 py-2.5 rounded-xl text-sm font-medium text-vast-ink hover:bg-lumen-stone/50"
               >
                 {item.name}
               </Link>
             ))}
 
-            <div className="pt-2 border-t border-charcoal/10">
+            <div className="pt-2 border-t-2 border-vast-ink/10 flex flex-col gap-2">
               {isAuthenticated && user ? (
                 <button
                   onClick={() => { setIsMobileMenuOpen(false); setIsProfileModalOpen(true); }}
-                  className="w-full py-3 rounded-2xl bg-charcoal text-cream font-extrabold text-xs text-center"
+                  className="w-full py-2.5 rounded-xl bg-vast-ink text-lumen-cream font-medium text-sm text-center"
                 >
                   My Profile ({user.name})
                 </button>
@@ -130,15 +131,15 @@ export const Navbar: React.FC = () => {
                 <div className="w-full grid grid-cols-2 gap-2">
                   <button
                     onClick={() => { setIsMobileMenuOpen(false); setAuthMode('login'); setIsAuthModalOpen(true); }}
-                    className="py-2.5 rounded-full border border-charcoal/20 text-xs font-extrabold text-charcoal text-center"
+                    className="py-2.5 rounded-xl border-2 border-vast-ink text-sm font-medium text-vast-ink text-center"
                   >
-                    Login
+                    Log in
                   </button>
                   <button
                     onClick={() => { setIsMobileMenuOpen(false); setAuthMode('register'); setIsAuthModalOpen(true); }}
-                    className="py-2.5 rounded-full bg-charcoal text-cream text-xs font-extrabold text-center"
+                    className="py-2.5 rounded-xl bg-lavender-whisper border-2 border-vast-ink text-vast-ink text-sm font-semibold text-center"
                   >
-                    Register
+                    Get Started
                   </button>
                 </div>
               )}
