@@ -63,6 +63,9 @@ export interface InterviewSession {
   totalScore?: number;
   overallConfidence?: number; // average confidence score across evaluations
   coachingTimeline?: ReplayCoachingMoment[]; // consolidated coaching points
+  proctoringMode?: 'off' | 'standard' | 'strict';
+  infractions?: number;
+  proctoringFailed?: boolean;
   overallFeedback?: {
     summary: string;
     strengths: string[];

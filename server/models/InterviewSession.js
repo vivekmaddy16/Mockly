@@ -90,6 +90,19 @@ const InterviewSessionSchema = new mongoose.Schema(
       enum: ['in_progress', 'completed', 'abandoned'],
       default: 'in_progress',
     },
+    proctoringMode: {
+      type: String,
+      enum: ['off', 'standard', 'strict'],
+      default: 'standard',
+    },
+    infractions: {
+      type: Number,
+      default: 0,
+    },
+    proctoringFailed: {
+      type: Boolean,
+      default: false,
+    },
     totalScore: {
       type: Number,
     },

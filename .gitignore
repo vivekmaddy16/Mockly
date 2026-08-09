@@ -1,7 +1,7 @@
 # dependencies
-/node_modules
-/.pnpm
-/.yarn
+node_modules/
+.pnpm/
+.yarn/
 
 # debug
 npm-debug.log*
@@ -14,11 +14,11 @@ yarn-error.log*
 .env.local
 
 # next.js
-/.next/
-/out/
+.next/
+out/
 
 # production
-/build
+build/
 
 # misc
 .DS_Store
