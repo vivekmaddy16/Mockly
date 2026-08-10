@@ -78,6 +78,8 @@ module.exports = {
         'float': 'float 4s ease-in-out infinite',
         'spin-slow': 'spin 14s linear infinite',
         'waveform-pulse': 'waveformPulse 1.2s ease-in-out infinite alternate',
+        'fade-in': 'fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+        'slide-up': 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards',
       },
       keyframes: {
         float: {
@@ -87,6 +89,14 @@ module.exports = {
         waveformPulse: {
           '0%': { transform: 'scaleY(0.3)' },
           '100%': { transform: 'scaleY(1)' },
+        },
+        fadeIn: {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+        slideUp: {
+          '0%': { opacity: '0', transform: 'translateY(16px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
         },
       },
     },
