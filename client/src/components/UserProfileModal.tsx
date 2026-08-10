@@ -41,8 +41,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay animate-fade-in">
-      <div className="relative w-full max-w-md modal-card-castrio p-6 sm:p-8 space-y-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay animate-fade-in" onClick={onClose}>
+      <div className="relative w-full max-w-md modal-card-castrio p-6 sm:p-8 space-y-6 shadow-2xl max-h-[90vh] overflow-y-auto animate-slide-up" onClick={(e) => e.stopPropagation()}>
         <button onClick={onClose} className="absolute top-6 right-6 p-2 rounded-full hover:bg-black/5 text-charcoal">
           <X className="w-5 h-5" />
         </button>
