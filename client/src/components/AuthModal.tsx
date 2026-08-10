@@ -277,8 +277,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMo
                     <div>
                       <label className="block text-xs font-semibold text-vast-ink mb-1">Full Name</label>
                       <div className="relative">
-                        <UserIcon className="w-4 h-4 text-vast-ink/50 absolute left-4 top-1/2 -translate-y-1/2" />
-                        <input type="text" required value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Alex Johnson" className="input-wispr pl-11 py-2.5 text-sm" />
+                        <UserIcon className="w-4 h-4 text-vast-ink/50 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none z-10" />
+                        <input type="text" required value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Alex Johnson" className="input-wispr !pl-11 py-2.5 text-sm" />
                       </div>
                     </div>
                   )}
@@ -286,8 +286,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMo
                   <div>
                     <label className="block text-xs font-semibold text-vast-ink mb-1">Email Address</label>
                     <div className="relative">
-                      <Mail className="w-4 h-4 text-vast-ink/50 absolute left-4 top-1/2 -translate-y-1/2" />
-                      <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" className="input-wispr pl-11 py-2.5 text-sm" />
+                      <Mail className="w-4 h-4 text-vast-ink/50 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none z-10" />
+                      <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" className="input-wispr !pl-11 py-2.5 text-sm" />
                     </div>
                   </div>
 
@@ -301,17 +301,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMo
                       )}
                     </div>
                     <div className="relative">
-                      <Lock className="w-4 h-4 text-vast-ink/50 absolute left-4 top-1/2 -translate-y-1/2" />
+                      <Lock className="w-4 h-4 text-vast-ink/50 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none z-10" />
                       <input
                         type={showPassword ? 'text' : 'password'}
                         required
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder={isRegister ? 'Min 8 chars' : '••••••••'}
-                        className="input-wispr pl-11 pr-10 py-2.5 text-sm"
+                        className="input-wispr !pl-11 !pr-10 py-2.5 text-sm"
                         minLength={isRegister ? 8 : undefined}
                       />
-                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-vast-ink/50 hover:text-vast-ink">
+                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-vast-ink/50 hover:text-vast-ink z-10">
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
@@ -321,7 +321,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMo
                 {/* Human Verification */}
                 <div 
                   onClick={handleVerify}
-                  className={`w-full h-12 rounded-xl border-2 border-vast-ink flex items-center justify-between px-3 cursor-pointer select-none transition-all ${
+                  className={`w-full h-12 rounded-xl border-2 border-vast-ink flex items-center justify-between px-3.5 cursor-pointer select-none transition-all ${
                     isVerified 
                       ? 'bg-forest-ink text-lumen-cream' 
                       : 'bg-lumen-cream text-vast-ink hover:bg-lumen-stone/40'
@@ -334,10 +334,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMo
                       ) : isVerified ? (
                         <Check className="w-4 h-4 text-lumen-cream" />
                       ) : (
-                        <div className="w-4 h-4 rounded border-2 border-vast-ink" />
+                        <div className="w-4 h-4 rounded border-2 border-vast-ink bg-white" />
                       )}
                     </div>
-                    <span className="text-xs font-medium">
+                    <span className="text-xs font-semibold">
                       {isVerifying ? 'Verifying...' : isVerified ? 'Human Verified' : 'Click to verify human'}
                     </span>
                   </div>
@@ -348,8 +348,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMo
                   <button 
                     type="submit" 
                     disabled={isLoading || !isVerified} 
-                    className={`btn-primary-cta w-full py-3 text-sm ${
-                      (!isVerified || isLoading) ? 'opacity-50 cursor-not-allowed' : ''
+                    className={`w-full py-3.5 text-sm font-semibold rounded-xl border-2 border-vast-ink transition-all ${
+                      (!isVerified || isLoading) 
+                        ? 'bg-vast-ink/10 text-vast-ink/40 border-vast-ink/30 cursor-not-allowed' 
+                        : 'bg-vast-ink text-lumen-cream hover:bg-vast-ink/90 active:scale-[0.99] shadow-md'
                     }`}
                   >
                     {isLoading ? (
