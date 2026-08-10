@@ -33,7 +33,7 @@ export const AuthBlocker: React.FC<AuthBlockerProps> = ({
             className="btn-dual-pill scale-110"
           >
             <div className="icon-badge">
-              <LogIn className="w-5 h-5 text-charcoal" />
+              <LogIn className="w-4 h-4 text-lumen-cream" />
             </div>
             <span className="btn-label">Sign In / Register</span>
           </button>

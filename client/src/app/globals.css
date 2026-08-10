@@ -452,6 +452,58 @@
     border-color: var(--color-forest-ink);
     box-shadow: 0 0 0 3px rgba(3, 79, 70, 0.15);
   }
+
+  /* Dual Pill Buttons & Badges */
+  .btn-dual-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background-color: var(--color-lavender-whisper);
+    color: var(--color-vast-ink);
+    border: 2px solid var(--color-vast-ink);
+    border-radius: 9999px;
+    padding: 6px 20px 6px 8px;
+    font-family: var(--font-figtree);
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: transform 0.15s ease, background-color 0.15s ease;
+    text-decoration: none;
+  }
+
+  .btn-dual-pill:hover {
+    transform: translateY(-1px);
+    background-color: #e5c4fa;
+  }
+
+  .btn-dual-pill .icon-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 9999px;
+    background-color: var(--color-vast-ink);
+    color: var(--color-lumen-cream);
+    flex-shrink: 0;
+  }
+
+  .btn-dual-pill .btn-label {
+    font-family: var(--font-figtree);
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--color-vast-ink);
+    white-space: nowrap;
+  }
+
+  /* Soft Card */
+  .soft-card {
+    background-color: var(--color-lumen-cream);
+    color: var(--color-vast-ink);
+    border-radius: 32px;
+    border: 2px solid var(--color-vast-ink);
+  }
 }
 
 /* Modal and Element Animations */
