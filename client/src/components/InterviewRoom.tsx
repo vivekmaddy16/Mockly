@@ -86,6 +86,16 @@ const WebcamTelemetry: React.FC<{
     confidence: 96
   });
 
+  const prevCenterRef = useRef<{ x: number; y: number } | null>(null);
+  const prevMouthRef = useRef<{ x: number; y: number } | null>(null);
+  const metricsRef = useRef({
+    eyeContact: 95,
+    stability: 98,
+    pacing: 120,
+    emotion: 'Focused',
+    confidence: 96
+  });
+
   // Enable/Disable webcam
   const startCamera = async () => {
     try {
@@ -123,7 +133,7 @@ const WebcamTelemetry: React.FC<{
     return () => stopCamera();
   }, []);
 
-  // Animation & Metric Simulation loop
+  // Animation & Face Detection loop
   useEffect(() => {
     if (!cameraActive) return;
     const canvas = canvasRef.current;
@@ -133,105 +143,245 @@ const WebcamTelemetry: React.FC<{
 
     let animId: number;
     let frameCount = 0;
+    let detector: any = null;
+    let active = true;
+    let lastTimestamp = -1;
 
-    // Simulated facial mesh node positions relative to canvas size
-    const baseMeshPoints = [
-      { x: 0.5, y: 0.35 }, // Nose
-      { x: 0.42, y: 0.28 }, // Left Eye
-      { x: 0.58, y: 0.28 }, // Right Eye
-      { x: 0.5, y: 0.48 }, // Mouth
-      { x: 0.32, y: 0.35 }, // Left cheek outline
-      { x: 0.68, y: 0.35 }, // Right cheek outline
-      { x: 0.5, y: 0.18 }, // Forehead
-      { x: 0.5, y: 0.62 }, // Chin
-    ];
+    const initDetector = async () => {
+      try {
+        const { FaceDetector, FilesetResolver } = await import('@mediapipe/tasks-vision');
+        const vision = await FilesetResolver.forVisionTasks(
+          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/wasm"
+        );
+        detector = await FaceDetector.createFromOptions(vision, {
+          baseOptions: {
+            modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite`
+          },
+          runningMode: "VIDEO"
+        });
+        console.log("FaceDetector initialized successfully");
+      } catch (err) {
+        console.error("Failed to initialize FaceDetector:", err);
+      }
+    };
+    initDetector();
 
-    const connections = [
-      [0, 1], [0, 2], [0, 3], [0, 4], [0, 5],
-      [1, 6], [2, 6], [4, 7], [5, 7], [3, 7],
-      [1, 4], [2, 5], [1, 2]
-    ];
+    const w = canvas.width;
+    const h = canvas.height;
 
     const run = () => {
+      if (!active) return;
       frameCount++;
-      const w = canvas.width;
-      const h = canvas.height;
       ctx.clearRect(0, 0, w, h);
 
-      // 1. Draw tracking box
-      ctx.strokeStyle = '#10b981'; // green for focus
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash([5, 5]);
-      ctx.strokeRect(w * 0.2, h * 0.15, w * 0.6, h * 0.7);
-      ctx.setLineDash([]);
+      if (detector && videoRef.current && videoRef.current.readyState >= 2 && videoRef.current.videoWidth > 0 && videoRef.current.videoHeight > 0) {
+        try {
+          let timestamp = performance.now();
+          if (timestamp <= lastTimestamp) {
+            timestamp = lastTimestamp + 1; // Force strictly increasing timestamps
+          }
+          lastTimestamp = timestamp;
 
-      // 2. Draw eye tracking reticle
-      const gazeOffX = Math.sin(frameCount * 0.05) * 4;
-      const gazeOffY = Math.cos(frameCount * 0.03) * 3;
-      ctx.fillStyle = '#E54B54';
-      ctx.beginPath();
-      ctx.arc(w * 0.42 + gazeOffX, h * 0.28 + gazeOffY, 2, 0, Math.PI * 2);
-      ctx.arc(w * 0.58 + gazeOffX, h * 0.28 + gazeOffY, 2, 0, Math.PI * 2);
-      ctx.fill();
+          const detectionResult = detector.detectForVideo(videoRef.current, timestamp);
+          const detections = detectionResult.detections || [];
 
-      // 3. Draw live mesh wireframe
-      // We apply slight natural motion based on sin/cos waves (simulating head tracking)
-      const headX = Math.sin(frameCount * 0.02) * 6;
-      const headY = Math.cos(frameCount * 0.015) * 4;
+          if (detections.length > 0) {
+            const detection = detections[0];
+            const bbox = detection.boundingBox;
+            const keypoints = detection.keypoints || [];
 
-      const currentPoints = baseMeshPoints.map(p => ({
-        x: p.x * w + headX + (Math.sin(frameCount * 0.1 + p.x) * 1.5),
-        y: p.y * h + headY + (Math.cos(frameCount * 0.1 + p.y) * 1.5),
-      }));
+            // Bounding box mapping
+            let x = 0, y = 0, width = 0, height = 0;
+            if (bbox) {
+              if (bbox.originX <= 1.1 && bbox.width <= 1.1) {
+                x = bbox.originX * w;
+                y = bbox.originY * h;
+                width = bbox.width * w;
+                height = bbox.height * h;
+              } else {
+                x = bbox.originX;
+                y = bbox.originY;
+                width = bbox.width;
+                height = bbox.height;
+              }
+            }
 
-      // Draw mesh connection lines
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
-      ctx.lineWidth = 0.8;
-      connections.forEach(([start, end]) => {
-        ctx.beginPath();
-        ctx.moveTo(currentPoints[start].x, currentPoints[start].y);
-        ctx.lineTo(currentPoints[end].x, currentPoints[end].y);
-        ctx.stroke();
-      });
+            // 1. Draw glowing tracking bounding box
+            ctx.strokeStyle = '#10b981'; // vibrant green
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(x, y, width, height);
 
-      // Draw mesh nodes
-      ctx.fillStyle = '#7BD695';
-      currentPoints.forEach(p => {
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, 2.5, 0, Math.PI * 2);
-        ctx.fill();
-      });
+            // Draw corner brackets
+            const lineLen = 8;
+            ctx.beginPath();
+            ctx.moveTo(x + lineLen, y); ctx.lineTo(x, y); ctx.lineTo(x, y + lineLen);
+            ctx.moveTo(x + width - lineLen, y); ctx.lineTo(x + width, y); ctx.lineTo(x + width, y + lineLen);
+            ctx.moveTo(x + lineLen, y + height); ctx.lineTo(x, y + height); ctx.lineTo(x, y + height - lineLen);
+            ctx.moveTo(x + width - lineLen, y + height); ctx.lineTo(x + width, y + height); ctx.lineTo(x + width, y + height - lineLen);
+            ctx.stroke();
 
-      // 4. Update metrics periodically
-      if (frameCount % 45 === 0) {
-        // Natural fluctuations
-        const eyeVal = Math.round(90 + Math.sin(frameCount * 0.01) * 8);
-        const stabVal = Math.round(94 + Math.cos(frameCount * 0.02) * 4);
-        const wpmVal = Math.round(115 + Math.sin(frameCount * 0.01) * 20);
+            // 2. Draw keypoints and face connections
+            if (keypoints.length >= 6) {
+              const pts = keypoints.map((kp: any) => ({
+                x: kp.x * w,
+                y: kp.y * h
+              }));
+
+              const connections = [
+                [0, 1], [0, 2], [1, 2], [2, 3],
+                [0, 4], [1, 5], [3, 4], [3, 5]
+              ];
+
+              ctx.strokeStyle = 'rgba(16, 185, 129, 0.25)';
+              ctx.lineWidth = 1;
+              connections.forEach(([start, end]) => {
+                ctx.beginPath();
+                ctx.moveTo(pts[start].x, pts[start].y);
+                ctx.lineTo(pts[end].x, pts[end].y);
+                ctx.stroke();
+              });
+
+              ctx.fillStyle = '#C5F874'; // lime green
+              pts.forEach((pt: any, idx: number) => {
+                ctx.beginPath();
+                ctx.arc(pt.x, pt.y, idx === 2 ? 3 : 2, 0, Math.PI * 2);
+                ctx.fill();
+              });
+
+              // 3. Metric Calculations
+              const rightEye = keypoints[0];
+              const leftEye = keypoints[1];
+              const nose = keypoints[2];
+              const mouth = keypoints[3];
+
+              const eyesMidpointX = (rightEye.x + leftEye.x) / 2;
+              const eyesDistanceX = Math.abs(rightEye.x - leftEye.x);
+              const noseOffsetX = Math.abs(nose.x - eyesMidpointX);
+              const noseOffsetRatio = eyesDistanceX > 0 ? noseOffsetX / eyesDistanceX : 0.5;
+
+              const rawEyeContact = Math.max(0, Math.min(100, Math.round(100 - (noseOffsetRatio * 250))));
+
+              const center = { x: (x + width / 2) / w, y: (y + height / 2) / h };
+              let movement = 0;
+              if (prevCenterRef.current) {
+                const dx = center.x - prevCenterRef.current.x;
+                const dy = center.y - prevCenterRef.current.y;
+                movement = Math.sqrt(dx * dx + dy * dy);
+              }
+              prevCenterRef.current = center;
+
+              const rawStability = Math.max(0, Math.min(100, Math.round(100 - (movement * 450))));
+
+              const nextEyeContact = Math.round(metricsRef.current.eyeContact * 0.85 + rawEyeContact * 0.15);
+              const nextStability = Math.round(metricsRef.current.stability * 0.85 + rawStability * 0.15);
+
+              // Mouth tracking for speaking pace
+              let rawPacing = metricsRef.current.pacing;
+              if (mouth && prevMouthRef.current) {
+                const dyMouth = Math.abs(mouth.y - prevMouthRef.current.y);
+                const dxMouth = Math.abs(mouth.x - prevMouthRef.current.x);
+                const mouthMove = Math.sqrt(dxMouth * dxMouth + dyMouth * dyMouth);
+                
+                if (mouthMove > 0.003) {
+                  rawPacing = Math.round(110 + Math.sin(frameCount * 0.15) * 20);
+                } else {
+                  rawPacing = Math.round(rawPacing * 0.9 + 40 * 0.1);
+                }
+              }
+              if (mouth) prevMouthRef.current = mouth;
+
+              const nextPacing = Math.max(0, rawPacing);
+
+              let emot = 'Focused';
+              if (nextEyeContact < 78) {
+                emot = 'Distracted';
+              } else if (nextStability < 82) {
+                emot = 'Nervous';
+              } else if (nextEyeContact > 90 && nextStability > 94) {
+                emot = 'Confident';
+              }
+
+              const rawConf = Math.round((nextEyeContact + nextStability) / 2);
+              const nextConfidence = Math.min(100, Math.max(50, rawConf));
+
+              const updatedMetrics = {
+                eyeContact: nextEyeContact,
+                stability: nextStability,
+                pacing: nextPacing,
+                emotion: emot,
+                confidence: nextConfidence
+              };
+
+              metricsRef.current = updatedMetrics;
+              
+              if (frameCount % 8 === 0) {
+                setMetrics(updatedMetrics);
+                onMetricsUpdate(updatedMetrics);
+              }
+            }
+          } else {
+            // Face not found inside frame
+            const noFaceMetrics = {
+              eyeContact: 0,
+              stability: 0,
+              pacing: 0,
+              emotion: 'No Face',
+              confidence: 0
+            };
+            metricsRef.current = noFaceMetrics;
+
+            if (frameCount % 8 === 0) {
+              setMetrics(noFaceMetrics);
+              onMetricsUpdate(noFaceMetrics);
+            }
+
+            // Draw alignment helper Box (red)
+            ctx.strokeStyle = '#ef4444';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([4, 4]);
+            ctx.strokeRect(w * 0.15, h * 0.15, w * 0.7, h * 0.7);
+            ctx.setLineDash([]);
+
+            ctx.fillStyle = 'rgba(239, 68, 68, 0.12)';
+            ctx.fillRect(w * 0.15, h * 0.15, w * 0.7, h * 0.7);
+
+            ctx.fillStyle = '#ef4444';
+            ctx.font = '8px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('ALIGN FACE IN FRAME', w / 2, h / 2);
+          }
+        } catch (detectorErr) {
+          console.warn("Detection error:", detectorErr);
+        }
+      } else {
+        // Loading state
+        ctx.strokeStyle = 'rgba(181, 196, 156, 0.4)';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 4]);
+        ctx.strokeRect(w * 0.2, h * 0.15, w * 0.6, h * 0.7);
+        ctx.setLineDash([]);
         
-        let emot = 'Focused';
-        if (eyeVal < 86) emot = 'Nervous';
-        else if (stabVal > 97) emot = 'Confident';
-
-        const confVal = Math.round((eyeVal + stabVal + (100 - Math.abs(130 - wpmVal) / 2)) / 3);
-
-        const newMetrics = {
-          eyeContact: eyeVal,
-          stability: stabVal,
-          pacing: wpmVal,
-          emotion: emot,
-          confidence: Math.min(100, Math.max(50, confVal))
-        };
-
-        setMetrics(newMetrics);
-        onMetricsUpdate(newMetrics);
+        ctx.fillStyle = 'rgba(181, 196, 156, 0.65)';
+        ctx.font = 'bold 8px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('LOADING DETECTOR...', w / 2, h / 2);
       }
 
       animId = requestAnimationFrame(run);
     };
 
     run();
-    return () => cancelAnimationFrame(animId);
+    return () => {
+      active = false;
+      cancelAnimationFrame(animId);
+      if (detector) {
+        try {
+          detector.close();
+        } catch (closeErr) {
+          console.warn("Error closing detector:", closeErr);
+        }
+      }
+    };
   }, [cameraActive]);
 
   return (
@@ -265,6 +415,7 @@ const WebcamTelemetry: React.FC<{
                 width={320}
                 height={240}
                 className="absolute inset-0 w-full h-full pointer-events-none"
+                style={{ transform: 'scaleX(-1)' }} // Mirror canvas to align with mirrored video
               />
             )}
           </>
