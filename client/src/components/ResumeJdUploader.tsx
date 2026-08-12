@@ -31,7 +31,7 @@ export const ResumeJdUploader: React.FC = () => {
   const [questionCount, setQuestionCount] = useState<number>(3);
   const [difficultyMode, setDifficultyMode] = useState<'Easy' | 'Medium' | 'Hard'>('Medium');
   const [roundType, setRoundType] = useState<'technical_screen' | 'dsa' | 'system_design' | 'behavioral'>('technical_screen');
-  const [aiEngine, setAiEngine] = useState<'gemini' | 'ollama'>('gemini');
+  const [aiEngine, setAiEngine] = useState<'gemini' | 'openai' | 'claude' | 'ollama'>('gemini');
   const [proctoringMode, setProctoringMode] = useState<'off' | 'standard' | 'strict'>('standard');
   const [isLoading, setIsLoading] = useState(false);
   const [isParsingResume, setIsParsingResume] = useState(false);
@@ -396,18 +396,28 @@ export const ResumeJdUploader: React.FC = () => {
           <div>
             <label className="block text-xs font-semibold text-vast-ink mb-2 flex items-center justify-between">
               <span>AI Model Engine</span>
-              <span className="text-forest-ink font-semibold">{aiEngine === 'gemini' ? 'Gemini 1.5 Flash' : 'Ollama Local Host'}</span>
+              <span className="text-forest-ink font-semibold">
+                {aiEngine === 'gemini' 
+                  ? 'Gemini 1.5 Flash' 
+                  : aiEngine === 'openai' 
+                  ? 'GPT-4o Mini' 
+                  : aiEngine === 'claude' 
+                  ? 'Claude 3.5 Sonnet' 
+                  : 'Ollama Local Host'}
+              </span>
             </label>
-            <div className="flex gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {[
-                { id: 'gemini', label: 'Gemini (Cloud)' },
-                { id: 'ollama', label: 'Ollama (Local)' },
+                { id: 'gemini', label: 'Gemini' },
+                { id: 'openai', label: 'OpenAI' },
+                { id: 'claude', label: 'Claude' },
+                { id: 'ollama', label: 'Ollama' },
               ].map(engine => (
                 <button
                   key={engine.id}
                   type="button"
                   onClick={() => setAiEngine(engine.id as any)}
-                  className={`flex-1 py-2.5 rounded-xl text-xs font-semibold border-2 border-vast-ink transition ${
+                  className={`py-2.5 rounded-xl text-xs font-semibold border-2 border-vast-ink transition ${
                     aiEngine === engine.id
                       ? 'bg-vast-ink text-lumen-cream'
                       : 'bg-lumen-cream text-vast-ink hover:bg-lumen-stone/50'
