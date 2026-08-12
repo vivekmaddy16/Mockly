@@ -52,7 +52,7 @@ export interface InterviewSession {
   experienceLevel: ExperienceLevel;
   difficultyMode?: 'Easy' | 'Medium' | 'Hard';
   roundType?: 'technical_screen' | 'dsa' | 'system_design' | 'behavioral';
-  aiEngine?: 'gemini' | 'ollama';
+  aiEngine?: 'gemini' | 'openai' | 'claude' | 'ollama';
   resumeText?: string;
   jobDescriptionText?: string;
   extractedSkills: string[];
