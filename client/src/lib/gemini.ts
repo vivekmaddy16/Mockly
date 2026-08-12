@@ -12,6 +12,21 @@ export const getGeminiClient = () => {
   }
 };
 
+export function cleanAndParseJSON(text: string): any {
+  const cleaned = text.replace(/```json/g, '').replace(/```/g, '').trim();
+  try {
+    return JSON.parse(cleaned);
+  } catch (e) {
+    const firstBrace = cleaned.indexOf('{');
+    const lastBrace = cleaned.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace !== -1) {
+      const jsonStr = cleaned.slice(firstBrace, lastBrace + 1);
+      return JSON.parse(jsonStr);
+    }
+    throw e;
+  }
+}
+
 export const generateInterviewQuestions = async (
   targetRole: string,
   experienceLevel: ExperienceLevel,
@@ -20,10 +35,10 @@ export const generateInterviewQuestions = async (
   questionCount: number = 3,
   difficultyMode: 'Easy' | 'Medium' | 'Hard' = 'Medium',
   roundType: 'technical_screen' | 'dsa' | 'system_design' | 'behavioral' = 'technical_screen',
-  aiEngine: 'gemini' | 'ollama' = 'gemini'
+  aiEngine: 'gemini' | 'openai' | 'claude' | 'ollama' = 'gemini'
 ): Promise<{ questions: Question[]; extractedSkills: string[] }> => {
-  // Client side Ollama proxy check
-  if (typeof window !== 'undefined' && aiEngine === 'ollama') {
+  // Client side proxy check for Ollama, OpenAI, and Anthropic Claude
+  if (typeof window !== 'undefined' && (aiEngine === 'ollama' || aiEngine === 'openai' || aiEngine === 'claude')) {
     try {
       const res = await fetch('/api/generate-questions', {
         method: 'POST',
@@ -34,7 +49,7 @@ export const generateInterviewQuestions = async (
       });
       return await res.json();
     } catch (e) {
-      console.warn('Client-side Ollama proxy call failed, using dynamic local generator:', e);
+      console.warn(`Client-side ${aiEngine} proxy call failed, using dynamic local generator:`, e);
     }
   }
 
@@ -90,6 +105,160 @@ JSON Schema:
       }
     } catch (ollamaErr) {
       console.warn('Ollama local host failed, falling back to dynamic generator:', ollamaErr);
+    }
+  }
+
+  // Server side OpenAI execution
+  if (typeof window === 'undefined' && aiEngine === 'openai') {
+    try {
+      if (!process.env.OPENAI_API_KEY) {
+        throw new Error('OPENAI_API_KEY environment variable is not set.');
+      }
+      let roundPrompt = '';
+      if (roundType === 'dsa') {
+        roundPrompt = `Round focus: "Algorithms & Coding (DSA)". Generate pure data structures and algorithms questions (e.g. Arrays, Recursion, Trees, Graphs, Dynamic Programming). For each question, you MUST provide an initial code snippet template or scaffolding in the 'contextOrCode' field. The questions should ask the candidate to explain their programmatic approach and state the Big-O time and space complexity.`;
+      } else if (roundType === 'system_design') {
+        roundPrompt = `Round focus: "System Design & Architecture". Generate questions on designing large-scale distributed systems, system trade-offs, microservices, databases, load balancing, caching strategies, and scale bottlenecks. Do not include coding snippets.`;
+      } else if (roundType === 'behavioral') {
+        roundPrompt = `Round focus: "Behavioral & HR". Generate situational, leadership, teamwork, or conflict-resolution questions. These should test the candidate's communication, empathy, and past problem-solving using the STAR (Situation, Task, Action, Result) method.`;
+      } else {
+        roundPrompt = `Round focus: "Technical Screening". Generate general conceptual questions covering the candidate's resume, technical breadth matching the target role, basic programming standards, and job requirements.`;
+      }
+
+      const prompt = `You are an expert technical interviewer. Generate ${questionCount} customized, high-quality interview questions for a candidate interviewing for the role of "${targetRole}" at experience level "${experienceLevel}" with an overall interview difficulty of "${difficultyMode}".
+Round focus: ${roundType}.
+${roundPrompt}
+${resumeText ? `Candidate Resume Content:\n${resumeText.slice(0, 1500)}\n` : ''}
+${jobDescriptionText ? `Job Description Requirements:\n${jobDescriptionText.slice(0, 1500)}\n` : ''}
+
+Return ONLY a valid JSON object matching the JSON schema below.
+
+JSON Schema:
+{
+  "extractedSkills": ["Skill1", "Skill2", "Skill3"],
+  "questions": [
+    {
+      "id": "q_1",
+      "type": "${roundType === 'behavioral' ? 'behavioral' : 'technical'}",
+      "category": "DSA / Frontend / Backend / System Design",
+      "questionText": "Question text...",
+      "contextOrCode": "Initial code snippet template, or empty if not applicable",
+      "expectedKeyPoints": ["Key point 1", "Key point 2"],
+      "difficulty": "${difficultyMode}"
+    }
+  ]
+}`;
+
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: 'You are an expert technical interviewer. Return ONLY a valid JSON object matching the requested schema.' },
+            { role: 'user', content: prompt }
+          ],
+          response_format: { type: 'json_object' },
+          temperature: 0.7
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const text = data.choices?.[0]?.message?.content || '';
+        const parsed = cleanAndParseJSON(text);
+        if (parsed.questions && Array.isArray(parsed.questions)) {
+          return {
+            questions: parsed.questions,
+            extractedSkills: parsed.extractedSkills || ['System Design', 'Software Engineering']
+          };
+        }
+      } else {
+        const errorData = await response.json();
+        throw new Error(`OpenAI API returned status ${response.status}: ${JSON.stringify(errorData)}`);
+      }
+    } catch (err) {
+      console.warn('OpenAI question generation failed, falling back to Gemini:', err);
+    }
+  }
+
+  // Server side Anthropic execution
+  if (typeof window === 'undefined' && aiEngine === 'claude') {
+    try {
+      if (!process.env.ANTHROPIC_API_KEY) {
+        throw new Error('ANTHROPIC_API_KEY environment variable is not set.');
+      }
+      let roundPrompt = '';
+      if (roundType === 'dsa') {
+        roundPrompt = `Round focus: "Algorithms & Coding (DSA)". Generate pure data structures and algorithms questions (e.g. Arrays, Recursion, Trees, Graphs, Dynamic Programming). For each question, you MUST provide an initial code snippet template or scaffolding in the 'contextOrCode' field. The questions should ask the candidate to explain their programmatic approach and state the Big-O time and space complexity.`;
+      } else if (roundType === 'system_design') {
+        roundPrompt = `Round focus: "System Design & Architecture". Generate questions on designing large-scale distributed systems, system trade-offs, microservices, databases, load balancing, caching strategies, and scale bottlenecks. Do not include coding snippets.`;
+      } else if (roundType === 'behavioral') {
+        roundPrompt = `Round focus: "Behavioral & HR". Generate situational, leadership, teamwork, or conflict-resolution questions. These should test the candidate's communication, empathy, and past problem-solving using the STAR (Situation, Task, Action, Result) method.`;
+      } else {
+        roundPrompt = `Round focus: "Technical Screening". Generate general conceptual questions covering the candidate's resume, technical breadth matching the target role, basic programming standards, and job requirements.`;
+      }
+
+      const prompt = `You are an expert technical interviewer. Generate ${questionCount} customized, high-quality interview questions for a candidate interviewing for the role of "${targetRole}" at experience level "${experienceLevel}" with an overall interview difficulty of "${difficultyMode}".
+Round focus: ${roundType}.
+${roundPrompt}
+${resumeText ? `Candidate Resume Content:\n${resumeText.slice(0, 1500)}\n` : ''}
+${jobDescriptionText ? `Job Description Requirements:\n${jobDescriptionText.slice(0, 1500)}\n` : ''}
+
+Return ONLY a valid raw JSON object matching the JSON schema below. Do not include markdown code block formatting like \`\`\`json.
+
+JSON Schema:
+{
+  "extractedSkills": ["Skill1", "Skill2", "Skill3"],
+  "questions": [
+    {
+      "id": "q_1",
+      "type": "${roundType === 'behavioral' ? 'behavioral' : 'technical'}",
+      "category": "DSA / Frontend / Backend / System Design",
+      "questionText": "Question text...",
+      "contextOrCode": "Initial code snippet template, or empty if not applicable",
+      "expectedKeyPoints": ["Key point 1", "Key point 2"],
+      "difficulty": "${difficultyMode}"
+    }
+  ]
+}`;
+
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-api-key': process.env.ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify({
+          model: process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022',
+          max_tokens: 4000,
+          messages: [
+            { role: 'user', content: prompt }
+          ],
+          temperature: 0.7
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const text = data.content?.[0]?.text || '';
+        const parsed = cleanAndParseJSON(text);
+        if (parsed.questions && Array.isArray(parsed.questions)) {
+          return {
+            questions: parsed.questions,
+            extractedSkills: parsed.extractedSkills || ['System Design', 'Software Engineering']
+          };
+        }
+      } else {
+        const errorData = await response.json();
+        throw new Error(`Anthropic API returned status ${response.status}: ${JSON.stringify(errorData)}`);
+      }
+    } catch (err) {
+      console.warn('Anthropic question generation failed, falling back to Gemini:', err);
     }
   }
 
@@ -580,10 +749,10 @@ export const evaluateAnswer = async (
   question: Question,
   userAnswer: string,
   targetRole: string,
-  aiEngine: 'gemini' | 'ollama' = 'gemini'
+  aiEngine: 'gemini' | 'openai' | 'claude' | 'ollama' = 'gemini'
 ): Promise<QuestionEvaluation> => {
-  // Client side Ollama proxy check
-  if (typeof window !== 'undefined' && aiEngine === 'ollama') {
+  // Client side proxy check for Ollama, OpenAI, and Anthropic Claude
+  if (typeof window !== 'undefined' && (aiEngine === 'ollama' || aiEngine === 'openai' || aiEngine === 'claude')) {
     try {
       const res = await fetch('/api/evaluate-answer', {
         method: 'POST',
@@ -594,7 +763,7 @@ export const evaluateAnswer = async (
       });
       return await res.json();
     } catch (e) {
-      console.warn('Client-side Ollama evaluation proxy call failed:', e);
+      console.warn(`Client-side ${aiEngine} evaluation proxy call failed:`, e);
     }
   }
 
@@ -670,6 +839,176 @@ JSON Schema:
       }
     } catch (ollamaErr) {
       console.warn('Ollama local evaluation failed, falling back to Gemini:', ollamaErr);
+    }
+  }
+
+  // Server side OpenAI evaluation
+  if (typeof window === 'undefined' && aiEngine === 'openai' && userAnswer.trim().length > 10) {
+    try {
+      if (!process.env.OPENAI_API_KEY) {
+        throw new Error('OPENAI_API_KEY environment variable is not set.');
+      }
+      const systemPrompt = `You are an elite Tech Lead & Senior Interviewer evaluating a candidate's answer for the role of "${targetRole}".
+
+Question Category: ${question.category}
+Question Difficulty: ${question.difficulty}
+Question: "${question.questionText}"
+Expected Key Points: ${question.expectedKeyPoints.join(', ')}
+
+Candidate's Answer:
+"${userAnswer}"
+
+Evaluate the answer critically and constructively, calibrating your expectations according to the question difficulty level ("${question.difficulty}").
+Return ONLY a valid JSON object matching the JSON schema below.
+
+JSON Schema:
+{
+  "score": 85,
+  "structureScore": 80,
+  "technicalScore": 90,
+  "clarityScore": 85,
+  "keyPointsCovered": ["Point 1 covered"],
+  "keyPointsMissed": ["Point 2 missed"],
+  "feedback": "Constructive 2-3 sentence overview...",
+  "positiveHighlights": ["Clear explanation of concept X", "Good use of STAR framework"],
+  "areasToImprove": ["Mention time complexity explicitly", "Add error handling details"],
+  "modelAnswer": "Comprehensive model answer for comparison...",
+  "sentenceHighlights": [
+    {
+      "text": "Exact sentence from userAnswer",
+      "status": "strong | weak | neutral",
+      "reason": "precise explanation of why this sentence is strong or weak"
+    }
+  ]
+}`;
+
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: 'You are an elite Tech Lead & Senior Interviewer evaluating candidate answers. Return ONLY a valid JSON object matching the requested schema.' },
+            { role: 'user', content: systemPrompt }
+          ],
+          response_format: { type: 'json_object' },
+          temperature: 0.7
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const text = data.choices?.[0]?.message?.content || '';
+        const parsed = cleanAndParseJSON(text);
+        return {
+          questionId: question.id,
+          userAnswer,
+          score: parsed.score || 75,
+          structureScore: parsed.structureScore || 75,
+          technicalScore: parsed.technicalScore || 75,
+          clarityScore: parsed.clarityScore || 80,
+          keyPointsCovered: parsed.keyPointsCovered || question.expectedKeyPoints.slice(0, 2),
+          keyPointsMissed: parsed.keyPointsMissed || question.expectedKeyPoints.slice(2),
+          feedback: parsed.feedback || 'Good structural start. Incorporate more granular technical examples to strengthen your response.',
+          positiveHighlights: parsed.positiveHighlights || ['Identified the primary system constraint clearly.', 'Good logical flow.'],
+          areasToImprove: parsed.areasToImprove || ['Mention specific Big-O memory bounds.', 'Provide concrete real-world code snippet.'],
+          modelAnswer: parsed.modelAnswer || `To answer this question effectively: 1. Briefly define the core problem. 2. Explain your solution using ${question.expectedKeyPoints.join(', ')}. 3. Address edge cases and scalability.`,
+          sentenceHighlights: parsed.sentenceHighlights || computeSentenceHighlights(userAnswer, parsed.keyPointsCovered || [])
+        };
+      } else {
+        const errorData = await response.json();
+        throw new Error(`OpenAI API returned status ${response.status}: ${JSON.stringify(errorData)}`);
+      }
+    } catch (err) {
+      console.warn('OpenAI evaluation failed, falling back to Gemini:', err);
+    }
+  }
+
+  // Server side Anthropic evaluation
+  if (typeof window === 'undefined' && aiEngine === 'claude' && userAnswer.trim().length > 10) {
+    try {
+      if (!process.env.ANTHROPIC_API_KEY) {
+        throw new Error('ANTHROPIC_API_KEY environment variable is not set.');
+      }
+      const systemPrompt = `You are an elite Tech Lead & Senior Interviewer evaluating a candidate's answer for the role of "${targetRole}".
+
+Question Category: ${question.category}
+Question Difficulty: ${question.difficulty}
+Question: "${question.questionText}"
+Expected Key Points: ${question.expectedKeyPoints.join(', ')}
+
+Candidate's Answer:
+"${userAnswer}"
+
+Evaluate the answer critically and constructively, calibrating your expectations according to the question difficulty level ("${question.difficulty}").
+Return ONLY a valid raw JSON object matching the JSON schema below. Do not include markdown code block formatting like \`\`\`json.
+
+JSON Schema:
+{
+  "score": 85,
+  "structureScore": 80,
+  "technicalScore": 90,
+  "clarityScore": 85,
+  "keyPointsCovered": ["Point 1 covered"],
+  "keyPointsMissed": ["Point 2 missed"],
+  "feedback": "Constructive 2-3 sentence overview...",
+  "positiveHighlights": ["Clear explanation of concept X", "Good use of STAR framework"],
+  "areasToImprove": ["Mention time complexity explicitly", "Add error handling details"],
+  "modelAnswer": "Comprehensive model answer for comparison...",
+  "sentenceHighlights": [
+    {
+      "text": "Exact sentence from userAnswer",
+      "status": "strong | weak | neutral",
+      "reason": "precise explanation of why this sentence is strong or weak"
+    }
+  ]
+}`;
+
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-api-key': process.env.ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify({
+          model: process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022',
+          max_tokens: 4000,
+          messages: [
+            { role: 'user', content: systemPrompt }
+          ],
+          temperature: 0.7
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const text = data.content?.[0]?.text || '';
+        const parsed = cleanAndParseJSON(text);
+        return {
+          questionId: question.id,
+          userAnswer,
+          score: parsed.score || 75,
+          structureScore: parsed.structureScore || 75,
+          technicalScore: parsed.technicalScore || 75,
+          clarityScore: parsed.clarityScore || 80,
+          keyPointsCovered: parsed.keyPointsCovered || question.expectedKeyPoints.slice(0, 2),
+          keyPointsMissed: parsed.keyPointsMissed || question.expectedKeyPoints.slice(2),
+          feedback: parsed.feedback || 'Good structural start. Incorporate more granular technical examples to strengthen your response.',
+          positiveHighlights: parsed.positiveHighlights || ['Identified the primary system constraint clearly.', 'Good logical flow.'],
+          areasToImprove: parsed.areasToImprove || ['Mention specific Big-O memory bounds.', 'Provide concrete real-world code snippet.'],
+          modelAnswer: parsed.modelAnswer || `To answer this question effectively: 1. Briefly define the core problem. 2. Explain your solution using ${question.expectedKeyPoints.join(', ')}. 3. Address edge cases and scalability.`,
+          sentenceHighlights: parsed.sentenceHighlights || computeSentenceHighlights(userAnswer, parsed.keyPointsCovered || [])
+        };
+      } else {
+        const errorData = await response.json();
+        throw new Error(`Anthropic API returned status ${response.status}: ${JSON.stringify(errorData)}`);
+      }
+    } catch (err) {
+      console.warn('Anthropic evaluation failed, falling back to Gemini:', err);
     }
   }
 
