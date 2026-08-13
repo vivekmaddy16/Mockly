@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { InterviewSession, QuestionEvaluation } from '@/types';
 import { evaluateAnswer } from '@/lib/gemini';
-import { updateSessionEvaluation, saveSession } from '@/lib/storage';
+import { updateSessionEvaluation, terminateSessionEarly } from '@/lib/storage';
 
 interface InterviewRoomProps {
   session: InterviewSession;
@@ -153,12 +153,18 @@ const WebcamTelemetry: React.FC<{
         const vision = await FilesetResolver.forVisionTasks(
           "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/wasm"
         );
-        detector = await FaceDetector.createFromOptions(vision, {
+        const newDetector = await FaceDetector.createFromOptions(vision, {
           baseOptions: {
             modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite`
           },
           runningMode: "VIDEO"
         });
+        if (!active) {
+          newDetector.close();
+          console.log("FaceDetector initialized after cleanup, closed immediately.");
+          return;
+        }
+        detector = newDetector;
         console.log("FaceDetector initialized successfully");
       } catch (err) {
         console.error("Failed to initialize FaceDetector:", err);
@@ -506,6 +512,7 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
   const hasUnsavedProgress = useRef(false);
+  const lastInfractionTimeRef = useRef<number>(0);
 
   // Proctoring and Security States
   const [hasStarted, setHasStarted] = useState(false);
@@ -541,7 +548,7 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
       updatedSession.totalScore = 0;
     }
 
-    updatedSession.overallFeedback = {
+    const feedback = {
       summary: `This interview session was terminated early under the ${session.proctoringMode} proctoring configuration due to security violations. A total of ${finalInfractions} infraction(s) were logged.`,
       strengths: [],
       weaknesses: [`Exceeded the infraction limit in ${session.proctoringMode} proctoring mode.`],
@@ -551,15 +558,29 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
       ]
     };
 
+    updatedSession.overallFeedback = feedback;
+
     setSession(updatedSession);
     setProctoringFailed(true);
 
+    // Stop active audio transcription and speaking
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    setIsSpeaking(false);
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch {}
+    }
+    setIsListening(false);
+
     try {
-      await saveSession(updatedSession);
+      await terminateSessionEarly(session.id, finalInfractions, true, feedback);
     } catch (err) {
       console.warn('Failed to save terminated session:', err);
     }
-  }, [session]);
+  }, [session, terminateSessionEarly]);
 
   const handleTelemetryUpdate = useCallback((metrics: any) => {
     setTelemetry(metrics);
@@ -617,25 +638,11 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
   useEffect(() => {
     if (!hasStarted || session.proctoringMode === 'off' || proctoringFailed) return;
 
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        setIsWindowFocused(false);
-        setInfractions(p => {
-          const next = p + 1;
-          if (next >= maxAllowedInfractions) {
-            terminateSessionDueToProctoring(next);
-          }
-          return next;
-        });
-        setShowBlurWarning(true);
-      } else {
-        if (!showBlurWarning && !showScreenshotWarning) {
-          setIsWindowFocused(true);
-        }
-      }
-    };
+    const logFocusLossInfraction = () => {
+      const now = Date.now();
+      if (now - lastInfractionTimeRef.current < 1000) return;
+      lastInfractionTimeRef.current = now;
 
-    const handleWindowBlur = () => {
       setIsWindowFocused(false);
       setInfractions(p => {
         const next = p + 1;
@@ -645,6 +652,20 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
         return next;
       });
       setShowBlurWarning(true);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        logFocusLossInfraction();
+      } else {
+        if (!showBlurWarning && !showScreenshotWarning) {
+          setIsWindowFocused(true);
+        }
+      }
+    };
+
+    const handleWindowBlur = () => {
+      logFocusLossInfraction();
     };
 
     const handleWindowFocus = () => {
