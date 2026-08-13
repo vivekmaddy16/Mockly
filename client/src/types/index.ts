@@ -66,6 +66,7 @@ export interface InterviewSession {
   proctoringMode?: 'off' | 'standard' | 'strict';
   infractions?: number;
   proctoringFailed?: boolean;
+  completedAt?: string;
   overallFeedback?: {
     summary: string;
     strengths: string[];
