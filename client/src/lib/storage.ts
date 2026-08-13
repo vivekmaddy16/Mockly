@@ -152,6 +152,50 @@ export const saveSession = async (session: InterviewSession): Promise<void> => {
   }
 };
 
+export const terminateSessionEarly = async (
+  sessionId: string,
+  infractions: number,
+  proctoringFailed: boolean,
+  overallFeedback: any
+): Promise<InterviewSession | null> => {
+  const session = getSessionById(sessionId);
+  if (!session) return null;
+
+  session.status = 'completed';
+  session.infractions = infractions;
+  session.proctoringFailed = proctoringFailed;
+  session.overallFeedback = overallFeedback;
+  session.completedAt = new Date().toISOString();
+
+  // Calculate total score for evaluated answers
+  const evals = Object.values(session.evaluations);
+  if (evals.length > 0) {
+    session.totalScore = Math.round(
+      evals.reduce((acc, ev) => acc + (ev.score || 0), 0) / evals.length
+    );
+  } else {
+    session.totalScore = 0;
+  }
+
+  saveLocalSession(session);
+
+  if (isAuthenticated()) {
+    try {
+      await interviewApi.completeSession(
+        sessionId,
+        overallFeedback,
+        infractions,
+        proctoringFailed
+      );
+    } catch (err) {
+      console.warn('Failed to sync early termination to API:', err);
+    }
+  }
+
+  return session;
+};
+
+
 export const updateSessionEvaluation = async (
   sessionId: string,
   questionId: string,
