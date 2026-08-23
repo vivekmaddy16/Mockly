@@ -570,10 +570,13 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
     setIsSpeaking(false);
     if (recognitionRef.current) {
       try {
+        recognitionRef.current.abort();
         recognitionRef.current.stop();
       } catch {}
+      recognitionRef.current = null;
     }
     setIsListening(false);
+    setInterimText('');
 
     try {
       await terminateSessionEarly(session.id, finalInfractions, true, feedback);
@@ -582,13 +585,32 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
     }
   }, [session, terminateSessionEarly]);
 
+  // Immediately cancel Speech Synthesis and abort Speech Recognition whenever proctoring fails
+  useEffect(() => {
+    if (proctoringFailed) {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+      setIsSpeaking(false);
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.abort();
+          recognitionRef.current.stop();
+        } catch {}
+        recognitionRef.current = null;
+      }
+      setIsListening(false);
+      setInterimText('');
+    }
+  }, [proctoringFailed]);
+
   const handleTelemetryUpdate = useCallback((metrics: any) => {
     setTelemetry(metrics);
   }, []);
 
-  // Timer (only active when interview has started)
+  // Timer (only active when interview has started and not terminated)
   useEffect(() => {
-    if (!hasStarted) return;
+    if (!hasStarted || proctoringFailed) return;
     const interval = setInterval(() => setSeconds(p => p + 1), 1000);
     return () => {
       clearInterval(interval);
@@ -596,10 +618,13 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
         window.speechSynthesis.cancel();
       }
       if (recognitionRef.current) {
-        try { recognitionRef.current.stop(); } catch { /* ignore */ }
+        try {
+          recognitionRef.current.abort();
+          recognitionRef.current.stop();
+        } catch { /* ignore */ }
       }
     };
-  }, [hasStarted]);
+  }, [hasStarted, proctoringFailed]);
 
   // Warn before leaving mid-interview
   useEffect(() => {
@@ -734,25 +759,38 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
   }, [hasStarted, session.proctoringMode, proctoringFailed, maxAllowedInfractions, terminateSessionDueToProctoring]);
 
   const speakQuestion = useCallback(() => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    if (typeof window === 'undefined' || !('speechSynthesis' in window) || proctoringFailed) return;
     if (isSpeaking) { window.speechSynthesis.cancel(); setIsSpeaking(false); return; }
     const u = new SpeechSynthesisUtterance(currentQuestion.questionText);
     u.onend = () => setIsSpeaking(false);
     u.onerror = () => setIsSpeaking(false);
     setIsSpeaking(true);
     window.speechSynthesis.speak(u);
-  }, [isSpeaking, currentQuestion.questionText]);
+  }, [isSpeaking, currentQuestion.questionText, proctoringFailed]);
 
   const toggleListening = useCallback(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || proctoringFailed) return;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) { alert('Speech Recognition not supported in this browser. Please type your answer.'); return; }
-    if (isListening && recognitionRef.current) { recognitionRef.current.stop(); setIsListening(false); setInterimText(''); return; }
+    if (isListening && recognitionRef.current) {
+      try {
+        recognitionRef.current.abort();
+        recognitionRef.current.stop();
+      } catch {}
+      recognitionRef.current = null;
+      setIsListening(false);
+      setInterimText('');
+      return;
+    }
     const r = new SR();
     r.continuous = true; r.interimResults = true;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     r.onresult = (e: any) => {
+      if (proctoringFailed) {
+        try { r.abort(); } catch {}
+        return;
+      }
       let finalTranscript = '';
       let interimTranscript = '';
       for (let i = e.resultIndex; i < e.results.length; i++) {
@@ -772,8 +810,10 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
     };
     r.onend = () => { setIsListening(false); setInterimText(''); };
     r.onerror = () => { setIsListening(false); setInterimText(''); };
-    recognitionRef.current = r; r.start(); setIsListening(true);
-  }, [isListening]);
+    recognitionRef.current = r;
+    r.start();
+    setIsListening(true);
+  }, [isListening, proctoringFailed]);
 
   const preventCopy = (e: React.ClipboardEvent) => {
     e.preventDefault();
