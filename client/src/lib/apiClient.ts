@@ -10,22 +10,18 @@ export interface AuthUser {
   experienceLevel: string;
   isEmailVerified: boolean;
   lastLogin?: string;
-  token: string;
+  token?: string;
 }
 
 // ─── Token Management ────────────────────────────────────────
 export const getAuthToken = (): string | null => {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem('mockly_auth_token');
+  return accessToken;
 };
 
+let accessToken: string | null = null;
+
 export const setAuthToken = (token: string | null) => {
-  if (typeof window === 'undefined') return;
-  if (token) {
-    localStorage.setItem('mockly_auth_token', token);
-  } else {
-    localStorage.removeItem('mockly_auth_token');
-  }
+  accessToken = token;
 };
 
 export const getStoredUser = (): AuthUser | null => {
@@ -37,7 +33,8 @@ export const getStoredUser = (): AuthUser | null => {
 export const setStoredUser = (user: AuthUser | null) => {
   if (typeof window === 'undefined') return;
   if (user) {
-    localStorage.setItem('mockly_user_profile', JSON.stringify(user));
+    const { token: _token, ...safeUser } = user;
+    localStorage.setItem('mockly_user_profile', JSON.stringify(safeUser));
   } else {
     localStorage.removeItem('mockly_user_profile');
   }
