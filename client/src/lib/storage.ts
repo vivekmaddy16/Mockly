@@ -67,6 +67,7 @@ export const fetchAllSessionsAsync = async (): Promise<InterviewSession[]> => {
       experienceLevel: s.experienceLevel,
       difficultyMode: s.difficultyMode || 'Medium',
       roundType: s.roundType || 'technical_screen',
+      aiEngine: s.aiEngine || 'gemini',
       resumeText: s.resumeText,
       jobDescriptionText: s.jobDescriptionText,
       extractedSkills: s.extractedSkills || [],
@@ -77,6 +78,8 @@ export const fetchAllSessionsAsync = async (): Promise<InterviewSession[]> => {
       currentQuestionIndex: s.currentQuestionIndex || 0,
       status: s.status || 'in_progress',
       totalScore: s.totalScore,
+      overallConfidence: s.overallConfidence,
+      coachingTimeline: s.coachingTimeline,
       overallFeedback: s.overallFeedback,
       proctoringMode: s.proctoringMode || 'standard',
       infractions: s.infractions || 0,
@@ -107,6 +110,7 @@ export const fetchSessionByIdAsync = async (id: string): Promise<InterviewSessio
       experienceLevel: s.experienceLevel,
       difficultyMode: s.difficultyMode || 'Medium',
       roundType: s.roundType || 'technical_screen',
+      aiEngine: s.aiEngine || 'gemini',
       resumeText: s.resumeText,
       jobDescriptionText: s.jobDescriptionText,
       extractedSkills: s.extractedSkills || [],
@@ -117,6 +121,8 @@ export const fetchSessionByIdAsync = async (id: string): Promise<InterviewSessio
       currentQuestionIndex: s.currentQuestionIndex || 0,
       status: s.status || 'in_progress',
       totalScore: s.totalScore,
+      overallConfidence: s.overallConfidence,
+      coachingTimeline: s.coachingTimeline,
       overallFeedback: s.overallFeedback,
       proctoringMode: s.proctoringMode || 'standard',
       infractions: s.infractions || 0,
@@ -140,6 +146,7 @@ export const saveSession = async (session: InterviewSession): Promise<void> => {
         experienceLevel: session.experienceLevel,
         difficultyMode: session.difficultyMode || 'Medium',
         roundType: session.roundType || 'technical_screen',
+        aiEngine: session.aiEngine || 'gemini',
         resumeText: session.resumeText,
         jobDescriptionText: session.jobDescriptionText,
         extractedSkills: session.extractedSkills,
@@ -325,7 +332,9 @@ export const updateSessionEvaluation = async (
           sessionId,
           session.overallFeedback,
           session.infractions,
-          session.proctoringFailed
+          session.proctoringFailed,
+          session.overallConfidence,
+          session.coachingTimeline
         );
       }
     } catch (err) {

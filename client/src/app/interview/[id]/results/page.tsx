@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { ResultsView } from '@/components/ResultsView';
 import { InterviewSession } from '@/types';
-import { getSessionById } from '@/lib/storage';
+import { fetchSessionByIdAsync, getSessionById } from '@/lib/storage';
 import { DEMO_INITIAL_SESSION } from '@/lib/mockData';
 import { AlertCircle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -18,15 +18,30 @@ export default function InterviewResultsPage() {
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
 
   useEffect(() => {
-    if (id) {
-      const found = getSessionById(id);
-      if (found) {
-        setSession(found);
-      } else {
-        setSession(DEMO_INITIAL_SESSION);
-        setIsDemo(true);
-      }
-    }
+    if (!id) return;
+    let active = true;
+    const local = getSessionById(id);
+    if (local) setSession(local);
+
+    fetchSessionByIdAsync(id)
+      .then((found) => {
+        if (!active) return;
+        if (found) {
+          setSession(found);
+          setIsDemo(false);
+        } else if (!local) {
+          setSession(DEMO_INITIAL_SESSION);
+          setIsDemo(true);
+        }
+      })
+      .catch(() => {
+        if (active && !local) {
+          setSession(DEMO_INITIAL_SESSION);
+          setIsDemo(true);
+        }
+      });
+
+    return () => { active = false; };
   }, [id]);
 
   // Authentication Gate

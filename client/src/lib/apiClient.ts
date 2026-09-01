@@ -368,6 +368,7 @@ export const interviewApi = {
     experienceLevel: string;
     difficultyMode?: string;
     roundType?: string;
+    aiEngine?: 'gemini' | 'openai' | 'claude' | 'ollama';
     resumeText?: string;
     jobDescriptionText?: string;
     extractedSkills?: string[];
@@ -392,10 +393,10 @@ export const interviewApi = {
       body: JSON.stringify({ questionId, evaluation, infractions, proctoringFailed }),
     }),
 
-  completeSession: (sessionId: string, overallFeedback?: any, infractions?: number, proctoringFailed?: boolean) =>
+  completeSession: (sessionId: string, overallFeedback?: any, infractions?: number, proctoringFailed?: boolean, overallConfidence?: number, coachingTimeline?: any[]) =>
     apiFetch<any>(`/interviews/${sessionId}/complete`, {
       method: 'PUT',
-      body: JSON.stringify({ overallFeedback, infractions, proctoringFailed }),
+      body: JSON.stringify({ overallFeedback, infractions, proctoringFailed, overallConfidence, coachingTimeline }),
     }),
 
   deleteSession: (sessionId: string) =>
