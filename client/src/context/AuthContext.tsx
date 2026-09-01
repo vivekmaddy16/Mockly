@@ -57,11 +57,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // ─── Check initial stored user & verify with backend ────
   useEffect(() => {
     const initAuth = async () => {
-      const token = getAuthToken();
+      const token = getAuthToken() || await authApi.refreshToken();
       const stored = getStoredUser();
 
-      if (token && stored) {
-        setUser(stored);
+      if (token) {
+        if (stored) setUser(stored);
 
         try {
           const profile = await authApi.getMe();
