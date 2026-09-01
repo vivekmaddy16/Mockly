@@ -19,6 +19,7 @@ exports.createSession = async (req, res) => {
       extractedSkills,
       questions,
       proctoringMode,
+      aiEngine,
     } = req.body;
 
     const newSession = await InterviewSession.create({
@@ -28,6 +29,7 @@ exports.createSession = async (req, res) => {
       experienceLevel,
       difficultyMode: difficultyMode || 'Medium',
       roundType: roundType || 'technical_screen',
+      aiEngine: aiEngine || 'gemini',
       resumeText,
       jobDescriptionText,
       extractedSkills: extractedSkills || [],
@@ -187,7 +189,7 @@ exports.completeSession = async (req, res) => {
       return res.status(404).json({ error: 'Interview session not found' });
     }
 
-    const { overallFeedback, infractions, proctoringFailed } = req.body;
+    const { overallFeedback, infractions, proctoringFailed, overallConfidence, coachingTimeline } = req.body;
 
     session.status = 'completed';
     session.completedAt = new Date();
@@ -209,6 +211,12 @@ exports.completeSession = async (req, res) => {
     }
     if (typeof proctoringFailed === 'boolean') {
       session.proctoringFailed = proctoringFailed;
+    }
+    if (typeof overallConfidence === 'number') {
+      session.overallConfidence = overallConfidence;
+    }
+    if (Array.isArray(coachingTimeline)) {
+      session.coachingTimeline = coachingTimeline;
     }
 
     await session.save();

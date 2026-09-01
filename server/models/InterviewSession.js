@@ -17,6 +17,13 @@ const EvaluationSchema = new mongoose.Schema({
   structureScore: { type: Number },
   technicalScore: { type: Number },
   clarityScore: { type: Number },
+  confidenceScore: { type: Number, min: 0, max: 100 },
+  confidenceMetrics: {
+    eyeContact: { type: Number, min: 0, max: 100 },
+    stability: { type: Number, min: 0, max: 100 },
+    pacing: { type: Number, min: 0 },
+    emotion: { type: String, maxlength: 50 },
+  },
   feedback: { type: String, required: true },
   keyPointsCovered: [{ type: String }],
   keyPointsMissed: [{ type: String }],
@@ -106,6 +113,17 @@ const InterviewSessionSchema = new mongoose.Schema(
     totalScore: {
       type: Number,
     },
+    overallConfidence: {
+      type: Number,
+      min: 0,
+      max: 100,
+    },
+    coachingTimeline: [{
+      timestamp: { type: String },
+      type: { type: String, enum: ['strength', 'weakness', 'coaching_tip'] },
+      text: { type: String },
+      title: { type: String },
+    }],
     completedAt: {
       type: Date,
     },
