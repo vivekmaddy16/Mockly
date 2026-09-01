@@ -76,15 +76,86 @@ const WebcamTelemetry: React.FC<{
 }> = ({ isInterviewing, onMetricsUpdate }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const faceLandmarkerRef = useRef<{ detectForVideo: (video: HTMLVideoElement, timestamp: number) => FaceLandmarkerResult; close?: () => void } | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
+  const lastAnalysisRef = useRef(0);
+  const previousNoseRef = useRef<{ x: number; y: number } | null>(null);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [cameraActive, setCameraActive] = useState(false);
   const [metrics, setMetrics] = useState({
-    eyeContact: 95,
-    stability: 98,
-    pacing: 120,
-    emotion: 'Focused',
-    confidence: 96
+    eyeContact: 0,
+    stability: 0,
+    pacing: 0,
+    emotion: 'Waiting for face',
+    confidence: 0
   });
+
+  type Blendshape = { categoryName: string; score: number };
+  type FaceLandmarkerResult = {
+    faceLandmarks: Array<Array<{ x: number; y: number }>>;
+    faceBlendshapes?: Array<Blendshape[]>;
+  };
+
+  const updateMetrics = (nextMetrics: typeof metrics) => {
+    setMetrics(nextMetrics);
+    onMetricsUpdate(nextMetrics);
+  };
+
+  const scoreFor = (shapes: Blendshape[], name: string) =>
+    shapes.find(shape => shape.categoryName === name)?.score ?? 0;
+
+  const analyzeFrame = (timestamp: number) => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const landmarker = faceLandmarkerRef.current;
+    if (!video || !canvas || !landmarker || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return;
+
+    // Face landmark inference is intentionally throttled; it uses the real camera
+    // frame, rather than inventing values between animation frames.
+    if (timestamp - lastAnalysisRef.current < 180) return;
+    lastAnalysisRef.current = timestamp;
+
+    const result = landmarker.detectForVideo(video, timestamp);
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const landmarks = result.faceLandmarks[0];
+    if (!landmarks) {
+      previousNoseRef.current = null;
+      updateMetrics({ eyeContact: 0, stability: 0, pacing: 0, emotion: 'Face not detected', confidence: 0 });
+      return;
+    }
+
+    // The preview is mirrored, so landmarks are mirrored only for the overlay.
+    ctx.fillStyle = '#7BD695';
+    landmarks.forEach(point => {
+      ctx.beginPath();
+      ctx.arc((1 - point.x) * canvas.width, point.y * canvas.height, 1.15, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    const nose = landmarks[1];
+    const displacement = previousNoseRef.current
+      ? Math.hypot(nose.x - previousNoseRef.current.x, nose.y - previousNoseRef.current.y)
+      : 0;
+    previousNoseRef.current = { x: nose.x, y: nose.y };
+
+    const shapes = result.faceBlendshapes?.[0] ?? [];
+    const gazeMovement = ['eyeLookInLeft', 'eyeLookInRight', 'eyeLookOutLeft', 'eyeLookOutRight', 'eyeLookUpLeft', 'eyeLookUpRight', 'eyeLookDownLeft', 'eyeLookDownRight']
+      .reduce((total, category) => total + scoreFor(shapes, category), 0);
+    const eyeContact = Math.round(Math.max(0, Math.min(100, 100 - gazeMovement * 24)));
+    const stability = Math.round(Math.max(0, Math.min(100, 100 - displacement * 850)));
+    const centered = Math.max(0, 100 - (Math.abs(nose.x - 0.5) + Math.abs(nose.y - 0.48)) * 140);
+    const confidence = Math.round(eyeContact * 0.4 + stability * 0.35 + centered * 0.25);
+
+    const smile = (scoreFor(shapes, 'mouthSmileLeft') + scoreFor(shapes, 'mouthSmileRight')) / 2;
+    const jawOpen = scoreFor(shapes, 'jawOpen');
+    const browRaised = (scoreFor(shapes, 'browInnerUp') + scoreFor(shapes, 'browOuterUpLeft') + scoreFor(shapes, 'browOuterUpRight')) / 3;
+    const emotion = smile > 0.25 ? 'Positive' : jawOpen > 0.3 || browRaised > 0.2 ? 'Engaged' : 'Neutral';
+
+    updateMetrics({ eyeContact, stability, pacing: 0, emotion, confidence });
+  };
 
   // Enable/Disable webcam
   const startCamera = async () => {
@@ -99,6 +170,21 @@ const WebcamTelemetry: React.FC<{
             console.log("Webcam video play interrupted or prevented:", error.message);
           });
         }
+      }
+      if (!faceLandmarkerRef.current) {
+        const { FaceLandmarker, FilesetResolver } = await import('@mediapipe/tasks-vision');
+        const vision = await FilesetResolver.forVisionTasks(
+          'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22-rc.20250304/wasm'
+        );
+        faceLandmarkerRef.current = await FaceLandmarker.createFromOptions(vision, {
+          baseOptions: {
+            modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/latest/face_landmarker.task',
+            delegate: 'GPU'
+          },
+          runningMode: 'VIDEO',
+          numFaces: 1,
+          outputFaceBlendshapes: true
+        });
       }
       setHasPermission(true);
       setCameraActive(true);
@@ -115,130 +201,40 @@ const WebcamTelemetry: React.FC<{
       stream.getTracks().forEach(track => track.stop());
       videoRef.current.srcObject = null;
     }
+    if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+    animationFrameRef.current = null;
+    previousNoseRef.current = null;
     setCameraActive(false);
   };
 
   useEffect(() => {
     startCamera(); // auto-start on load
-    return () => stopCamera();
+    return () => {
+      stopCamera();
+      faceLandmarkerRef.current?.close?.();
+      faceLandmarkerRef.current = null;
+    };
   }, []);
 
-  // Animation & Metric Simulation loop
+  // Analyze the actual webcam stream and draw its detected face landmarks.
   useEffect(() => {
     if (!cameraActive) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    let animId: number;
-    let frameCount = 0;
-
-    // Simulated facial mesh node positions relative to canvas size
-    const baseMeshPoints = [
-      { x: 0.5, y: 0.35 }, // Nose
-      { x: 0.42, y: 0.28 }, // Left Eye
-      { x: 0.58, y: 0.28 }, // Right Eye
-      { x: 0.5, y: 0.48 }, // Mouth
-      { x: 0.32, y: 0.35 }, // Left cheek outline
-      { x: 0.68, y: 0.35 }, // Right cheek outline
-      { x: 0.5, y: 0.18 }, // Forehead
-      { x: 0.5, y: 0.62 }, // Chin
-    ];
-
-    const connections = [
-      [0, 1], [0, 2], [0, 3], [0, 4], [0, 5],
-      [1, 6], [2, 6], [4, 7], [5, 7], [3, 7],
-      [1, 4], [2, 5], [1, 2]
-    ];
-
-    const run = () => {
-      frameCount++;
-      const w = canvas.width;
-      const h = canvas.height;
-      ctx.clearRect(0, 0, w, h);
-
-      // 1. Draw tracking box
-      ctx.strokeStyle = '#10b981'; // green for focus
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash([5, 5]);
-      ctx.strokeRect(w * 0.2, h * 0.15, w * 0.6, h * 0.7);
-      ctx.setLineDash([]);
-
-      // 2. Draw eye tracking reticle
-      const gazeOffX = Math.sin(frameCount * 0.05) * 4;
-      const gazeOffY = Math.cos(frameCount * 0.03) * 3;
-      ctx.fillStyle = '#E54B54';
-      ctx.beginPath();
-      ctx.arc(w * 0.42 + gazeOffX, h * 0.28 + gazeOffY, 2, 0, Math.PI * 2);
-      ctx.arc(w * 0.58 + gazeOffX, h * 0.28 + gazeOffY, 2, 0, Math.PI * 2);
-      ctx.fill();
-
-      // 3. Draw live mesh wireframe
-      // We apply slight natural motion based on sin/cos waves (simulating head tracking)
-      const headX = Math.sin(frameCount * 0.02) * 6;
-      const headY = Math.cos(frameCount * 0.015) * 4;
-
-      const currentPoints = baseMeshPoints.map(p => ({
-        x: p.x * w + headX + (Math.sin(frameCount * 0.1 + p.x) * 1.5),
-        y: p.y * h + headY + (Math.cos(frameCount * 0.1 + p.y) * 1.5),
-      }));
-
-      // Draw mesh connection lines
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
-      ctx.lineWidth = 0.8;
-      connections.forEach(([start, end]) => {
-        ctx.beginPath();
-        ctx.moveTo(currentPoints[start].x, currentPoints[start].y);
-        ctx.lineTo(currentPoints[end].x, currentPoints[end].y);
-        ctx.stroke();
-      });
-
-      // Draw mesh nodes
-      ctx.fillStyle = '#7BD695';
-      currentPoints.forEach(p => {
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, 2.5, 0, Math.PI * 2);
-        ctx.fill();
-      });
-
-      // 4. Update metrics periodically
-      if (frameCount % 45 === 0) {
-        // Natural fluctuations
-        const eyeVal = Math.round(90 + Math.sin(frameCount * 0.01) * 8);
-        const stabVal = Math.round(94 + Math.cos(frameCount * 0.02) * 4);
-        const wpmVal = Math.round(115 + Math.sin(frameCount * 0.01) * 20);
-        
-        let emot = 'Focused';
-        if (eyeVal < 86) emot = 'Nervous';
-        else if (stabVal > 97) emot = 'Confident';
-
-        const confVal = Math.round((eyeVal + stabVal + (100 - Math.abs(130 - wpmVal) / 2)) / 3);
-
-        const newMetrics = {
-          eyeContact: eyeVal,
-          stability: stabVal,
-          pacing: wpmVal,
-          emotion: emot,
-          confidence: Math.min(100, Math.max(50, confVal))
-        };
-
-        setMetrics(newMetrics);
-        onMetricsUpdate(newMetrics);
-      }
-
-      animId = requestAnimationFrame(run);
+    const run = (timestamp: number) => {
+      analyzeFrame(timestamp);
+      animationFrameRef.current = requestAnimationFrame(run);
     };
-
-    run();
-    return () => cancelAnimationFrame(animId);
+    animationFrameRef.current = requestAnimationFrame(run);
+    return () => {
+      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    };
   }, [cameraActive]);
 
   return (
     <div className="card-cream p-5 space-y-4 border border-white shadow-xl flex flex-col h-full justify-between animate-fade-in">
       <div className="space-y-1">
         <h4 className="font-display font-black text-sm text-charcoal">Visual Telemetry Console</h4>
-        <p className="text-[10px] text-charcoal/50 font-bold">Real-time eye tracking & focus profiling</p>
+        <p className="text-[10px] text-charcoal/50 font-bold">Live facial landmarks and expression signals</p>
       </div>
 
       {/* Video Box */}
@@ -265,6 +261,7 @@ const WebcamTelemetry: React.FC<{
                 width={320}
                 height={240}
                 className="absolute inset-0 w-full h-full pointer-events-none"
+                style={{ transform: 'scaleX(-1)' }}
               />
             )}
           </>
@@ -293,12 +290,12 @@ const WebcamTelemetry: React.FC<{
           </div>
 
           <div className="p-2.5 bg-white rounded-xl border border-charcoal/5 flex flex-col justify-between shadow-sm">
-            <span className="text-charcoal/50 font-bold uppercase">Pacing</span>
-            <span className="font-display font-black text-xs mt-1 text-charcoal">{cameraActive ? `${metrics.pacing} WPM` : 'N/A'}</span>
+            <span className="text-charcoal/50 font-bold uppercase">Answer pace</span>
+            <span className="font-display font-black text-xs mt-1 text-charcoal">{cameraActive && metrics.pacing > 0 ? `${metrics.pacing} WPM` : 'Not measured'}</span>
           </div>
 
           <div className="p-2.5 bg-white rounded-xl border border-charcoal/5 flex flex-col justify-between shadow-sm">
-            <span className="text-charcoal/50 font-bold uppercase">Aura/State</span>
+            <span className="text-charcoal/50 font-bold uppercase">Expression</span>
             <span className={`font-display font-black text-xs mt-1 uppercase ${
               !cameraActive ? 'text-charcoal/55' : metrics.emotion === 'Nervous' ? 'text-coral' : 'text-emerald-700'
             }`}>{cameraActive ? metrics.emotion : 'Standby'}</span>
@@ -309,7 +306,7 @@ const WebcamTelemetry: React.FC<{
         <div className="p-3 bg-white rounded-2xl border border-charcoal/10 space-y-1.5 shadow-sm">
           <div className="flex items-center justify-between text-[10px] font-bold">
             <span className="text-charcoal">Confidence Index</span>
-            <span className="text-coral font-black">{cameraActive ? `${metrics.confidence}%` : '0%'}</span>
+            <span className="text-coral font-black">{cameraActive && metrics.confidence > 0 ? `${metrics.confidence}%` : 'N/A'}</span>
           </div>
           <div className="h-1.5 w-full bg-charcoal/5 rounded-full overflow-hidden">
             <div
@@ -346,11 +343,11 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
   const [interimText, setInterimText] = useState('');
   const [inputMode, setInputMode] = useState<'spoken' | 'written'>('spoken');
   const [telemetry, setTelemetry] = useState({
-    eyeContact: 95,
-    stability: 98,
-    pacing: 120,
-    emotion: 'Focused',
-    confidence: 96
+    eyeContact: 0,
+    stability: 0,
+    pacing: 0,
+    emotion: 'Waiting for face',
+    confidence: 0
   });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
@@ -623,12 +620,17 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
     try {
       const result = await evaluateAnswer(currentQuestion, userAnswer, session.targetRole, session.aiEngine || 'gemini');
       
-      // Inject real-time webcam telemetry metrics
+      // Persist the latest metrics calculated from the candidate's own camera frame.
+      // Pace is calculated from the submitted spoken answer; it is never simulated.
+      const submittedWordCount = userAnswer.trim().split(/\s+/).filter(Boolean).length;
+      const answerPacing = inputMode === 'spoken' && seconds > 0
+        ? Math.round(submittedWordCount / (seconds / 60))
+        : 0;
       result.confidenceScore = telemetry.confidence;
       result.confidenceMetrics = {
         eyeContact: telemetry.eyeContact,
         stability: telemetry.stability,
-        pacing: telemetry.pacing,
+        pacing: answerPacing,
         emotion: telemetry.emotion
       };
       result.inputMode = inputMode;
@@ -1182,7 +1184,7 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
                     </div>
                     <div className="p-2.5 bg-cream rounded-2xl border border-charcoal/5">
                       <span className="text-[10px] text-charcoal/50 block font-bold">PACING</span>
-                      <span className="font-black text-xs text-charcoal">{currentEvaluation.confidenceMetrics.pacing} WPM</span>
+                      <span className="font-black text-xs text-charcoal">{currentEvaluation.confidenceMetrics.pacing > 0 ? `${currentEvaluation.confidenceMetrics.pacing} WPM` : 'Not measured'}</span>
                     </div>
                     <div className="p-2.5 bg-cream rounded-2xl border border-charcoal/5">
                       <span className="text-[10px] text-charcoal/50 block font-bold">DOMINANT EMOTION</span>

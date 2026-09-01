@@ -330,8 +330,8 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ session }) => {
                     <span className="font-display font-black text-lg text-charcoal">{avgClarity}%</span>
                   </div>
                   <div className="p-3.5 rounded-2xl bg-white border border-charcoal/10 text-center shadow-sm">
-                    <span className="block text-[9px] font-extrabold uppercase text-charcoal/50">Confidence Telemetry</span>
-                    <span className="font-display font-black text-lg text-coral">{session.overallConfidence || 92}%</span>
+                    <span className="block text-[9px] font-extrabold uppercase text-charcoal/50">Camera Engagement</span>
+                    <span className="font-display font-black text-lg text-coral">{typeof session.overallConfidence === 'number' && session.overallConfidence > 0 ? `${session.overallConfidence}%` : 'N/A'}</span>
                   </div>
                 </div>
               </div>

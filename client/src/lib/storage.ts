@@ -178,7 +178,7 @@ export const updateSessionEvaluation = async (
       .filter((c): c is number => typeof c === 'number');
     session.overallConfidence = confidences.length > 0 
       ? Math.round(confidences.reduce((a, b) => a + b, 0) / confidences.length)
-      : 92; // default fallback
+      : undefined;
 
     // Compile dynamic interactive coaching timeline milestones
     const timeline: typeof session.coachingTimeline = [];
@@ -202,23 +202,23 @@ export const updateSessionEvaluation = async (
       }
 
       // Add pacing / confidence moment
-      const pacing = ev.confidenceMetrics?.pacing || 125;
-      const eyeContact = ev.confidenceMetrics?.eyeContact || 94;
-      if (pacing < 110) {
+      const pacing = ev.confidenceMetrics?.pacing;
+      const eyeContact = ev.confidenceMetrics?.eyeContact;
+      if (typeof pacing === 'number' && pacing > 0 && pacing < 110) {
         timeline.push({
           timestamp: formattedQTime(cumulativeSeconds + 32),
           type: 'coaching_tip',
           title: `Pacing Alert - Q${idx + 1}`,
           text: `Your pacing slowed to ${pacing} WPM. Try keeping a steady tempo to project clarity.`
         });
-      } else if (pacing > 150) {
+      } else if (typeof pacing === 'number' && pacing > 150) {
         timeline.push({
           timestamp: formattedQTime(cumulativeSeconds + 28),
           type: 'coaching_tip',
           title: `Pacing Alert - Q${idx + 1}`,
           text: `Speech rate elevated to ${pacing} WPM. Pause slightly between bullet points to aid listener comprehension.`
         });
-      } else if (eyeContact < 88) {
+      } else if (typeof eyeContact === 'number' && eyeContact > 0 && eyeContact < 88) {
         timeline.push({
           timestamp: formattedQTime(cumulativeSeconds + 24),
           type: 'weakness',
