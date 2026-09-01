@@ -65,7 +65,7 @@ const InterviewSessionSchema = new mongoose.Schema(
     },
     aiEngine: {
       type: String,
-      enum: ['gemini', 'ollama'],
+      enum: ['gemini', 'openai', 'claude', 'ollama'],
       default: 'gemini',
     },
     resumeText: {

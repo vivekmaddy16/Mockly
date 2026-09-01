@@ -93,7 +93,7 @@ const WebcamTelemetry: React.FC<{
   type Blendshape = { categoryName: string; score: number };
   type FaceLandmarkerResult = {
     faceLandmarks: Array<Array<{ x: number; y: number }>>;
-    faceBlendshapes?: Array<Blendshape[]>;
+    faceBlendshapes?: Array<{ categories: Blendshape[] }>;
   };
 
   const updateMetrics = (nextMetrics: typeof metrics) => {
@@ -141,7 +141,7 @@ const WebcamTelemetry: React.FC<{
       : 0;
     previousNoseRef.current = { x: nose.x, y: nose.y };
 
-    const shapes = result.faceBlendshapes?.[0] ?? [];
+    const shapes = result.faceBlendshapes?.[0]?.categories ?? [];
     const gazeMovement = ['eyeLookInLeft', 'eyeLookInRight', 'eyeLookOutLeft', 'eyeLookOutRight', 'eyeLookUpLeft', 'eyeLookUpRight', 'eyeLookDownLeft', 'eyeLookDownRight']
       .reduce((total, category) => total + scoreFor(shapes, category), 0);
     const eyeContact = Math.round(Math.max(0, Math.min(100, 100 - gazeMovement * 24)));

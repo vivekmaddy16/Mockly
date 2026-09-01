@@ -10,7 +10,6 @@ const globalLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => req.ip,
 });
 
 // ─── Auth Rate Limiter (Strict) ──────────────────────────────
@@ -24,7 +23,6 @@ const authLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skipSuccessfulRequests: true,
-  keyGenerator: (req) => req.ip,
 });
 
 // ─── Password Reset Rate Limiter ─────────────────────────────
@@ -37,7 +35,6 @@ const passwordResetLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => req.ip,
 });
 
 // ─── Email Verification Rate Limiter ─────────────────────────
@@ -50,7 +47,6 @@ const emailVerificationLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => req.ip,
 });
 
 module.exports = {
