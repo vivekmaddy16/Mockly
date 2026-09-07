@@ -20,8 +20,8 @@ export const getAuthToken = (): string | null => {
 
 let accessToken: string | null = null;
 
-export const setAuthToken = (token: string | null) => {
-  accessToken = token;
+export const setAuthToken = (token: string | null | undefined) => {
+  accessToken = token ?? null;
 };
 
 export const getStoredUser = (): AuthUser | null => {

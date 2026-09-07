@@ -98,7 +98,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = useCallback(async (email: string, password: string) => {
     const data = await authApi.login({ email, password });
-    setAuthToken(data.token);
+    setAuthToken(data.token ?? null);
     setStoredUser(data);
     setUser(data);
   }, []);
@@ -118,7 +118,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         targetRole,
         experienceLevel,
       });
-      setAuthToken(data.token);
+      setAuthToken(data.token ?? null);
       setStoredUser(data);
       setUser(data);
       return { message: data.message };
@@ -140,7 +140,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateProfile = useCallback(
     async (payload: { name?: string; targetRole?: string; experienceLevel?: string }) => {
       const data = await authApi.updateProfile(payload);
-      setAuthToken(data.token);
+      setAuthToken(data.token ?? null);
       setStoredUser(data);
       setUser(data);
     },
