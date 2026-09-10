@@ -364,6 +364,12 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
 
   const maxAllowedInfractions = session.proctoringMode === 'strict' ? 1 : 3;
 
+  const infractionsRef = useRef(session.infractions || 0);
+  useEffect(() => {
+    infractionsRef.current = infractions;
+  }, [infractions]);
+  const lastBlurInfractionRef = useRef(0);
+
   // Proctoring early auto-termination logic
   const terminateSessionDueToProctoring = useCallback(async (finalInfractions: number) => {
     if (session.status === 'completed') return;
@@ -406,6 +412,36 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
       console.warn('Failed to save terminated session:', err);
     }
   }, [session]);
+
+  const registerInfraction = useCallback((type: 'blur' | 'screenshot') => {
+    if (proctoringFailed || session.status === 'completed') return;
+
+    const now = Date.now();
+    if (type === 'blur') {
+      // Deduplicate: ignore if modal is already open or occurred within 1500ms
+      if (showBlurWarning || (now - lastBlurInfractionRef.current < 1500)) {
+        setIsWindowFocused(false);
+        setShowBlurWarning(true);
+        return;
+      }
+      lastBlurInfractionRef.current = now;
+    }
+
+    const nextCount = infractionsRef.current + 1;
+    infractionsRef.current = nextCount;
+    setInfractions(nextCount);
+    setIsWindowFocused(false);
+
+    if (type === 'blur') {
+      setShowBlurWarning(true);
+    } else if (type === 'screenshot') {
+      setShowScreenshotWarning(true);
+    }
+
+    if (nextCount >= maxAllowedInfractions) {
+      terminateSessionDueToProctoring(nextCount);
+    }
+  }, [proctoringFailed, session.status, showBlurWarning, maxAllowedInfractions, terminateSessionDueToProctoring]);
 
   const handleTelemetryUpdate = useCallback((metrics: any) => {
     setTelemetry(metrics);
@@ -465,15 +501,7 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
 
     const handleVisibilityChange = () => {
       if (document.hidden) {
-        setIsWindowFocused(false);
-        setInfractions(p => {
-          const next = p + 1;
-          if (next >= maxAllowedInfractions) {
-            terminateSessionDueToProctoring(next);
-          }
-          return next;
-        });
-        setShowBlurWarning(true);
+        registerInfraction('blur');
       } else {
         if (!showBlurWarning && !showScreenshotWarning) {
           setIsWindowFocused(true);
@@ -482,15 +510,7 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
     };
 
     const handleWindowBlur = () => {
-      setIsWindowFocused(false);
-      setInfractions(p => {
-        const next = p + 1;
-        if (next >= maxAllowedInfractions) {
-          terminateSessionDueToProctoring(next);
-        }
-        return next;
-      });
-      setShowBlurWarning(true);
+      registerInfraction('blur');
     };
 
     const handleWindowFocus = () => {
@@ -508,22 +528,14 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
       window.removeEventListener('blur', handleWindowBlur);
       window.removeEventListener('focus', handleWindowFocus);
     };
-  }, [hasStarted, showBlurWarning, showScreenshotWarning, session.proctoringMode, proctoringFailed, maxAllowedInfractions, terminateSessionDueToProctoring]);
+  }, [hasStarted, showBlurWarning, showScreenshotWarning, session.proctoringMode, proctoringFailed, registerInfraction]);
 
   // Prevent Screenshot Shortcuts & Page Printing (Global)
   useEffect(() => {
     if (!hasStarted || session.proctoringMode === 'off' || proctoringFailed) return;
 
     const triggerScreenshotAttempt = () => {
-      setShowScreenshotWarning(true);
-      setIsWindowFocused(false);
-      setInfractions(p => {
-        const next = p + 1;
-        if (next >= maxAllowedInfractions) {
-          terminateSessionDueToProctoring(next);
-        }
-        return next;
-      });
+      registerInfraction('screenshot');
       try {
         navigator.clipboard.writeText('Screenshots are disabled during this interview.');
       } catch {}
@@ -556,7 +568,7 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [hasStarted, session.proctoringMode, proctoringFailed, maxAllowedInfractions, terminateSessionDueToProctoring]);
+  }, [hasStarted, session.proctoringMode, proctoringFailed, registerInfraction]);
 
   const speakQuestion = useCallback(() => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
@@ -822,6 +834,7 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
               onClick={() => {
                 setShowBlurWarning(false);
                 setIsWindowFocused(true);
+                lastBlurInfractionRef.current = Date.now();
                 // Force fullscreen if lost
                 if (!document.fullscreenElement) {
                   const element = document.documentElement;
@@ -858,6 +871,7 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
               onClick={() => {
                 setShowScreenshotWarning(false);
                 setIsWindowFocused(true);
+                lastBlurInfractionRef.current = Date.now();
                 // Force fullscreen if lost
                 if (!document.fullscreenElement) {
                   const element = document.documentElement;
