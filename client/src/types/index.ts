@@ -36,13 +36,26 @@ export interface QuestionEvaluation {
   modelAnswer: string;
   inputMode?: 'spoken' | 'written';
   sentenceHighlights?: Array<{ text: string; status: 'strong' | 'weak' | 'neutral'; reason: string }>;
+  hasAudio?: boolean;
+  audioDurationSec?: number;
+  audioEventMarkers?: Array<{
+    timeSec: number;
+    timestamp: string;
+    label: string;
+    text: string;
+    type: 'filler' | 'pause' | 'pacing' | 'concept' | 'strength' | 'weakness';
+  }>;
 }
 
 export interface ReplayCoachingMoment {
   timestamp: string; // MM:SS format
+  timeSec?: number; // exact second in recording for audio seeking
+  questionId?: string;
+  questionIndex?: number;
   type: 'strength' | 'weakness' | 'coaching_tip';
   text: string;
   title: string;
+  category?: string;
 }
 
 export interface InterviewSession {
