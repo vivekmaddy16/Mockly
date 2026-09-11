@@ -5,10 +5,12 @@ import Link from 'next/link';
 import { 
   Trophy, Target, CheckCircle2, Sparkles, ArrowRight, RotateCcw, 
   BookOpen, ChevronDown, ChevronUp, BarChart2, AlertCircle, FileText,
-  AlertTriangle, Play, Pause, RefreshCw, Volume2, User, Users, GraduationCap
+  AlertTriangle, Play, Pause, RefreshCw, Volume2, VolumeX, User, Users, GraduationCap,
+  Download, Mic, FastForward, Rewind, Info, Radio, Zap
 } from 'lucide-react';
 import { InterviewSession } from '@/types';
 import { computeSentenceHighlights } from '@/lib/gemini';
+import { getAudioRecording } from '@/lib/audioStorage';
 import confetti from 'canvas-confetti';
 import { 
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, 
@@ -98,6 +100,616 @@ const ScoreRing: React.FC<{ score: number }> = ({ score }) => {
       <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
         <span className="font-display font-black text-4xl text-charcoal tracking-tight">{animatedScore}%</span>
         <span className="text-[10px] text-charcoal/60 font-extrabold uppercase tracking-wider mt-0.5">{color.text}</span>
+      </div>
+    </div>
+  );
+};
+
+// ─── Production-Grade Real Audio Coaching & Replay Deck ──────────
+const RealAudioCoachingDeck: React.FC<{
+  session: InterviewSession;
+  coachingMoments: any[];
+}> = ({ session, coachingMoments }) => {
+  const [selectedQIdx, setSelectedQIdx] = useState(0);
+  const [audioMode, setAudioMode] = useState<'candidate' | 'ai_coach'>('candidate');
+  const [audioBlobUrl, setAudioBlobUrl] = useState<string | null>(null);
+  const [hasAudioBlob, setHasAudioBlob] = useState(false);
+  const [isLoadingAudio, setIsLoadingAudio] = useState(true);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [playbackSpeed, setPlaybackSpeed] = useState(1);
+  const [isMuted, setIsMuted] = useState(false);
+  const [activeMomentId, setActiveMomentId] = useState<number | null>(null);
+
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const currentQ = session.questions[selectedQIdx] || session.questions[0];
+  const currentEval = currentQ ? session.evaluations[currentQ.id] : undefined;
+
+  // Filter moments specific to this question, or fallback to all session moments
+  const relevantMoments = coachingMoments.filter(
+    m => m.questionIndex === selectedQIdx || m.questionId === currentQ?.id
+  );
+  const displayMoments = relevantMoments.length > 0 ? relevantMoments : coachingMoments;
+
+  const formatSeconds = (sec: number) => {
+    if (isNaN(sec) || sec < 0) return '00:00';
+    const m = Math.floor(sec / 60).toString().padStart(2, '0');
+    const s = Math.floor(sec % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  };
+
+  // Load real audio recording from IndexedDB whenever question changes
+  useEffect(() => {
+    let active = true;
+    let urlToRevoke: string | null = null;
+
+    if (!currentQ) return;
+
+    // Reset playback state
+    setIsPlaying(false);
+    setCurrentTime(0);
+    setDuration(0);
+    setActiveMomentId(null);
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+
+    const loadAudio = async () => {
+      setIsLoadingAudio(true);
+      try {
+        const blob = await getAudioRecording(session.id, currentQ.id);
+        if (!active) return;
+        if (blob && blob.size > 0) {
+          urlToRevoke = URL.createObjectURL(blob);
+          setAudioBlobUrl(urlToRevoke);
+          setHasAudioBlob(true);
+          // Pre-set duration from evaluation metadata if available
+          if (currentEval?.audioDurationSec) {
+            setDuration(currentEval.audioDurationSec);
+          }
+        } else {
+          setAudioBlobUrl(null);
+          setHasAudioBlob(false);
+          // If no recorded audio, automatically suggest AI coach debrief mode
+          if (currentEval?.inputMode === 'written') {
+            setAudioMode('ai_coach');
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to retrieve audio recording:', err);
+        if (active) {
+          setAudioBlobUrl(null);
+          setHasAudioBlob(false);
+        }
+      } finally {
+        if (active) setIsLoadingAudio(false);
+      }
+    };
+
+    loadAudio();
+
+    return () => {
+      active = false;
+      if (urlToRevoke) URL.revokeObjectURL(urlToRevoke);
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, [selectedQIdx, session.id, currentQ, currentEval]);
+
+  // Sync HTML5 audio playback speed
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.playbackRate = playbackSpeed;
+    }
+  }, [playbackSpeed]);
+
+  // Sync mute
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.muted = isMuted;
+    }
+  }, [isMuted]);
+
+  // Dynamic Audio Waveform Canvas Visualizer
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let animId: number;
+    let phase = 0;
+
+    const render = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const width = canvas.width;
+      const height = canvas.height;
+      const barCount = 42;
+      const barWidth = 3.5;
+      const gap = (width - barCount * barWidth) / (barCount - 1);
+
+      phase += 0.08;
+
+      const normalizedProg = duration > 0 ? Math.min(1, currentTime / duration) : 0;
+      const currentPassedIndex = Math.floor(normalizedProg * barCount);
+
+      for (let i = 0; i < barCount; i++) {
+        const x = i * (barWidth + gap);
+        const isPassed = i <= currentPassedIndex;
+
+        let barH: number;
+        if (isPlaying) {
+          // Dynamic bouncing frequencies while audio is active
+          const noise = Math.sin(i * 0.45 + phase) * Math.cos(i * 0.25 - phase);
+          barH = Math.max(6, Math.abs(noise) * (height - 8));
+        } else {
+          // Static harmonic contour representing vocal timbre
+          const harmonic = Math.sin(i * 0.28) * Math.cos(i * 0.16) * 0.6 + 0.4;
+          barH = Math.max(5, harmonic * (height - 12));
+        }
+
+        const y = (height - barH) / 2;
+        ctx.fillStyle = isPassed ? '#E54B54' : '#1B1E16';
+        ctx.globalAlpha = isPassed ? 1 : 0.35;
+        ctx.beginPath();
+        ctx.roundRect(x, y, barWidth, barH, 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1.0;
+
+      if (isPlaying) {
+        animId = requestAnimationFrame(render);
+      }
+    };
+
+    render();
+    return () => cancelAnimationFrame(animId);
+  }, [isPlaying, currentTime, duration]);
+
+  // Audio Player Controls
+  const togglePlayPause = () => {
+    if (audioMode === 'candidate') {
+      if (!audioRef.current || !audioBlobUrl) return;
+      if (isPlaying) {
+        audioRef.current.pause();
+        setIsPlaying(false);
+      } else {
+        audioRef.current.play().then(() => setIsPlaying(true)).catch(e => console.warn(e));
+      }
+    } else {
+      // AI Coach Voice Mode
+      if (isPlaying) {
+        if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+          window.speechSynthesis.cancel();
+        }
+        setIsPlaying(false);
+      } else {
+        playAiCoachSpeech();
+      }
+    }
+  };
+
+  const playAiCoachSpeech = (customText?: string) => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    if (audioRef.current) audioRef.current.pause();
+
+    const textToSpeak = customText || (
+      currentEval
+        ? `Coaching analysis for question ${selectedQIdx + 1}. Overall score: ${currentEval.score} percent. Key feedback: ${currentEval.feedback}. A strong highlight was: ${currentEval.positiveHighlights[0] || 'good structure'}. To improve, consider: ${currentEval.areasToImprove[0] || 'expanding technical depth'}.`
+        : `Coaching debrief ready for question ${selectedQIdx + 1}.`
+    );
+
+    const utterance = new SpeechSynthesisUtterance(textToSpeak);
+    utterance.rate = playbackSpeed;
+    utterance.pitch = 1.0;
+    utterance.onstart = () => setIsPlaying(true);
+    utterance.onend = () => setIsPlaying(false);
+    utterance.onerror = () => setIsPlaying(false);
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const seekRelative = (deltaSec: number) => {
+    if (audioMode === 'candidate' && audioRef.current) {
+      const nextTime = Math.max(0, Math.min(duration, audioRef.current.currentTime + deltaSec));
+      audioRef.current.currentTime = nextTime;
+      setCurrentTime(nextTime);
+    }
+  };
+
+  const handleSeekChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = parseFloat(e.target.value);
+    setCurrentTime(val);
+    if (audioMode === 'candidate' && audioRef.current) {
+      audioRef.current.currentTime = val;
+    }
+  };
+
+  const handleMilestoneClick = (moment: any, idx: number) => {
+    setActiveMomentId(idx);
+
+    if (audioMode === 'candidate' && audioBlobUrl && audioRef.current) {
+      const seekTarget = typeof moment.timeSec === 'number' ? moment.timeSec : 0;
+      audioRef.current.currentTime = seekTarget;
+      setCurrentTime(seekTarget);
+      audioRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
+    } else {
+      // Speak the milestone feedback
+      playAiCoachSpeech(`Coaching highlight: ${moment.title}. ${moment.text}`);
+    }
+  };
+
+  return (
+    <div className="space-y-6 animate-fade-in">
+      {/* Question Selector Pills */}
+      <div className="card-cream p-4 border border-white shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="space-y-0.5">
+          <span className="text-[10px] font-black uppercase text-charcoal/50 tracking-wider flex items-center gap-1.5">
+            <Radio className="w-3.5 h-3.5 text-coral animate-pulse" /> Multi-Track Vocal Studio
+          </span>
+          <h3 className="font-display font-black text-sm text-charcoal">Select Interview Question to Inspect</h3>
+        </div>
+
+        <div className="flex items-center gap-1.5 overflow-x-auto max-w-full pb-1 sm:pb-0">
+          {session.questions.map((q, idx) => {
+            const ev = session.evaluations[q.id];
+            const isSelected = selectedQIdx === idx;
+            const hasVoice = ev?.hasAudio || ev?.inputMode === 'spoken';
+
+            return (
+              <button
+                key={q.id}
+                onClick={() => setSelectedQIdx(idx)}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
+                  isSelected
+                    ? 'bg-charcoal text-cream shadow-md scale-105'
+                    : 'bg-white text-charcoal/70 border border-charcoal/10 hover:border-charcoal/30'
+                }`}
+              >
+                {hasVoice ? <Mic className={`w-3 h-3 ${isSelected ? 'text-coral' : 'text-charcoal/50'}`} /> : null}
+                <span>Q{idx + 1}</span>
+                <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-mono ${
+                  isSelected ? 'bg-white/20 text-cream' : 'bg-charcoal/5 text-charcoal/60'
+                }`}>
+                  {ev ? `${ev.score}%` : 'N/A'}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        {/* Left Column: Replay coaching milestones timeline */}
+        <div className="lg:col-span-1 card-cream p-6 border border-white shadow-2xl space-y-6">
+          <div className="space-y-1">
+            <h3 className="font-display font-black text-base text-charcoal flex items-center gap-2">
+              <GraduationCap className="w-5 h-5 text-coral" /> Audio Milestones
+            </h3>
+            <p className="text-[10px] text-charcoal/50 font-bold">
+              Jump directly to timestamped voice events & AI feedback points
+            </p>
+          </div>
+
+          {/* Vertical timeline */}
+          <div className="relative pl-6 border-l-2 border-charcoal/10 space-y-4 py-2 max-h-[560px] overflow-y-auto pr-1">
+            {displayMoments.map((moment, idx) => {
+              const isActive = activeMomentId === idx;
+              const isStrength = moment.type === 'strength';
+              const isWeakness = moment.type === 'weakness';
+
+              return (
+                <div
+                  key={idx}
+                  onClick={() => handleMilestoneClick(moment, idx)}
+                  className={`relative cursor-pointer transition-all duration-300 ${
+                    isActive ? 'scale-[1.02]' : 'hover:opacity-85'
+                  }`}
+                >
+                  {/* Circle bullet on line */}
+                  <div className={`absolute -left-[31px] top-1.5 w-4 h-4 rounded-full border-2 bg-white flex items-center justify-center transition-all ${
+                    isActive 
+                      ? 'border-charcoal bg-charcoal scale-110 shadow'
+                      : isStrength
+                      ? 'border-emerald-600 bg-emerald-500'
+                      : isWeakness
+                      ? 'border-coral bg-coral'
+                      : 'border-amber-600 bg-amber-500'
+                  }`} />
+
+                  <div className={`p-3.5 rounded-2xl border transition-all ${
+                    isActive 
+                      ? 'bg-charcoal text-cream border-charcoal shadow-md'
+                      : 'bg-white text-charcoal border-charcoal/10 hover:border-charcoal/20'
+                  }`}>
+                    <div className="flex items-center justify-between text-[9px] font-mono">
+                      <span className={`px-2 py-0.5 rounded-full font-black uppercase ${
+                        isActive 
+                          ? 'bg-white/20 text-cream'
+                          : isStrength 
+                          ? 'bg-emerald-500/10 text-emerald-800' 
+                          : isWeakness
+                          ? 'bg-coral/10 text-coral'
+                          : 'bg-amber-500/10 text-amber-900'
+                      }`}>
+                        {moment.type.replace('_', ' ')}
+                      </span>
+                      <span className="font-bold flex items-center gap-1 font-mono">
+                        <Zap className="w-3 h-3 text-coral" />
+                        {moment.timestamp}
+                      </span>
+                    </div>
+                    <h4 className="text-xs font-black mt-2 leading-tight">{moment.title}</h4>
+                    <p className={`text-[11px] mt-1 line-clamp-2 leading-relaxed font-medium ${
+                      isActive ? 'text-cream/80' : 'text-charcoal/70'
+                    }`}>
+                      {moment.text}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Right Column: Production Audio Deck & Player */}
+        <div className="lg:col-span-2 space-y-6">
+          <div className="card-cream p-7 sm:p-9 border border-white shadow-2xl space-y-6">
+            
+            {/* Header / Mode Switcher */}
+            <div className="flex items-center justify-between gap-4 flex-wrap border-b border-charcoal/10 pb-5">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-full bg-charcoal/5 border border-charcoal/10 text-[10px] font-extrabold uppercase text-charcoal/60">
+                    Question {selectedQIdx + 1} of {session.questions.length}
+                  </span>
+                  <span className="px-2.5 py-0.5 rounded-full bg-coral/10 text-coral text-[10px] font-extrabold uppercase">
+                    {currentQ?.category || 'Technical'}
+                  </span>
+                </div>
+                <h3 className="font-display font-black text-lg text-charcoal">
+                  {currentQ?.questionText}
+                </h3>
+              </div>
+
+              {/* Mode Toggle Switch */}
+              <div className="inline-flex items-center gap-1 p-1 bg-white border border-charcoal/10 rounded-full text-xs font-extrabold shadow-sm">
+                <button
+                  onClick={() => {
+                    if (isPlaying) togglePlayPause();
+                    setAudioMode('candidate');
+                  }}
+                  className={`px-3 py-1.5 rounded-full transition-all flex items-center gap-1.5 cursor-pointer ${
+                    audioMode === 'candidate'
+                      ? 'bg-charcoal text-cream shadow-sm'
+                      : 'text-charcoal/60 hover:text-charcoal'
+                  }`}
+                >
+                  <Mic className="w-3.5 h-3.5 text-coral" /> Candidate Voice
+                </button>
+
+                <button
+                  onClick={() => {
+                    if (isPlaying) togglePlayPause();
+                    setAudioMode('ai_coach');
+                  }}
+                  className={`px-3 py-1.5 rounded-full transition-all flex items-center gap-1.5 cursor-pointer ${
+                    audioMode === 'ai_coach'
+                      ? 'bg-charcoal text-cream shadow-sm'
+                      : 'text-charcoal/60 hover:text-charcoal'
+                  }`}
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-lavender-whisper" /> AI Coach Voice
+                </button>
+              </div>
+            </div>
+
+            {/* Hidden HTML5 Audio Element for Candidate Recording */}
+            {audioBlobUrl && (
+              <audio
+                ref={audioRef}
+                src={audioBlobUrl}
+                onTimeUpdate={() => {
+                  if (audioRef.current) {
+                    setCurrentTime(audioRef.current.currentTime);
+                  }
+                }}
+                onLoadedMetadata={() => {
+                  if (audioRef.current) {
+                    setDuration(audioRef.current.duration);
+                  }
+                }}
+                onEnded={() => setIsPlaying(false)}
+              />
+            )}
+
+            {/* Audio Deck Card Display */}
+            <div className="bg-charcoal rounded-3xl p-6 sm:p-8 flex flex-col items-center justify-center space-y-5 border border-charcoal shadow-2xl text-center relative overflow-hidden">
+              {/* Background ambient lighting */}
+              <div className="absolute -top-12 -right-12 w-44 h-44 rounded-full bg-coral/15 blur-2xl pointer-events-none" />
+              <div className="absolute -bottom-12 -left-12 w-44 h-44 rounded-full bg-emerald-500/10 blur-2xl pointer-events-none" />
+
+              {/* Mode indicator status */}
+              <div className="flex items-center justify-between w-full text-[10px] font-mono text-cream/60">
+                <span className="flex items-center gap-1.5">
+                  <span className={`w-2 h-2 rounded-full ${isPlaying ? 'bg-coral animate-ping' : 'bg-cream/40'}`} />
+                  {audioMode === 'candidate'
+                    ? (hasAudioBlob ? 'STEREO VOCAL RECORDING' : 'KEYBOARD INPUT (NO AUDIO BLOB)')
+                    : 'AI NEURAL COACH DEBRIEF'}
+                </span>
+
+                <span className="font-bold text-cream/80 uppercase">
+                  {playbackSpeed !== 1 ? `${playbackSpeed}x SPEED` : 'NORMAL SPEED'}
+                </span>
+              </div>
+
+              {/* Real Audio Waveform Canvas */}
+              <div className="w-full h-16 flex items-center justify-center">
+                <canvas
+                  ref={canvasRef}
+                  width={340}
+                  height={54}
+                  className="w-full max-w-md h-full"
+                />
+              </div>
+
+              {/* Time Scrubber Slider */}
+              <div className="w-full space-y-1.5">
+                <input
+                  type="range"
+                  min={0}
+                  max={duration > 0 ? duration : 100}
+                  step={0.1}
+                  value={currentTime}
+                  onChange={handleSeekChange}
+                  disabled={audioMode === 'ai_coach' || !hasAudioBlob}
+                  className="w-full h-1.5 bg-white/20 rounded-full appearance-none cursor-pointer accent-coral disabled:opacity-40"
+                />
+                <div className="flex items-center justify-between text-[11px] font-mono text-cream/75 font-bold px-1">
+                  <span>{formatSeconds(currentTime)}</span>
+                  <span>{formatSeconds(duration || currentEval?.audioDurationSec || 0)}</span>
+                </div>
+              </div>
+
+              {/* Playback Controls Deck */}
+              <div className="flex items-center justify-center gap-4 flex-wrap pt-1">
+                {/* Skip Backward 5s */}
+                <button
+                  onClick={() => seekRelative(-5)}
+                  disabled={audioMode === 'ai_coach' || !hasAudioBlob}
+                  className="w-10 h-10 rounded-full bg-white/10 text-cream flex items-center justify-center hover:bg-white/20 transition cursor-pointer disabled:opacity-30"
+                  title="Rewind 5s"
+                >
+                  <Rewind className="w-4 h-4 text-white" />
+                </button>
+
+                {/* Primary Play/Pause Button */}
+                <button
+                  onClick={togglePlayPause}
+                  disabled={audioMode === 'candidate' && !hasAudioBlob && !isLoadingAudio}
+                  className="px-6 py-3 rounded-full bg-coral text-cream font-display font-black text-xs flex items-center gap-2.5 shadow-xl hover:bg-coral/90 active:scale-95 transition cursor-pointer disabled:opacity-40 uppercase tracking-wider"
+                >
+                  {isPlaying ? (
+                    <>
+                      <Pause className="w-4 h-4 fill-current" /> Pause Replay
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-4 h-4 fill-current translate-x-0.5" /> Play {audioMode === 'candidate' ? 'Voice Recording' : 'Coach Debrief'}
+                    </>
+                  )}
+                </button>
+
+                {/* Skip Forward 5s */}
+                <button
+                  onClick={() => seekRelative(5)}
+                  disabled={audioMode === 'ai_coach' || !hasAudioBlob}
+                  className="w-10 h-10 rounded-full bg-white/10 text-cream flex items-center justify-center hover:bg-white/20 transition cursor-pointer disabled:opacity-30"
+                  title="Forward 5s"
+                >
+                  <FastForward className="w-4 h-4 text-white" />
+                </button>
+
+                {/* Playback Speed Cycle */}
+                <button
+                  onClick={() => {
+                    const speeds = [1, 1.25, 1.5, 0.75];
+                    const nextIdx = (speeds.indexOf(playbackSpeed) + 1) % speeds.length;
+                    setPlaybackSpeed(speeds[nextIdx]);
+                  }}
+                  className="px-3 py-2 rounded-full bg-white/10 hover:bg-white/20 text-cream font-mono font-bold text-xs transition cursor-pointer"
+                  title="Cycle Playback Speed"
+                >
+                  {playbackSpeed}x
+                </button>
+
+                {/* Mute Toggle */}
+                <button
+                  onClick={() => setIsMuted(!isMuted)}
+                  className="w-10 h-10 rounded-full bg-white/10 text-cream flex items-center justify-center hover:bg-white/20 transition cursor-pointer"
+                  title={isMuted ? 'Unmute' : 'Mute'}
+                >
+                  {isMuted ? <VolumeX className="w-4 h-4 text-coral" /> : <Volume2 className="w-4 h-4 text-white" />}
+                </button>
+
+                {/* Download Real Audio File Button */}
+                {audioBlobUrl && (
+                  <a
+                    href={audioBlobUrl}
+                    download={`mockly_q${selectedQIdx + 1}_recording.webm`}
+                    className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-cream flex items-center justify-center transition cursor-pointer"
+                    title="Download Voice Recording (.webm)"
+                  >
+                    <Download className="w-4 h-4 text-white" />
+                  </a>
+                )}
+              </div>
+
+              {/* No Audio Warning Notice */}
+              {audioMode === 'candidate' && !hasAudioBlob && !isLoadingAudio && (
+                <div className="p-3 rounded-2xl bg-white/10 border border-white/15 text-cream/80 text-xs font-medium max-w-md mx-auto space-y-1.5 animate-fade-in">
+                  <div className="flex items-center justify-center gap-1.5 font-bold text-coral text-[11px]">
+                    <Info className="w-3.5 h-3.5" /> Voice stream was not recorded for this question
+                  </div>
+                  <p className="text-[10px] text-cream/70 leading-relaxed">
+                    This answer was entered via keyboard input or microphone access was restricted. Switch to <strong>AI Coach Voice</strong> above to hear the spoken debrief.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Candidate Given Response & Interactive Transcript Highlight */}
+            {currentEval && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-display font-black text-sm text-charcoal flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-coral" /> Candidate Response Transcript
+                  </h4>
+                  {currentEval.audioDurationSec && (
+                    <span className="text-[10px] font-mono font-bold text-charcoal/60 bg-charcoal/5 px-2.5 py-0.5 rounded-full">
+                      Duration: {formatSeconds(currentEval.audioDurationSec)}
+                    </span>
+                  )}
+                </div>
+
+                <div className="p-5 rounded-3xl bg-white border border-charcoal/10 space-y-3 shadow-inner">
+                  <ExplainableAnswer
+                    userAnswer={currentEval.userAnswer}
+                    highlights={currentEval.sentenceHighlights}
+                    keyPoints={currentQ?.expectedKeyPoints}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Actionable Feedback Highlights */}
+            {currentEval && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                <div className="p-4 rounded-2xl bg-white border border-charcoal/10 space-y-1.5">
+                  <h5 className="font-bold text-emerald-700 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4" /> Strong Highlight
+                  </h5>
+                  <p className="text-charcoal/80 font-medium">
+                    {currentEval.positiveHighlights[0] || 'Clear structural organization.'}
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-white border border-charcoal/10 space-y-1.5">
+                  <h5 className="font-bold text-amber-700 flex items-center gap-1.5">
+                    <AlertCircle className="w-4 h-4" /> Recommendation
+                  </h5>
+                  <p className="text-charcoal/80 font-medium">
+                    {currentEval.areasToImprove[0] || 'Incorporate explicit technical trade-offs.'}
+                  </p>
+                </div>
+              </div>
+            )}
+
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -533,177 +1145,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ session }) => {
       )}
 
       {activeTab === 'coaching_replay' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start animate-fade-in">
-          {/* Left Column: Replay coaching milestones timeline */}
-          <div className="lg:col-span-1 card-cream p-6 border border-white shadow-2xl space-y-6">
-            <div>
-              <h3 className="font-display font-black text-base text-charcoal flex items-center gap-2">
-                <GraduationCap className="w-5 h-5 text-coral" /> Coaching Milestones
-              </h3>
-              <p className="text-[10px] text-charcoal/50 font-bold mt-1">Select key moments to replay AI analysis feedback</p>
-            </div>
-
-            {/* Vertical timeline */}
-            <div className="relative pl-6 border-l-2 border-charcoal/10 space-y-5 py-2">
-              {coachingMoments.map((moment, idx) => {
-                const isActive = selectedCoachingId === idx;
-                const isStrength = moment.type === 'strength';
-                const isWeakness = moment.type === 'weakness';
-
-                return (
-                  <div
-                    key={idx}
-                    onClick={() => setSelectedCoachingId(idx)}
-                    className={`relative cursor-pointer transition-all duration-300 ${
-                      isActive ? 'scale-[1.03]' : 'hover:opacity-80'
-                    }`}
-                  >
-                    {/* Circle bullet on line */}
-                    <div className={`absolute -left-[31px] top-1 w-4 h-4 rounded-full border-2 bg-white flex items-center justify-center transition-all ${
-                      isActive 
-                        ? 'border-charcoal bg-charcoal scale-110 shadow'
-                        : isStrength
-                        ? 'border-emerald-600 bg-emerald-500'
-                        : isWeakness
-                        ? 'border-coral bg-coral'
-                        : 'border-amber-600 bg-amber-500'
-                    }`} />
-
-                    <div className={`p-3 rounded-2xl border transition-all ${
-                      isActive 
-                        ? 'bg-charcoal text-cream border-charcoal shadow-md'
-                        : 'bg-white text-charcoal border-charcoal/5 hover:border-charcoal/10'
-                    }`}>
-                      <div className="flex items-center justify-between text-[9px] font-mono">
-                        <span className={`px-2 py-0.5 rounded-full font-black ${
-                          isActive 
-                            ? 'bg-white/20 text-cream'
-                            : isStrength 
-                            ? 'bg-emerald-500/10 text-emerald-800' 
-                            : isWeakness
-                            ? 'bg-coral/10 text-coral'
-                            : 'bg-amber-500/10 text-amber-900'
-                        }`}>
-                          {moment.type.replace('_', ' ').toUpperCase()}
-                        </span>
-                        <span className="font-bold">{moment.timestamp}</span>
-                      </div>
-                      <h4 className="text-[11px] font-black mt-2 leading-tight">{moment.title}</h4>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Right Column: Dynamic Coach player deck */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Playback Box */}
-            <div className="card-cream p-7 sm:p-9 border border-white shadow-2xl space-y-6">
-              <div className="flex items-center justify-between gap-4 flex-wrap border-b border-charcoal/10 pb-5">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-charcoal text-cream flex items-center justify-center shrink-0 shadow-md">
-                    <Volume2 className="w-5 h-5 text-coral" />
-                  </div>
-                  <div>
-                    <h3 className="font-display font-black text-base text-charcoal">AI Audio Feedback Deck</h3>
-                    <p className="text-[10px] text-charcoal/50 font-bold">Simulated vocal replay & timestamps analysis</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-mono font-bold text-charcoal/60">Milestone Time:</span>
-                  <span className="text-xs font-mono font-black text-coral px-3 py-1 rounded-full bg-coral/5 border border-coral/10">
-                    {currentCoachingMoment.timestamp}
-                  </span>
-                </div>
-              </div>
-
-              {/* Audio player simulator visualizer */}
-              <div className="bg-charcoal rounded-3xl p-6 flex flex-col items-center justify-center space-y-4 border border-charcoal shadow-inner text-center">
-                <div className="flex items-center gap-1.5 h-10">
-                  {[...Array(20)].map((_, i) => {
-                    const active = isPlayingCoaching === currentCoachingMoment.timestamp;
-                    return (
-                      <div
-                        key={i}
-                        className={`w-1 rounded-full bg-coral transition-all duration-300 ${
-                          active ? 'animate-pulse' : 'opacity-40'
-                        }`}
-                        style={{
-                          height: active ? `${Math.max(4, Math.round(Math.random() * 36))}px` : '6px',
-                          animationDelay: `${i * 0.08}s`
-                        }}
-                      />
-                    );
-                  })}
-                </div>
-
-                <div className="flex items-center gap-4">
-                  <button
-                    onClick={() => {
-                      if (isPlayingCoaching === currentCoachingMoment.timestamp) {
-                        setIsPlayingCoaching(null);
-                      } else {
-                        setIsPlayingCoaching(currentCoachingMoment.timestamp);
-                        // Speech synthesis fallback option
-                        if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-                          window.speechSynthesis.cancel();
-                          const utterance = new SpeechSynthesisUtterance(
-                            `Coaching feedback for moment ${currentCoachingMoment.title}. ${currentCoachingMoment.text}`
-                          );
-                          utterance.onend = () => setIsPlayingCoaching(null);
-                          utterance.onerror = () => setIsPlayingCoaching(null);
-                          window.speechSynthesis.speak(utterance);
-                        }
-                      }
-                    }}
-                    className="w-12 h-12 rounded-full bg-cream text-charcoal flex items-center justify-center shadow-lg hover:scale-105 active:scale-95 transition cursor-pointer"
-                  >
-                    {isPlayingCoaching === currentCoachingMoment.timestamp ? (
-                      <Pause className="w-5 h-5 text-charcoal" />
-                    ) : (
-                      <Play className="w-5 h-5 text-charcoal translate-x-0.5" />
-                    )}
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-                        window.speechSynthesis.cancel();
-                      }
-                      setIsPlayingCoaching(null);
-                    }}
-                    className="w-9 h-9 rounded-full bg-white/10 text-cream flex items-center justify-center hover:bg-white/20 transition cursor-pointer"
-                    title="Stop Audio"
-                  >
-                    <RefreshCw className="w-4 h-4 text-white" />
-                  </button>
-                </div>
-
-                <span className="text-[10px] font-mono text-cream/45 uppercase tracking-widest font-black">
-                  {isPlayingCoaching === currentCoachingMoment.timestamp ? 'PLAYING AI VOICE OVER' : 'AUDIO DECK READY'}
-                </span>
-              </div>
-
-              {/* Coaching Feedback Transcript Box */}
-              <div className="space-y-3">
-                <h4 className="font-display font-black text-sm text-charcoal flex items-center gap-1.5">
-                  <Sparkles className="w-4 h-4 text-coral animate-pulse" /> AI Coach Feedback Transcript
-                </h4>
-                
-                <div className="p-5 rounded-3xl bg-white border border-charcoal/10 space-y-3 shadow-inner">
-                  <h5 className="font-extrabold text-charcoal flex items-center gap-1.5 text-xs">
-                    <Target className="w-4 h-4 text-coral" /> {currentCoachingMoment.title}
-                  </h5>
-                  <p className="text-xs text-charcoal/70 leading-relaxed font-bold font-mono">
-                    "{currentCoachingMoment.text}"
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <RealAudioCoachingDeck session={session} coachingMoments={coachingMoments} />
       )}
     </div>
   );
