@@ -231,67 +231,84 @@ export const updateSessionEvaluation = async (
       ? Math.round(confidences.reduce((a, b) => a + b, 0) / confidences.length)
       : undefined;
 
-    // Compile dynamic interactive coaching timeline milestones
-    const timeline: typeof session.coachingTimeline = [];
-    let cumulativeSeconds = 0;
+    // Compile dynamic interactive coaching timeline milestones from real audio & evaluation markers
+    const timeline: NonNullable<typeof session.coachingTimeline> = [];
 
-    Object.values(session.evaluations).forEach((ev, idx) => {
+    session.questions.forEach((q, idx) => {
+      const ev = session.evaluations[q.id];
+      if (!ev) return;
+
+      const duration = ev.audioDurationSec || 60;
       const formattedQTime = (sec: number) => {
         const m = Math.floor(sec / 60).toString().padStart(2, '0');
-        const s = (sec % 60).toString().padStart(2, '0');
+        const s = Math.floor(sec % 60).toString().padStart(2, '0');
         return `${m}:${s}`;
       };
 
-      // Add a strength moment
-      if (ev.positiveHighlights && ev.positiveHighlights.length > 0) {
-        timeline.push({
-          timestamp: formattedQTime(cumulativeSeconds + 12),
-          type: 'strength',
-          title: `Strong Delivery - Q${idx + 1}`,
-          text: ev.positiveHighlights[0]
+      // 1. If real real-time audio markers were detected during the answer recording, prioritize them
+      if (ev.audioEventMarkers && ev.audioEventMarkers.length > 0) {
+        ev.audioEventMarkers.forEach(marker => {
+          timeline.push({
+            timestamp: marker.timestamp || formattedQTime(marker.timeSec),
+            timeSec: marker.timeSec,
+            questionId: q.id,
+            questionIndex: idx,
+            type: marker.type === 'filler' || marker.type === 'weakness' ? 'weakness' : marker.type === 'pacing' || marker.type === 'pause' ? 'coaching_tip' : 'strength',
+            title: marker.label,
+            text: marker.text,
+            category: q.category,
+          });
         });
-      }
+      } else {
+        // 2. Derive synchronized moments based on the question's content and actual answer duration
+        if (ev.positiveHighlights && ev.positiveHighlights.length > 0) {
+          const strengthSec = Math.min(15, Math.round(duration * 0.25));
+          timeline.push({
+            timestamp: formattedQTime(strengthSec),
+            timeSec: strengthSec,
+            questionId: q.id,
+            questionIndex: idx,
+            type: 'strength',
+            title: `Strong Technical Point — Q${idx + 1}`,
+            text: ev.positiveHighlights[0],
+            category: q.category,
+          });
+        }
 
-      // Add pacing / confidence moment
-      const pacing = ev.confidenceMetrics?.pacing;
-      const eyeContact = ev.confidenceMetrics?.eyeContact;
-      if (typeof pacing === 'number' && pacing > 0 && pacing < 110) {
-        timeline.push({
-          timestamp: formattedQTime(cumulativeSeconds + 32),
-          type: 'coaching_tip',
-          title: `Pacing Alert - Q${idx + 1}`,
-          text: `Your pacing slowed to ${pacing} WPM. Try keeping a steady tempo to project clarity.`
-        });
-      } else if (typeof pacing === 'number' && pacing > 150) {
-        timeline.push({
-          timestamp: formattedQTime(cumulativeSeconds + 28),
-          type: 'coaching_tip',
-          title: `Pacing Alert - Q${idx + 1}`,
-          text: `Speech rate elevated to ${pacing} WPM. Pause slightly between bullet points to aid listener comprehension.`
-        });
-      } else if (typeof eyeContact === 'number' && eyeContact > 0 && eyeContact < 88) {
-        timeline.push({
-          timestamp: formattedQTime(cumulativeSeconds + 24),
-          type: 'weakness',
-          title: `Focus Interruption - Q${idx + 1}`,
-          text: `Gaze detection dropped below ${eyeContact}%. Remember to look directly at the webcam as if making eye contact with the board.`
-        });
-      }
+        const pacing = ev.confidenceMetrics?.pacing;
+        if (typeof pacing === 'number' && pacing > 0 && (pacing < 110 || pacing > 155)) {
+          const pacingSec = Math.round(duration * 0.5);
+          timeline.push({
+            timestamp: formattedQTime(pacingSec),
+            timeSec: pacingSec,
+            questionId: q.id,
+            questionIndex: idx,
+            type: 'coaching_tip',
+            title: `Pacing Alert (${pacing} WPM) — Q${idx + 1}`,
+            text: pacing < 110 
+              ? `Delivery rate slowed to ${pacing} WPM. Maintain steady cadence to project confidence.`
+              : `Delivery speed reached ${pacing} WPM. Pause deliberately to enhance articulation.`,
+            category: q.category,
+          });
+        }
 
-      // Add improvement moment
-      if (ev.areasToImprove && ev.areasToImprove.length > 0) {
-        timeline.push({
-          timestamp: formattedQTime(cumulativeSeconds + 48),
-          type: 'weakness',
-          title: `Knowledge Gap - Q${idx + 1}`,
-          text: ev.areasToImprove[0]
-        });
+        if (ev.areasToImprove && ev.areasToImprove.length > 0) {
+          const improveSec = Math.round(duration * 0.75);
+          timeline.push({
+            timestamp: formattedQTime(improveSec),
+            timeSec: improveSec,
+            questionId: q.id,
+            questionIndex: idx,
+            type: 'weakness',
+            title: `Concept Expansion Area — Q${idx + 1}`,
+            text: ev.areasToImprove[0],
+            category: q.category,
+          });
+        }
       }
-
-      cumulativeSeconds += 75; // assume ~75s per answer interval
     });
 
-    session.coachingTimeline = timeline.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+    session.coachingTimeline = timeline.sort((a, b) => (a.timeSec ?? 0) - (b.timeSec ?? 0));
 
     const allStrengths = Object.values(session.evaluations).flatMap(e => e.positiveHighlights);
     const allWeaknesses = Object.values(session.evaluations).flatMap(e => e.areasToImprove);
