@@ -9,6 +9,7 @@ import {
 import { InterviewSession, QuestionEvaluation } from '@/types';
 import { evaluateAnswer } from '@/lib/gemini';
 import { updateSessionEvaluation, saveSession } from '@/lib/storage';
+import { saveAudioRecording } from '@/lib/audioStorage';
 
 interface InterviewRoomProps {
   session: InterviewSession;
@@ -353,6 +354,21 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
   const recognitionRef = useRef<any>(null);
   const hasUnsavedProgress = useRef(false);
 
+  // Real Audio Recording & Milestone Tracking Refs
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioStreamRef = useRef<MediaStream | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const audioRecordingStartTimeRef = useRef<number>(0);
+  const currentAudioBlobRef = useRef<Blob | null>(null);
+  const detectedFillersRef = useRef<Set<string>>(new Set());
+  const audioEventMarkersRef = useRef<Array<{
+    timeSec: number;
+    timestamp: string;
+    label: string;
+    text: string;
+    type: 'filler' | 'pause' | 'pacing' | 'concept' | 'strength' | 'weakness';
+  }>>([]);
+
   // Proctoring and Security States
   const [hasStarted, setHasStarted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -580,12 +596,69 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
     window.speechSynthesis.speak(u);
   }, [isSpeaking, currentQuestion.questionText]);
 
+  const stopAudioRecording = useCallback(() => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      try {
+        mediaRecorderRef.current.stop();
+      } catch {}
+    }
+    if (audioStreamRef.current) {
+      audioStreamRef.current.getTracks().forEach(t => t.stop());
+      audioStreamRef.current = null;
+    }
+  }, []);
+
   const toggleListening = useCallback(() => {
     if (typeof window === 'undefined') return;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) { alert('Speech Recognition not supported in this browser. Please type your answer.'); return; }
-    if (isListening && recognitionRef.current) { recognitionRef.current.stop(); setIsListening(false); setInterimText(''); return; }
+    
+    if (isListening) {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+      stopAudioRecording();
+      setIsListening(false);
+      setInterimText('');
+      return;
+    }
+
+    // Reset audio recording buffers
+    audioChunksRef.current = [];
+    audioRecordingStartTimeRef.current = Date.now();
+    currentAudioBlobRef.current = null;
+    detectedFillersRef.current = new Set();
+    audioEventMarkersRef.current = [];
+
+    // Initialize native MediaRecorder for true audio replay
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+        audioStreamRef.current = stream;
+        const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+          ? 'audio/webm;codecs=opus'
+          : MediaRecorder.isTypeSupported('audio/webm')
+          ? 'audio/webm'
+          : 'audio/mp4';
+        
+        const recorder = new MediaRecorder(stream, { mimeType });
+        recorder.ondataavailable = (e) => {
+          if (e.data && e.data.size > 0) {
+            audioChunksRef.current.push(e.data);
+          }
+        };
+        recorder.onstop = () => {
+          if (audioChunksRef.current.length > 0) {
+            currentAudioBlobRef.current = new Blob(audioChunksRef.current, { type: mimeType });
+          }
+        };
+        recorder.start(250);
+        mediaRecorderRef.current = recorder;
+      }).catch(err => {
+        console.warn('Microphone stream access for audio recording unavailable:', err);
+      });
+    }
+
     const r = new SR();
     r.continuous = true; r.interimResults = true;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -599,7 +672,55 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
         } else {
           interimTranscript += transcript;
         }
+
+        // Live Real-Time Event Milestone Tracking (Fillers & Key Concepts)
+        const elapsedSec = Math.max(1, Math.round((Date.now() - (audioRecordingStartTimeRef.current || Date.now())) / 1000));
+        const formatSec = (sec: number) => {
+          const m = Math.floor(sec / 60).toString().padStart(2, '0');
+          const s = Math.floor(sec % 60).toString().padStart(2, '0');
+          return `${m}:${s}`;
+        };
+
+        const chunkLower = transcript.toLowerCase();
+        const fillerList = ['um', 'uh', 'like', 'sort of', 'kind of', 'actually', 'basically'];
+        for (const filler of fillerList) {
+          if (chunkLower.split(/\s+/).includes(filler)) {
+            const bucketKey = `${filler}_${Math.floor(elapsedSec / 6)}`;
+            if (!detectedFillersRef.current.has(bucketKey)) {
+              detectedFillersRef.current.add(bucketKey);
+              audioEventMarkersRef.current.push({
+                timeSec: elapsedSec,
+                timestamp: formatSec(elapsedSec),
+                label: `Filler Word Alert ("${filler}")`,
+                text: `Candidate used hesitation filler "${filler}" at timestamp ${formatSec(elapsedSec)}.`,
+                type: 'filler',
+              });
+            }
+          }
+        }
+
+        // Check for expected key points delivery
+        if (currentQuestion && currentQuestion.expectedKeyPoints) {
+          currentQuestion.expectedKeyPoints.forEach(kp => {
+            const terms = kp.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+            const matched = terms.some(term => chunkLower.includes(term));
+            if (matched) {
+              const kpKey = `kp_${kp.slice(0, 10)}`;
+              if (!detectedFillersRef.current.has(kpKey)) {
+                detectedFillersRef.current.add(kpKey);
+                audioEventMarkersRef.current.push({
+                  timeSec: elapsedSec,
+                  timestamp: formatSec(elapsedSec),
+                  label: `Key Concept Covered`,
+                  text: `Clearly articulated expected technical concept: "${kp}" at ${formatSec(elapsedSec)}.`,
+                  type: 'concept',
+                });
+              }
+            }
+          });
+        }
       }
+
       if (finalTranscript) {
         setUserAnswer(p => (p ? `${p} ${finalTranscript}` : finalTranscript));
         setInterimText('');
@@ -607,10 +728,10 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
         setInterimText(interimTranscript);
       }
     };
-    r.onend = () => { setIsListening(false); setInterimText(''); };
-    r.onerror = () => { setIsListening(false); setInterimText(''); };
+    r.onend = () => { setIsListening(false); setInterimText(''); stopAudioRecording(); };
+    r.onerror = () => { setIsListening(false); setInterimText(''); stopAudioRecording(); };
     recognitionRef.current = r; r.start(); setIsListening(true);
-  }, [isListening]);
+  }, [isListening, currentQuestion, stopAudioRecording]);
 
   const preventCopy = (e: React.ClipboardEvent) => {
     e.preventDefault();
@@ -629,6 +750,27 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
   const handleSubmitAnswer = async () => {
     if (!userAnswer.trim()) return;
     setIsEvaluating(true);
+
+    if (isListening) {
+      if (recognitionRef.current) {
+        try { recognitionRef.current.stop(); } catch {}
+      }
+      setIsListening(false);
+    }
+    stopAudioRecording();
+
+    // Finalize audio blob collection
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      try { mediaRecorderRef.current.stop(); } catch {}
+    }
+    await new Promise(resolve => setTimeout(resolve, 150));
+
+    if (audioChunksRef.current.length > 0 && !currentAudioBlobRef.current) {
+      currentAudioBlobRef.current = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+    }
+
+    const recordingDuration = Math.max(1, Math.round((Date.now() - (audioRecordingStartTimeRef.current || Date.now())) / 1000));
+
     try {
       const result = await evaluateAnswer(currentQuestion, userAnswer, session.targetRole, session.aiEngine || 'gemini');
       
@@ -647,6 +789,14 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
       };
       result.inputMode = inputMode;
 
+      // Persist real audio recording to IndexedDB
+      if (currentAudioBlobRef.current && currentAudioBlobRef.current.size > 0) {
+        await saveAudioRecording(session.id, currentQuestion.id, currentAudioBlobRef.current);
+        result.hasAudio = true;
+        result.audioDurationSec = recordingDuration;
+        result.audioEventMarkers = audioEventMarkersRef.current;
+      }
+
       const updated = await updateSessionEvaluation(session.id, currentQuestion.id, result);
       if (updated) setSession(updated);
       hasUnsavedProgress.current = false;
@@ -657,6 +807,11 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
   const handleNextQuestion = () => {
     setUserAnswer(''); setShowHint(false); setSeconds(0);
     hasUnsavedProgress.current = false;
+    stopAudioRecording();
+    currentAudioBlobRef.current = null;
+    audioChunksRef.current = [];
+    audioEventMarkersRef.current = [];
+    detectedFillersRef.current = new Set();
     if (isSpeaking && typeof window !== 'undefined') { window.speechSynthesis.cancel(); setIsSpeaking(false); }
     if (currentIdx + 1 < session.questions.length) setCurrentIdx(p => p + 1);
     else router.push(`/interview/${session.id}/results`);
