@@ -8,7 +8,7 @@ import {
   Brain, GitBranch, Target, Building2, Server, Search, 
   AlertCircle, FileText, Check, X, XCircle, RotateCcw, 
   ArrowRight, ArrowLeft, Lightbulb, RefreshCw, Trophy, Shuffle,
-  SkipForward, Lock, FastForward
+  SkipForward, Lock, FastForward, ShieldAlert, LogOut
 } from 'lucide-react';
 import { MCQPracticeQuestion, MCQAICoaching } from '@/types';
 import { explainMCQWithAI, generateMCQsForTopic } from '@/lib/gemini';
@@ -104,6 +104,63 @@ export const TopicPractice: React.FC = () => {
   const [isGeneratingAI, setIsGeneratingAI] = useState<boolean>(false);
   const [aiCoaching, setAiCoaching] = useState<MCQAICoaching | null>(null);
   const [isLoadingAICoaching, setIsLoadingAICoaching] = useState<boolean>(false);
+
+  // Tab-Lock & Proctoring State
+  const [tabSwitchCount, setTabSwitchCount] = useState<number>(0);
+  const [showTabSwitchWarning, setShowTabSwitchWarning] = useState<boolean>(false);
+  const lastTabSwitchTimestampRef = React.useRef<number>(0);
+  const isMCQActive = Boolean(selectedTopic);
+
+  // Prevent tab switching & monitor focus when MCQ test is active
+  React.useEffect(() => {
+    if (!selectedTopic) return;
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        const now = Date.now();
+        if (now - lastTabSwitchTimestampRef.current > 1000) {
+          lastTabSwitchTimestampRef.current = now;
+          setTabSwitchCount(prev => prev + 1);
+          setShowTabSwitchWarning(true);
+        }
+      }
+    };
+
+    const handleWindowBlur = () => {
+      const now = Date.now();
+      if (now - lastTabSwitchTimestampRef.current > 1000) {
+        lastTabSwitchTimestampRef.current = now;
+        setTabSwitchCount(prev => prev + 1);
+        setShowTabSwitchWarning(true);
+      }
+    };
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('blur', handleWindowBlur);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('blur', handleWindowBlur);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [selectedTopic]);
+
+  // Clean Exit from MCQ Test Session
+  const handleExitMCQSession = () => {
+    setSelectedTopic(null);
+    setSelectedQuestionIndex(0);
+    setSelectedOption(null);
+    setIsSubmitted(false);
+    setAiCoaching(null);
+    setShowTabSwitchWarning(false);
+    setTabSwitchCount(0);
+  };
   
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
 
@@ -426,25 +483,43 @@ export const TopicPractice: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setActiveTab('dsa-sheet')}
-            className={`px-5 py-2 rounded-full text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer ${
-              activeTab === 'dsa-sheet'
-                ? 'bg-vast-ink text-lumen-cream font-semibold'
-                : 'text-vast-ink hover:bg-lumen-stone/50'
+            onClick={() => {
+              if (isMCQActive) {
+                setShowTabSwitchWarning(true);
+                return;
+              }
+              setActiveTab('dsa-sheet');
+            }}
+            disabled={isMCQActive}
+            title={isMCQActive ? 'Tab switching locked during active MCQ test' : 'DSA Sheet'}
+            className={`px-5 py-2 rounded-full text-xs font-semibold transition-all flex items-center gap-2 ${
+              isMCQActive 
+                ? 'opacity-40 cursor-not-allowed text-vast-ink/50' 
+                : 'cursor-pointer ' + (activeTab === 'dsa-sheet' ? 'bg-vast-ink text-lumen-cream font-semibold' : 'text-vast-ink hover:bg-lumen-stone/50')
             }`}
           >
             <FileText className="w-4 h-4" /> DSA Sheet
+            {isMCQActive && <Lock className="w-3 h-3 ml-0.5 text-vast-ink/40" />}
           </button>
 
           <button
-            onClick={() => setActiveTab('roadmap')}
-            className={`px-5 py-2 rounded-full text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer ${
-              activeTab === 'roadmap'
-                ? 'bg-vast-ink text-lumen-cream font-semibold'
-                : 'text-vast-ink hover:bg-lumen-stone/50'
+            onClick={() => {
+              if (isMCQActive) {
+                setShowTabSwitchWarning(true);
+                return;
+              }
+              setActiveTab('roadmap');
+            }}
+            disabled={isMCQActive}
+            title={isMCQActive ? 'Tab switching locked during active MCQ test' : 'CS Roadmap Tree'}
+            className={`px-5 py-2 rounded-full text-xs font-semibold transition-all flex items-center gap-2 ${
+              isMCQActive 
+                ? 'opacity-40 cursor-not-allowed text-vast-ink/50' 
+                : 'cursor-pointer ' + (activeTab === 'roadmap' ? 'bg-vast-ink text-lumen-cream font-semibold' : 'text-vast-ink hover:bg-lumen-stone/50')
             }`}
           >
             <GitBranch className="w-4 h-4" /> CS Roadmap Tree
+            {isMCQActive && <Lock className="w-3 h-3 ml-0.5 text-vast-ink/40" />}
           </button>
         </div>
       </div>
@@ -466,20 +541,33 @@ export const TopicPractice: React.FC = () => {
               ].map(cat => (
                 <button
                   key={cat.id}
+                  disabled={isMCQActive}
                   onClick={() => {
+                    if (isMCQActive) {
+                      setShowTabSwitchWarning(true);
+                      return;
+                    }
                     setSelectedCategoryType(cat.id as any);
                     setSelectedTopic(null);
                     setSelectedOption(null);
                     setIsSubmitted(false);
                     setAiCoaching(null);
                   }}
-                  className={`px-4 py-2 rounded-full text-xs font-semibold transition-all cursor-pointer border-2 border-vast-ink ${
-                    selectedCategoryType === cat.id
-                      ? 'bg-vast-ink text-lumen-cream font-semibold shadow-sm'
-                      : 'bg-lumen-cream text-vast-ink hover:bg-lumen-stone/50'
+                  title={isMCQActive ? 'Category switching locked during active MCQ test' : cat.label}
+                  className={`px-4 py-2 rounded-full text-xs font-semibold transition-all border-2 border-vast-ink ${
+                    isMCQActive && selectedCategoryType !== cat.id
+                      ? 'opacity-40 cursor-not-allowed bg-lumen-cream text-vast-ink/50'
+                      : 'cursor-pointer ' + (
+                          selectedCategoryType === cat.id
+                            ? 'bg-vast-ink text-lumen-cream font-semibold shadow-sm'
+                            : 'bg-lumen-cream text-vast-ink hover:bg-lumen-stone/50'
+                        )
                   }`}
                 >
                   {cat.label}
+                  {isMCQActive && selectedCategoryType !== cat.id && (
+                    <Lock className="w-3 h-3 ml-1 inline text-vast-ink/40" />
+                  )}
                 </button>
               ))}
             </div>
@@ -514,11 +602,19 @@ export const TopicPractice: React.FC = () => {
                 return (
                   <div
                     key={topic}
-                    onClick={() => handleSelectTopic(topic)}
-                    className={`p-5 rounded-3xl border-2 border-vast-ink cursor-pointer transition-all duration-200 hover:scale-[1.01] ${
+                    onClick={() => {
+                      if (isMCQActive && !isSelected) {
+                        setShowTabSwitchWarning(true);
+                        return;
+                      }
+                      handleSelectTopic(topic);
+                    }}
+                    className={`p-5 rounded-3xl border-2 border-vast-ink transition-all duration-200 ${
                       isSelected 
-                        ? 'bg-vast-ink text-lumen-cream shadow-md' 
-                        : 'bg-lumen-cream text-vast-ink hover:bg-lumen-stone/30'
+                        ? 'bg-vast-ink text-lumen-cream shadow-md cursor-default' 
+                        : isMCQActive
+                        ? 'bg-lumen-cream/50 text-vast-ink/50 border-dashed border-vast-ink/20 cursor-not-allowed'
+                        : 'bg-lumen-cream text-vast-ink hover:bg-lumen-stone/30 hover:scale-[1.01] cursor-pointer'
                     }`}
                   >
                     <div className="flex items-center gap-3">
@@ -580,6 +676,20 @@ export const TopicPractice: React.FC = () => {
                     </div>
                   )}
 
+                  {/* Tab-Lock Proctoring Indicator Badge */}
+                  <div
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-lavender-whisper/20 border border-vast-ink text-vast-ink text-xs font-semibold"
+                    title="Tab-lock proctoring is active: do not switch tabs or minimize window"
+                  >
+                    <ShieldAlert className="w-3.5 h-3.5 text-vast-ink" />
+                    <span>Tab-Lock Active</span>
+                    {tabSwitchCount > 0 && (
+                      <span className="px-1.5 py-0.2 rounded-full bg-amber-600 text-white text-[10px] font-bold">
+                        {tabSwitchCount} {tabSwitchCount === 1 ? 'warning' : 'warnings'}
+                      </span>
+                    )}
+                  </div>
+
                   {/* Difficulty Filters */}
                   <div className="inline-flex items-center gap-1 p-1 bg-lumen-cream border-2 border-vast-ink rounded-full text-xs font-semibold">
                     {(['All', 'Easy', 'Medium', 'Hard'] as const).map(diff => (
@@ -622,6 +732,16 @@ export const TopicPractice: React.FC = () => {
                   >
                     <Sparkles className={`w-3.5 h-3.5 text-lavender-whisper ${isGeneratingAI ? 'animate-spin' : ''}`} />
                     {isGeneratingAI ? 'Generating...' : '+ AI MCQs'}
+                  </button>
+
+                  {/* Exit Test Button */}
+                  <button
+                    onClick={handleExitMCQSession}
+                    className="px-3 py-1.5 rounded-full bg-rose-50 border-2 border-rose-400 text-rose-800 hover:bg-rose-100 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition"
+                    title="Safely exit this MCQ practice test"
+                  >
+                    <LogOut className="w-3.5 h-3.5 text-rose-700" />
+                    <span>Exit Test</span>
                   </button>
 
                   {/* Reset Progress Button */}
@@ -1020,6 +1140,62 @@ export const TopicPractice: React.FC = () => {
           )}
         </div>
       )}
+
+      {/* Proctoring / Tab Switch Warning Modal */}
+      <AnimatePresence>
+        {showTabSwitchWarning && isMCQActive && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-vast-ink/70 backdrop-blur-md animate-fade-in">
+            <motion.div
+              initial={{ scale: 0.92, opacity: 0, y: 15 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.92, opacity: 0, y: 15 }}
+              className="bg-card-cream border-2 border-vast-ink rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-5 text-center relative overflow-hidden"
+            >
+              <div className="w-14 h-14 mx-auto rounded-2xl bg-amber-500/15 border-2 border-amber-600/30 flex items-center justify-center text-amber-700">
+                <ShieldAlert className="w-8 h-8 text-amber-600 animate-pulse" />
+              </div>
+
+              <div className="space-y-2">
+                <span className="inline-block px-3 py-1 rounded-full bg-amber-500/15 text-amber-900 border border-amber-500/30 text-[11px] font-bold tracking-wider uppercase">
+                  Tab-Lock Violation Detected
+                </span>
+                <h2 className="font-garamond font-normal text-2xl text-vast-ink">
+                  Do Not Switch Tabs
+                </h2>
+                <p className="text-xs text-vast-ink/75 leading-relaxed">
+                  Tab switching, minimizing, or navigating away is restricted while taking this MCQ assessment to preserve screening integrity.
+                </p>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-lumen-cream border border-vast-ink/15 text-xs text-vast-ink space-y-1">
+                <div className="flex justify-between font-semibold">
+                  <span>Violation Count:</span>
+                  <span className="text-amber-700 font-bold">{tabSwitchCount} time{tabSwitchCount !== 1 ? 's' : ''}</span>
+                </div>
+                <p className="text-[11px] text-vast-ink/60">
+                  Please remain on this tab until you finish the test, or click &ldquo;Exit Test&rdquo; below to leave safely.
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-2.5 pt-2">
+                <button
+                  onClick={() => setShowTabSwitchWarning(false)}
+                  className="flex-1 py-3 px-4 rounded-xl bg-vast-ink text-lumen-cream text-xs font-semibold hover:bg-vast-ink/90 transition shadow-sm cursor-pointer"
+                >
+                  I Understand, Return to Test
+                </button>
+                <button
+                  onClick={handleExitMCQSession}
+                  className="py-3 px-4 rounded-xl border-2 border-vast-ink bg-lumen-cream text-vast-ink text-xs font-semibold hover:bg-rose-50 hover:text-rose-700 hover:border-rose-400 transition cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Exit Test</span>
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
