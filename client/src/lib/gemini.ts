@@ -1192,11 +1192,19 @@ function extractSkillsFromText(text: string): string[] {
   return found.length > 0 ? found : ['React', 'Node.js', 'TypeScript', 'System Design', 'SQL'];
 }
 
+// In-memory cache to ensure ZERO duplicate token consumption for repeated explanations
+const mcqCoachingCache = new Map<string, MCQAICoaching>();
+
 export const explainMCQWithAI = async (
   topic: string,
   question: MCQPracticeQuestion,
   userSelectedIndex?: number
 ): Promise<MCQAICoaching> => {
+  const cacheKey = `${question.id}-${userSelectedIndex ?? 'none'}`;
+  if (mcqCoachingCache.has(cacheKey)) {
+    return mcqCoachingCache.get(cacheKey)!;
+  }
+
   const genAI = getGeminiClient();
   const selectedText = typeof userSelectedIndex === 'number' && question.options[userSelectedIndex]
     ? question.options[userSelectedIndex]
@@ -1205,56 +1213,57 @@ export const explainMCQWithAI = async (
 
   if (genAI) {
     try {
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-      const prompt = `
-You are an expert technical interviewer and senior software engineer specializing in ${topic}.
-Provide a deep conceptual breakdown and interview coaching insight for the following multiple choice question:
+      // Ultra-token-efficient: maxOutputTokens capped at 240, temperature at 0.2
+      const model = genAI.getGenerativeModel({ 
+        model: 'gemini-1.5-flash',
+        generationConfig: {
+          maxOutputTokens: 240,
+          temperature: 0.2
+        }
+      });
+      // Compact prompt reduces input token consumption by ~75%
+      const prompt = `Topic: ${topic}
+Q: "${question.q}"
+${question.codeSnippet ? `Code:\n${question.codeSnippet}\n` : ''}Correct: ${correctText}
+Candidate Pick: ${selectedText}
 
-Question: "${question.q}"
-${question.codeSnippet ? `Code Snippet:\n${question.codeSnippet}\n` : ''}
-Options:
-${question.options.map((opt, i) => `${String.fromCharCode(65 + i)}: ${opt}`).join('\n')}
-
-Correct Answer: ${String.fromCharCode(65 + question.correctAnswer)} (${correctText})
-Candidate Selected: ${selectedText}
-
-Return ONLY a valid JSON object matching this exact schema:
+Return compact JSON:
 {
-  "deepDive": "2-3 sentences explaining the underlying systems engineering or computer science concept in depth.",
-  "interviewTips": [
-    "Practical advice on how top tech companies (FAANG/Tier-1) test this concept in interviews",
-    "Key Big-O or architectural trade-off to mention to impress the interviewer"
-  ],
-  "commonTrap": "The specific distractor or misconception candidates often fall into with this question.",
-  "realWorldAnalogy": "A brief memorable real-world analogy to anchor this concept in mind."
-}
-`;
+  "deepDive": "1-2 sentences on the underlying concept.",
+  "interviewTips": ["Tip 1", "Tip 2"],
+  "commonTrap": "Common candidate mistake.",
+  "realWorldAnalogy": "Brief 1-sentence analogy."
+}`;
       const result = await model.generateContent(prompt);
       const text = result.response.text();
       const cleaned = cleanAndParseJSON(text);
       if (cleaned.deepDive && Array.isArray(cleaned.interviewTips)) {
-        return {
+        const coaching: MCQAICoaching = {
           deepDive: cleaned.deepDive,
           interviewTips: cleaned.interviewTips,
           commonTrap: cleaned.commonTrap || 'Confusing worst-case time complexity with amortized average case.',
           realWorldAnalogy: cleaned.realWorldAnalogy || 'Think of this as an indexing phonebook versus searching page-by-page.'
         };
+        mcqCoachingCache.set(cacheKey, coaching);
+        return coaching;
       }
     } catch (err) {
       console.warn('Gemini MCQ explanation failed, using rich local fallback:', err);
     }
   }
 
-  // High quality local fallback coaching
-  return {
-    deepDive: `In ${topic}, this question evaluates your grasp of fundamental architectural trade-offs. The correct option emphasizes ${correctText}, which provides optimal balance between computational efficiency and reliability.`,
+  // High quality local fallback coaching (zero tokens)
+  const fallbackCoaching: MCQAICoaching = {
+    deepDive: `In ${topic}, this evaluates fundamental trade-offs. The correct option emphasizes ${correctText}, providing optimal balance between computational efficiency and reliability.`,
     interviewTips: [
-      `In system design and screening rounds, always quantify the Big-O tradeoffs or network boundary overhead associated with this choice.`,
-      `Explain both why the correct answer is superior and when an alternative pattern might be chosen as a conscious trade-off.`
+      `In technical rounds, always quantify the Big-O tradeoffs or network boundary overhead associated with this choice.`,
+      `Explain both why the correct answer is superior and when an alternative pattern might be chosen.`
     ],
     commonTrap: `Many candidates mistakenly choose distractors that sound plausible but fail to hold under distributed scale or edge-case constraints.`,
     realWorldAnalogy: `Consider this like a cache lease: granting exclusive renewal tokens prevents thundering herds while preserving freshness.`
   };
+  mcqCoachingCache.set(cacheKey, fallbackCoaching);
+  return fallbackCoaching;
 };
 
 export const generateMCQsForTopic = async (
@@ -1266,30 +1275,26 @@ export const generateMCQsForTopic = async (
 
   if (genAI) {
     try {
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-      const prompt = `
-You are an expert technical interviewer at a top tech company. Generate ${count} challenging, high-quality Multiple Choice Questions (MCQs) for the technical topic "${topic}" at "${difficulty}" difficulty.
-
-Each question must have:
-1. Clear, realistic question prompt testing real-world engineering or theoretical CS knowledge.
-2. Exactly 4 distinct options (A, B, C, D) where 1 is definitively correct and 3 are plausible distractors.
-3. Zero-indexed correct option (0 for A, 1 for B, 2 for C, 3 for D).
-4. Clear 2-3 sentence explanation of why the correct answer is right and why other options are incorrect.
-
-Return ONLY a valid JSON object matching this schema:
+      // Capped token configuration to preserve quota
+      const model = genAI.getGenerativeModel({ 
+        model: 'gemini-1.5-flash',
+        generationConfig: {
+          maxOutputTokens: 380,
+          temperature: 0.3
+        }
+      });
+      const prompt = `Generate ${count} ${difficulty} MCQs for topic "${topic}".
+JSON only:
 {
   "questions": [
     {
-      "id": "gen_${Date.now()}_1",
-      "q": "Question text...",
-      "options": ["Option A", "Option B", "Option C", "Option D"],
+      "q": "Concise question",
+      "options": ["Opt A", "Opt B", "Opt C", "Opt D"],
       "correctAnswer": 0,
-      "explanation": "Explanation text...",
-      "difficulty": "${difficulty}"
+      "explanation": "Brief 1-2 sentence explanation"
     }
   ]
-}
-`;
+}`;
       const result = await model.generateContent(prompt);
       const text = result.response.text();
       const cleaned = cleanAndParseJSON(text);
@@ -1320,9 +1325,10 @@ Return ONLY a valid JSON object matching this schema:
         'Disabling all connection pools and opening fresh sockets per request'
       ],
       correctAnswer: 0,
-      explanation: 'Non-blocking event-driven architectures (like Node.js libuv or Netty) decouple I/O waiting from worker execution, supporting tens of thousands of concurrent connections efficiently without thread exhaustion.',
+      explanation: 'Non-blocking event-driven architectures decouple I/O waiting from worker execution, supporting tens of thousands of concurrent connections efficiently without thread exhaustion.',
       difficulty: difficulty
     }
   ];
 };
+
 

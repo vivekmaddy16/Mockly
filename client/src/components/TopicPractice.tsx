@@ -7,10 +7,11 @@ import {
   CheckCircle2, Sparkles, 
   Brain, GitBranch, Target, Building2, Server, Search, 
   AlertCircle, FileText, Check, X, XCircle, RotateCcw, 
-  ArrowRight, ArrowLeft, Lightbulb, RefreshCw, Trophy
+  ArrowRight, ArrowLeft, Lightbulb, RefreshCw, Trophy, Shuffle
 } from 'lucide-react';
 import { MCQPracticeQuestion, MCQAICoaching } from '@/types';
 import { explainMCQWithAI, generateMCQsForTopic } from '@/lib/gemini';
+import { allMCQQuestionsByTopic, shuffleQuestions } from '@/data/mcq';
 import { RoadmapView } from '@/components/RoadmapView';
 import { DSASheet } from '@/components/DSASheet';
 import { useAuth } from '@/context/AuthContext';
@@ -32,569 +33,52 @@ const initialTopicBank: Record<string, TopicData> = {
   'Data Structures & Algorithms': {
     icon: <Code2 className="w-5 h-5" />,
     categoryType: 'cs_fundamental',
-    questions: [
-      {
-        id: 'dsa-1',
-        q: 'What is the primary architectural difference between a Stack and a Queue, and how do their access patterns dictate their system use cases?',
-        options: [
-          'Stacks are FIFO (First-In-First-Out) used in asynchronous message queues; Queues are LIFO (Last-In-First-Out) used in memory call stacks.',
-          'Stacks are LIFO (Last-In-First-Out) used for call stack management and recursion; Queues are FIFO (First-In-First-Out) used for breadth-first search and task buffers.',
-          'Stacks guarantee O(1) random index access; Queues only allow sequential O(n) access.',
-          'Stacks require contiguous heap memory; Queues can only ever be implemented using doubly linked lists.'
-        ],
-        correctAnswer: 1,
-        explanation: 'A Stack strictly enforces LIFO (Last-In-First-Out), making it the natural model for recursion call frames, undo history, and syntax parsing. A Queue strictly enforces FIFO (First-In-First-Out), ordering items by arrival time, which is essential for BFS graph traversal, printer buffers, and job queues.',
-        difficulty: 'Easy'
-      },
-      {
-        id: 'dsa-2',
-        q: 'What is the expected vs worst-case lookup time complexity in a self-balancing Binary Search Tree (AVL/Red-Black) compared to a Hash Table using chaining?',
-        options: [
-          'Balanced BST: O(1) expected and O(n) worst; Hash Table: O(log n) expected and O(log n) worst.',
-          'Balanced BST: O(log n) expected and O(log n) worst; Hash Table: O(1) expected and O(n) worst when hash collisions degrade buckets.',
-          'Balanced BST: O(log n) expected and O(n) worst; Hash Table: O(1) expected and O(1) guaranteed worst-case.',
-          'Both data structures guarantee O(1) average and O(log n) worst-case lookup times.'
-        ],
-        correctAnswer: 1,
-        explanation: 'A self-balancing BST enforces a height bound of O(log n), guaranteeing O(log n) lookup in both average and worst cases. A Hash Table offers O(1) average lookup via hash indexing, but in the pathological worst case where all keys hash to the same bucket (collision chain), search degrades to O(n) (or O(log k) in Java 8 treeified buckets).',
-        difficulty: 'Medium'
-      },
-      {
-        id: 'dsa-3',
-        q: 'Which two fundamental mathematical properties must a problem satisfy for Dynamic Programming (DP) to yield a correct and optimal polynomial-time solution?',
-        options: [
-          'Greedy choice property and polynomial bounded input size.',
-          'Optimal substructure and non-overlapping independent subproblems.',
-          'Optimal substructure and overlapping subproblems.',
-          'Markov memoryless state transitions and linear separability.'
-        ],
-        correctAnswer: 2,
-        explanation: 'Dynamic Programming requires: 1. Optimal Substructure (an optimal global solution is composed of optimal solutions to its subproblems), and 2. Overlapping Subproblems (the recursive formulation encounters identical subproblems repeatedly, allowing caching via memoization or tabulation to prevent exponential re-computation).',
-        difficulty: 'Hard'
-      },
-      {
-        id: 'dsa-4',
-        q: 'Why does standard Dijkstra\'s shortest path algorithm fail or produce incorrect results on directed graphs with negative edge weights?',
-        options: [
-          'Dijkstra uses a FIFO queue which deadlocks when encountering negative integers.',
-          'It greedily assumes that once a vertex\'s minimum distance is popped from the priority queue, no shorter path to it can ever be found later via subsequent edges.',
-          'Priority queues in standard libraries reject negative floating-point numbers.',
-          'Negative weights turn the graph into an undirected bipartite graph where paths cannot be evaluated.'
-        ],
-        correctAnswer: 1,
-        explanation: 'Dijkstra\'s algorithm relies on a greedy invariant: once a node is popped from the min-priority queue, its shortest path distance is permanently finalized because any alternate path through unvisited nodes must accumulate only non-negative additions. When negative edges exist, a longer positive path could later decrease in total cost via a negative edge, violating this invariant. Bellman-Ford or SPFA should be used instead.',
-        difficulty: 'Medium'
-      },
-      {
-        id: 'dsa-5',
-        q: 'Which technique correctly detects the presence of a cycle in a Directed Graph in O(V + E) time?',
-        options: [
-          'Direct Disjoint Set Union (Union-Find) without edge orientation tracking.',
-          'Depth-First Search (DFS) tracking nodes in the active recursion call stack (3-color state: White, Gray, Black).',
-          'Dijkstra\'s algorithm by checking if the shortest path distance exceeds the vertex count.',
-          'Single-source BFS without in-degree calculation.'
-        ],
-        correctAnswer: 1,
-        explanation: 'In a directed graph, a cycle exists if and only if a back-edge points to an ancestor node currently in the active DFS recursion stack. The standard 3-color model marks nodes as White (unvisited), Gray (currently exploring in active call stack), and Black (fully explored). Encountering a Gray node indicates a directed cycle. Kahn\'s algorithm with in-degrees is another standard O(V+E) approach.',
-        difficulty: 'Medium'
-      }
-    ]
+    questions: shuffleQuestions(allMCQQuestionsByTopic['Data Structures & Algorithms'] || [])
   },
   'Object-Oriented Programming': {
     icon: <Layers className="w-5 h-5" />,
     categoryType: 'cs_fundamental',
-    questions: [
-      {
-        id: 'oop-1',
-        q: 'Which of the following pairs an OOP pillar with its foundational software engineering purpose?',
-        options: [
-          'Encapsulation: Bundling data and methods while restricting direct access to internal state via defined access modifiers.',
-          'Inheritance: Hiding internal implementation logic behind simple abstract contracts.',
-          'Abstraction: Enabling multiple derived classes to share global static variables.',
-          'Polymorphism: Converting relational database tables into serialized JSON models.'
-        ],
-        correctAnswer: 0,
-        explanation: 'Encapsulation bundles data (attributes) and the code (methods) that manipulates it while shielding internal representation from unintended external interference. Abstraction hides complexity behind interfaces. Inheritance enables hierarchical code reuse. Polymorphism allows disparate objects to respond to the same interface message.',
-        difficulty: 'Easy'
-      },
-      {
-        id: 'oop-2',
-        q: 'In modern strongly-typed languages (like Java, C#, or TypeScript), what is the core structural difference between an Abstract Class and an Interface?',
-        options: [
-          'Abstract classes cannot contain concrete methods, while interfaces must contain complete implementations.',
-          'A class can implement multiple interfaces but typically only inherit from a single abstract class; abstract classes can also maintain stateful instance fields.',
-          'Interfaces can be instantiated directly with the "new" keyword, whereas abstract classes cannot.',
-          'Interfaces are dynamically resolved at runtime, while abstract classes are compiled into static C routines.'
-        ],
-        correctAnswer: 1,
-        explanation: 'Classes can implement multiple interfaces (contract-based composition) while single inheritance applies to classes (preventing the diamond problem). Abstract classes can hold non-static instance fields (state), constructors, and partial implementations, whereas interfaces traditionally define abstract capability contracts.',
-        difficulty: 'Medium'
-      },
-      {
-        id: 'oop-3',
-        q: 'The Liskov Substitution Principle (LSP) in the SOLID design principles states that:',
-        options: [
-          'High-level modules should never depend upon low-level modules; both should depend on abstractions.',
-          'A class should have one, and only one, reason to change.',
-          'Subtypes must be substitutable for their base types without altering the correctness or desired properties of the program.',
-          'Classes should be open for direct modification and closed for extension.'
-        ],
-        correctAnswer: 2,
-        explanation: 'The Liskov Substitution Principle (LSP) demands that objects of a superclass should be replaceable with objects of a subclass without breaking application behavior or violating pre/post-conditions. A classic violation is a Square class inheriting from Rectangle, where mutating width changes height and violates rectangular assumptions.',
-        difficulty: 'Hard'
-      },
-      {
-        id: 'oop-4',
-        q: 'How does runtime polymorphism (dynamic method dispatch) work under the hood in compiled object-oriented runtimes (such as C++ or the JVM)?',
-        options: [
-          'The compiler inlines every subclass implementation into a single monolithic switch statement.',
-          'Each object instance contains a pointer to a Virtual Method Table (vtable) containing function pointers resolved at execution time.',
-          'The runtime uses reflection to re-parse the source code on every method invocation.',
-          'Methods are executed on background threads that send IPC messages to the operating system.'
-        ],
-        correctAnswer: 1,
-        explanation: 'Dynamic dispatch utilizes a Virtual Method Table (vtable). Classes with virtual/overridden methods have a vtable holding pointers to their concrete implementations. Each object instance stores a hidden vptr pointing to its class vtable, allowing the runtime to dereference the exact derived method at O(1) overhead.',
-        difficulty: 'Medium'
-      }
-    ]
+    questions: shuffleQuestions(allMCQQuestionsByTopic['Object-Oriented Programming'] || [])
   },
   'Database Management (DBMS)': {
     icon: <Database className="w-5 h-5" />,
     categoryType: 'cs_fundamental',
-    questions: [
-      {
-        id: 'dbms-1',
-        q: 'A relational database relation is in Third Normal Form (3NF) if and only if it is in 2NF and:',
-        options: [
-          'All columns contain only alphanumeric string values.',
-          'There are no transitive functional dependencies of non-prime attributes on the primary key.',
-          'Every attribute in the table is a candidate primary key.',
-          'It has no foreign key relationships with any other table in the schema.'
-        ],
-        correctAnswer: 1,
-        explanation: '3NF builds on 2NF (which removes partial dependencies on composite keys) by eliminating transitive dependencies (X -> Y and Y -> Z where Z is a non-prime attribute). Every non-prime attribute must depend on "the key, the whole key, and nothing but the key".',
-        difficulty: 'Medium'
-      },
-      {
-        id: 'dbms-2',
-        q: 'Which ACID property guarantees that once a database transaction commits, its modifications are permanently recorded even in the event of an abrupt power outage or system crash?',
-        options: [
-          'Atomicity',
-          'Consistency',
-          'Isolation',
-          'Durability'
-        ],
-        correctAnswer: 3,
-        explanation: 'Durability ensures that committed transaction state survives crashes or server reboots. Modern relational databases achieve this through Write-Ahead Logging (WAL): transaction logs are flushed to persistent disk before the commit acknowledgement is returned to the client.',
-        difficulty: 'Easy'
-      },
-      {
-        id: 'dbms-3',
-        q: 'According to Brewer\'s CAP Theorem, when an unavoidable network partition (P) occurs between distributed nodes, what fundamental trade-off must the system make?',
-        options: [
-          'Choose between Encryption (E) and Throughput (T).',
-          'Choose between Consistency (C) and Availability (A).',
-          'Choose between Read Throughput (R) and Write Latency (W).',
-          'Choose between ACID transactions and Multi-Tenancy.'
-        ],
-        correctAnswer: 1,
-        explanation: 'When network partitions occur, distributed databases must choose between Consistency (returning errors or blocking writes to prevent stale or divergent data across partitions) or Availability (accepting reads and writes on all available nodes, allowing temporary data divergence/stale reads).',
-        difficulty: 'Medium'
-      },
-      {
-        id: 'dbms-4',
-        q: 'Why do relational database engines (like MySQL InnoDB and PostgreSQL) default to B+ Tree indexes over Hash indexes for primary keys and general columns?',
-        options: [
-          'Hash indexes consume O(n^2) disk space whereas B+ Trees require zero disk storage.',
-          'B+ Trees efficiently support range queries (e.g. BETWEEN, <, >, ORDER BY) because all leaf nodes are sequentially linked in sorted order.',
-          'Hash indexes cannot handle numeric data types.',
-          'B+ Trees guarantee O(1) point lookups for all arbitrary string queries.'
-        ],
-        correctAnswer: 1,
-        explanation: 'Hash indexes offer O(1) equality lookups (WHERE id = 5) but are incapable of evaluating range scans (WHERE age BETWEEN 20 AND 30) or ordered traversals (ORDER BY). In a B+ Tree, internal nodes store indexing guides while leaf nodes contain all keys and data pointers in sorted, doubly linked order, enabling O(log N + K) range scans.',
-        difficulty: 'Hard'
-      }
-    ]
+    questions: shuffleQuestions(allMCQQuestionsByTopic['Database Management (DBMS)'] || [])
   },
   'Operating Systems (OS)': {
     icon: <Cpu className="w-5 h-5" />,
     categoryType: 'cs_fundamental',
-    questions: [
-      {
-        id: 'os-1',
-        q: 'What is the primary difference in memory space and context switching overhead between an OS Process and a Thread?',
-        options: [
-          'Processes share memory space and have zero switching overhead; Threads have isolated memory and require MMU remapping.',
-          'Processes have independent address spaces requiring page table and MMU cache (TLB) flushes during context switches; Threads within a process share the same virtual address space, making thread switches significantly faster.',
-          'Threads can only run on single-core CPUs; Processes require multi-core CPUs.',
-          'Processes are managed strictly in user space, while all Threads are kernel routines.'
-        ],
-        correctAnswer: 1,
-        explanation: 'Processes have independent virtual memory address spaces. Switching between processes requires updating page directory base registers and invalidating/flushing the Translation Lookaside Buffer (TLB). Threads in the same process share virtual memory, file descriptors, and heap, so thread context switching only saves registers and stack pointers without TLB invalidation.',
-        difficulty: 'Easy'
-      },
-      {
-        id: 'os-2',
-        q: 'Which of the following is NOT one of the four mandatory Coffman conditions required for a Deadlock to occur?',
-        options: [
-          'Mutual Exclusion: Resources cannot be shared simultaneously.',
-          'Hold and Wait: Processes holding allocated resources can request additional ones.',
-          'Preemption: The operating system forcefully confiscates resources from waiting processes at any time.',
-          'Circular Wait: A closed chain of processes exists where each holds a resource needed by the next.'
-        ],
-        correctAnswer: 2,
-        explanation: 'The four Coffman conditions are: 1. Mutual Exclusion, 2. Hold and Wait, 3. No Preemption (resources CANNOT be forcibly confiscated from a process), and 4. Circular Wait. If preemption were allowed, deadlocks could be preemptively resolved by revoking resources.',
-        difficulty: 'Medium'
-      },
-      {
-        id: 'os-3',
-        q: 'In virtual memory systems, what is a Page Fault, and what happens when the requested page is not in physical RAM?',
-        options: [
-          'A hardware memory bus short-circuit that forces an immediate CPU kernel panic.',
-          'A trap triggered by the Memory Management Unit (MMU) when a referenced virtual page is not marked present in RAM, causing the OS to swap it in from secondary disk storage.',
-          'A compiler syntax error generated when dereferencing null pointers in C++.',
-          'A network timeout when reading remote distributed memory cache.'
-        ],
-        correctAnswer: 1,
-        explanation: 'When the CPU looks up a virtual address whose page table entry has the "present bit" set to 0, the MMU issues a page fault interrupt. The OS interrupt handler suspends the thread, locates the page in swap space on disk, loads it into an available physical RAM frame, updates the page table entry, and restarts the faulting instruction.',
-        difficulty: 'Hard'
-      }
-    ]
+    questions: shuffleQuestions(allMCQQuestionsByTopic['Operating Systems (OS)'] || [])
   },
   'Computer Networks (CN)': {
     icon: <Network className="w-5 h-5" />,
     categoryType: 'cs_fundamental',
-    questions: [
-      {
-        id: 'cn-1',
-        q: 'What is the exact sequence of packets exchanged to establish a reliable connection in the TCP 3-Way Handshake?',
-        options: [
-          'ACK -> SYN -> SYN-ACK',
-          'SYN -> SYN-ACK -> ACK',
-          'FIN -> ACK -> FIN-ACK',
-          'PING -> PONG -> CONNECT'
-        ],
-        correctAnswer: 1,
-        explanation: 'The TCP handshake sequence is: 1. Client sends SYN (Synchronize sequence number) to server; 2. Server responds with SYN-ACK (acknowledging client sequence number and sending its own sequence number); 3. Client replies with ACK (acknowledging server sequence number). The connection is now established.',
-        difficulty: 'Easy'
-      },
-      {
-        id: 'cn-2',
-        q: 'How does HTTP/2 solve the Head-of-Line (HoL) blocking problem present at the application layer in HTTP/1.1?',
-        options: [
-          'By running exclusively over UDP instead of TCP.',
-          'By using binary framing to multiplex multiple concurrent bidirectional request/response streams over a single TCP connection.',
-          'By disabling HTTP cookies and headers entirely.',
-          'By requiring each client to establish 100 parallel TCP sockets to every server.'
-        ],
-        correctAnswer: 1,
-        explanation: 'HTTP/1.1 suffered from application-layer Head-of-Line blocking because requests on a single connection had to be serialized sequentially. HTTP/2 introduced binary framing, allowing multiple logical request/response streams to be interleaved and multiplexed simultaneously over a single persistent TCP connection.',
-        difficulty: 'Medium'
-      },
-      {
-        id: 'cn-3',
-        q: 'What architectural innovation does HTTP/3 introduce by replacing TCP with the QUIC protocol over UDP?',
-        options: [
-          'It eliminates transport-layer Head-of-Line blocking (a single lost packet only delays its specific stream rather than all streams) and enables zero-RTT connection resumption.',
-          'It replaces TLS encryption with plain unencrypted text for lower latency.',
-          'It eliminates DNS lookup by hardcoding IP addresses into browser binaries.',
-          'It limits all web requests to a maximum payload of 64 bytes.'
-        ],
-        correctAnswer: 0,
-        explanation: 'While HTTP/2 multiplexed streams over TCP, a single lost TCP packet stalled ALL streams in the connection until retransmitted (TCP-level HoL blocking). QUIC operates over UDP and manages individual stream retransmissions independently. It also merges transport and cryptographic handshakes for 0-RTT/1-RTT connection setup.',
-        difficulty: 'Hard'
-      }
-    ]
+    questions: shuffleQuestions(allMCQQuestionsByTopic['Computer Networks (CN)'] || [])
   },
   'Google Prep': {
     icon: <Building2 className="w-5 h-5" />,
     categoryType: 'company_prep',
-    questions: [
-      {
-        id: 'goog-1',
-        q: 'Google Scale: In designing a distributed crawler indexing billions of pages daily, how do systems prevent overwhelming individual webmasters while avoiding duplicate crawls?',
-        options: [
-          'By using synchronous HTTP GET loops on a single large compute instance with no local state.',
-          'By employing Per-Host Politeness Queues with configurable domain rate limits, coupled with Bloom Filters and SimHash fingerprinting for URL and content deduplication.',
-          'By issuing ICMP ping bursts to every domain prior to web page downloading.',
-          'By spawning an isolated headless browser for each hyperlink without checking history.'
-        ],
-        correctAnswer: 1,
-        explanation: 'At Google scale, the URL frontier organizes fetch queues into per-host politeness queues ensuring safe delays between requests to the same host. URL deduplication uses scalable distributed Bloom Filters, while near-duplicate content is identified using SimHash or MinHash locality-sensitive hashing.',
-        difficulty: 'Hard'
-      },
-      {
-        id: 'goog-2',
-        q: 'Search Rank: In Google\'s foundational PageRank algorithm, why is the Damping Factor (typically d = 0.85) mathematically necessary for convergence?',
-        options: [
-          'It stops spider-traps (cyclic link loops) and sink nodes (dead-ends) from absorbing all rank, ensuring the Markov chain converges to a unique stationary distribution.',
-          'It compresses the graph adjacency matrix into 16-bit integers for disk serialization.',
-          'It calculates ad pricing bidding thresholds based on click probability.',
-          'It filters out non-indexed PDF files from the link matrix.'
-        ],
-        correctAnswer: 0,
-        explanation: 'Without the damping factor d, dead ends (nodes with no outgoing links) act as rank sinks, and isolated cycles act as spider traps that trap all probability mass. The (1-d)/N uniform probability of jumping to a random page ensures the transition matrix is stochastic, irreducible, and aperiodic, guaranteeing convergence via the Perron-Frobenius theorem.',
-        difficulty: 'Hard'
-      },
-      {
-        id: 'goog-3',
-        q: 'Systems: What occurs during the Shuffle and Sort phase of the Google MapReduce computing paradigm?',
-        options: [
-          'Mappers delete their input files to free up local disk space.',
-          'Intermediate key-value pairs produced by mappers are partitioned, transferred over the network, and sorted by key so each reducer receives all values for a given key.',
-          'Data is automatically transformed into relational SQL schemas.',
-          'Failed compute nodes are permanently disconnected from the data center power grid.'
-        ],
-        correctAnswer: 1,
-        explanation: 'The Shuffle and Sort phase acts as the communication pipeline between Map and Reduce: it routes intermediate outputs from all mapper machines across the cluster (partitioned by hash(key) mod R), sorts them by key, and streams values grouped by key into the appropriate Reducer task.',
-        difficulty: 'Medium'
-      },
-      {
-        id: 'goog-4',
-        q: 'Storage: In Google Bigtable and modern LSM-Tree storage engines (like RocksDB), how are writes and reads handled to sustain massive write throughput?',
-        options: [
-          'Writes overwrite existing disk records directly in place via B-Tree page splits.',
-          'Writes are sequentially appended to a Write-Ahead Log (WAL) and stored in an in-memory MemTable; background threads periodically flush sorted MemTables to immutable SSTables on disk.',
-          'Data is kept strictly in RAM without any disk persistence.',
-          'Every write triggers a cluster-wide distributed lock that halts reads.'
-        ],
-        correctAnswer: 1,
-        explanation: 'Log-Structured Merge-Trees (LSM) convert random disk writes into high-speed sequential writes. Incoming writes are appended to a commit log for durability and inserted into a sorted in-memory MemTable (skip list). When full, the MemTable is flushed to disk as an immutable SSTable. Reads consult MemTable, Bloom filters, and SSTables.',
-        difficulty: 'Hard'
-      }
-    ]
+    questions: shuffleQuestions(allMCQQuestionsByTopic['Google Prep'] || [])
   },
   'Amazon Prep': {
     icon: <Building2 className="w-5 h-5" />,
     categoryType: 'company_prep',
-    questions: [
-      {
-        id: 'amzn-1',
-        q: 'STAR Leadership: Under Amazon\'s hallmark "Customer Obsession" principle, which product design methodology is standard across engineering and leadership teams?',
-        options: [
-          'Build features first and solicit customer feedback only after production deployment.',
-          'Working Backwards: Drafting an internal Press Release and FAQ (PR/FAQ) from the customer perspective before writing any engineering code.',
-          'Copying top competitor interfaces and matching their UI designs pixel-for-pixel.',
-          'Maximizing sprint code commit count regardless of error budgets or user tickets.'
-        ],
-        correctAnswer: 1,
-        explanation: 'Amazon\'s "Working Backwards" process requires engineering and product teams to write a customer-centric Press Release announcing the finished solution and an exhaustive internal/external FAQ (PR/FAQ) confronting customer pain points and technical risks before engineering investment begins.',
-        difficulty: 'Easy'
-      },
-      {
-        id: 'amzn-2',
-        q: 'Scale: During massive shopping traffic events (like Prime Day), how does Amazon DynamoDB balance read availability and latency?',
-        options: [
-          'By enforcing heavy two-phase commit (2PC) locks across all global replicas on every read.',
-          'By providing Eventually Consistent reads by default (halving RCU cost and latency) while supporting Strongly Consistent reads and ACID transactions when requested.',
-          'By storing all shopping cart changes only in the user\'s local browser cookie.',
-          'By rejecting all write requests once database CPU crosses 50%.'
-        ],
-        correctAnswer: 1,
-        explanation: 'DynamoDB partitions data across multi-AZ storage nodes using consistent hashing and Paxos consensus. By default, reads are Eventually Consistent (costing 0.5 Read Capacity Units and querying any replica), optimizing for maximum availability and single-digit millisecond latency. Strongly Consistent reads (1 RCU) query the leader replica.',
-        difficulty: 'Hard'
-      },
-      {
-        id: 'amzn-3',
-        q: 'Operations: Why must microservice consumers processing orders from AWS SQS (Simple Queue Service) standard queues be strictly idempotent?',
-        options: [
-          'Standard SQS guarantees at-least-once delivery, meaning network retries or visibility timeouts can cause duplicate message delivery.',
-          'Standard SQS only allows each message to be read exactly once in its entire lifetime.',
-          'SQS automatically cancels credit card payments if duplicate messages are detected.',
-          'Messages in SQS are deleted automatically as soon as they are placed on the queue.'
-        ],
-        correctAnswer: 0,
-        explanation: 'Standard SQS queues guarantee "at-least-once" delivery to preserve high throughput and fault tolerance. In network timeouts or consumer crashes, duplicate message deliveries occur. Consumers must use idempotency keys (e.g. unique Order ID in a database unique constraint) so re-processing does not duplicate charges or inventory reservations.',
-        difficulty: 'Medium'
-      },
-      {
-        id: 'amzn-4',
-        q: 'Architecture: In high-concurrency flash sales, how can systems prevent stock overselling without bottlenecking database row-level pessimistic locks?',
-        options: [
-          'By running an unindexed SQL update with no transaction boundaries.',
-          'By using Optimistic Concurrency Control (version numbers / conditional writes) and pre-allocating inventory buckets in an in-memory cache (Redis) with atomic DECR operations.',
-          'By taking down the website and processing purchases manually via email.',
-          'By allowing negative inventory counts and dealing with customer returns later.'
-        ],
-        correctAnswer: 1,
-        explanation: 'Pessimistic DB row locks cause connection pool exhaustion during flash sales. High-performance architectures decouple validation via in-memory Redis atomic Lua scripts (DECR stock >= 1) or conditional updates in DynamoDB (attribute_exists & stock > 0) with versioning, queuing verified orders for asynchronous database persistence.',
-        difficulty: 'Hard'
-      }
-    ]
+    questions: shuffleQuestions(allMCQQuestionsByTopic['Amazon Prep'] || [])
   },
   'Meta Prep': {
     icon: <Building2 className="w-5 h-5" />,
     categoryType: 'company_prep',
-    questions: [
-      {
-        id: 'meta-1',
-        q: 'Frontend: What critical performance limitation of React\'s legacy Stack Reconciler did the React Fiber rewrite resolve?',
-        options: [
-          'It allowed React apps to run without any JavaScript engine.',
-          'It replaced synchronous, un-interruptible recursive tree traversals with an incremental work loop that yields control back to the browser to maintain 60 FPS responsiveness.',
-          'It automatically converted all CSS files into WebAssembly binaries.',
-          'It replaced all DOM elements with Canvas drawing calls.'
-        ],
-        correctAnswer: 1,
-        explanation: 'The legacy Stack Reconciler executed rendering synchronously and recursively until the entire component tree was traversed. On heavy updates, this monopolized the browser main thread and caused dropped frames (jank). Fiber restructured the tree into a linked list of fiber nodes, enabling cooperative multitasking: yielding work, prioritizing user inputs, and pausing work.',
-        difficulty: 'Hard'
-      },
-      {
-        id: 'meta-2',
-        q: 'Infrastructure: In Meta\'s real-time notification service serving 2+ billion active accounts, how are push updates delivered to client devices efficiently?',
-        options: [
-          'All mobile clients continuously poll SQL databases every 200 milliseconds.',
-          'Stateless edge connection gateways maintain persistent lightweight MQTT/WebSocket connections, wired to a distributed real-time Pub/Sub message broker.',
-          'Direct peer-to-peer WebRTC mesh links between all friends on the platform.',
-          'Sending automated voice calls to mobile numbers for each notification.'
-        ],
-        correctAnswer: 1,
-        explanation: 'At Meta scale, persistent connections (MQTT or WebSocket) are held by dedicated edge gateway machines. When a notification event occurs, backend services publish to an internal distributed event pipeline which routes the message directly to the specific gateway holding the user\'s live connection socket.',
-        difficulty: 'Hard'
-      },
-      {
-        id: 'meta-3',
-        q: 'Distributed Cache: In Meta\'s large-scale Memcached infrastructure, what problem does the "Lease" mechanism solve?',
-        options: [
-          'It automates server hardware leasing from cloud vendors.',
-          'It mitigates "Cache Stampedes" (thundering herds on cache misses) and prevents stale sets caused by out-of-order writes.',
-          'It encrypts cached data with public/private keys on every GET request.',
-          'It restricts cache access to users with verified badges.'
-        ],
-        correctAnswer: 1,
-        explanation: 'When a cache miss occurs, Memcached grants the client a 64-bit lease token. Only that client is permitted to query the database and write the value back, preventing thousands of concurrent queries from stampeding the DB simultaneously (thundering herd). If an invalidation occurs before the write-back, the lease is invalidated, preventing stale overwrites.',
-        difficulty: 'Hard'
-      },
-      {
-        id: 'meta-4',
-        q: 'Data Fetching: In GraphQL architectures, what is the N+1 problem and how does Facebook/Meta\'s DataLoader pattern resolve it?',
-        options: [
-          'It is a math bug in the GraphQL AST parser that duplicates fields.',
-          'Individual resolvers fire separate SQL queries for each child record (1 query for parents + N queries for children); DataLoader batches queries into a single "WHERE id IN (...)" call using event-loop tick scheduling and memoization caching.',
-          'N+1 refers to creating N additional GraphQL servers for each user login.',
-          'It forces clients to download the entire database schema before every query.'
-        ],
-        correctAnswer: 1,
-        explanation: 'When querying a list of posts and their authors, naive resolvers fetch the post list (1 query) and then resolve authors individually (N queries). DataLoader solves this by collecting IDs requested within a single JavaScript event loop tick and dispatching one single batched query (e.g. SELECT * FROM users WHERE id IN (...)), while caching per-request results.',
-        difficulty: 'Medium'
-      }
-    ]
+    questions: shuffleQuestions(allMCQQuestionsByTopic['Meta Prep'] || [])
   },
   'Machine Learning & AI': {
     icon: <Brain className="w-5 h-5" />,
     categoryType: 'role_domain',
-    questions: [
-      {
-        id: 'ml-1',
-        q: 'Ensemble Learning: What is the fundamental bias-variance trade-off difference between Bagging (e.g. Random Forests) and Boosting (e.g. XGBoost)?',
-        options: [
-          'Bagging reduces variance by averaging independent high-variance learners trained in parallel; Boosting reduces bias by training weak learners sequentially on residual errors.',
-          'Bagging only reduces bias, while Boosting only reduces variance.',
-          'Bagging can only be used for classification; Boosting is exclusively for regression.',
-          'Bagging trains models sequentially; Boosting trains models in parallel.'
-        ],
-        correctAnswer: 0,
-        explanation: 'Bagging (Bootstrap Aggregation) trains deep, unpruned decision trees (high variance, low bias) in parallel on bootstrap sample subsets; averaging their predictions reduces variance without increasing bias. Boosting trains shallow trees (high bias, low variance) sequentially, where each successive model focuses on errors/residuals from the previous one, reducing bias.',
-        difficulty: 'Medium'
-      },
-      {
-        id: 'ml-2',
-        q: 'Deep Learning: Why does the Vanishing Gradient problem occur during backpropagation in deep networks using Sigmoid/Tanh activations, and how do ResNets solve it?',
-        options: [
-          'Loss functions output negative numbers that crash matrix multiplication.',
-          'Repeated chain-rule multiplication of derivatives less than 1 causes early layer gradients to decay exponentially toward zero; ResNets add identity skip connections [F(x) + x] that allow gradients to flow back unaltered.',
-          'Learning rates drop to zero automatically after epoch 1 in deep models.',
-          'Weights in dense layers overflow 64-bit floating point precision.'
-        ],
-        correctAnswer: 1,
-        explanation: 'Sigmoid derivatives peak at 0.25 (tanh at 1.0). Backpropagation multiplies these layer derivatives through the chain rule. Over dozens of layers, product chains shrink exponentially, starving early layers of updates. ResNet introduces identity shortcut connections: Output = F(x) + x. The derivative contains a "+ 1" term, ensuring gradient signals propagate directly backward.',
-        difficulty: 'Hard'
-      },
-      {
-        id: 'ml-3',
-        q: 'Evaluation: In highly imbalanced classification problems (e.g. credit card fraud where positive fraud cases represent only 0.05% of data), why is standard Accuracy a flawed metric?',
-        options: [
-          'Accuracy requires calculating square roots which cannot run on GPU tensor cores.',
-          'A trivial model predicting "No Fraud" for every sample achieves 99.95% accuracy while failing to detect any fraud; metrics like PR-AUC, F1-Score, and Precision/Recall must be used.',
-          'Accuracy is mathematically undefined for binary classification.',
-          'Accuracy only works when datasets contain fewer than 1,000 examples.'
-        ],
-        correctAnswer: 1,
-        explanation: 'When 99.95% of records are negative, a dumb model predicting negative 100% of the time scores 99.95% accuracy but is completely useless. Precision-Recall AUC, F1-Score (harmonic mean of Precision and Recall), and confusion matrices properly reflect the model\'s efficacy at identifying rare positive instances.',
-        difficulty: 'Easy'
-      },
-      {
-        id: 'ml-4',
-        q: 'Transformers: In standard Multi-Head Self-Attention (as in original BERT/GPT architectures), what is the computational and memory complexity with respect to input sequence length N?',
-        options: [
-          'O(N) linear complexity in both time and memory.',
-          'O(N^2) quadratic complexity because every token computes attention weights against every other token in the sequence.',
-          'O(log N) logarithmic complexity via binary search index trees.',
-          'O(N!) factorial complexity due to token permutations.'
-        ],
-        correctAnswer: 1,
-        explanation: 'The self-attention calculation Q * K^T produces an N x N attention matrix for sequence length N. Calculating, storing, and applying Softmax over this matrix requires O(N^2) time and memory, which is why handling very long contexts (e.g. 100k+ tokens) motivates architectures like FlashAttention, Sparse Attention, or linear attention alternatives.',
-        difficulty: 'Hard'
-      }
-    ]
+    questions: shuffleQuestions(allMCQQuestionsByTopic['Machine Learning & AI'] || [])
   },
   'DevOps & SRE': {
     icon: <Server className="w-5 h-5" />,
     categoryType: 'role_domain',
-    questions: [
-      {
-        id: 'devops-1',
-        q: 'Resilience: What are the three states of the Circuit Breaker pattern, and what prompts the transition from "Open" to "Half-Open"?',
-        options: [
-          'Pending, Active, Completed; triggered by a manual DevOps deploy command.',
-          'Closed (normal operations), Open (failing fast), and Half-Open (trial probe); transitioned from Open to Half-Open after a configured cooldown sleep window elapses.',
-          'Read-Only, Write-Only, Full-Access; triggered when system disk usage exceeds 90%.',
-          'Alpha, Beta, Production; triggered when integration unit tests pass.'
-        ],
-        correctAnswer: 1,
-        explanation: 'In "Closed", traffic executes normally. If failures exceed an error rate threshold, the circuit trips to "Open", immediately rejecting requests with fallbacks to avoid overloading downstream services. After a cooldown delay, it switches to "Half-Open", allowing a small probe of requests through. If those succeed, it resets to "Closed"; if they fail, it reopens.',
-        difficulty: 'Medium'
-      },
-      {
-        id: 'devops-2',
-        q: 'Kubernetes: How does the Kubernetes Horizontal Pod Autoscaler (HPA) controller compute the target replica count?',
-        options: [
-          'It randomly doubles pod replicas whenever network latency increases.',
-          'Using the formula: desiredReplicas = ceil[ currentReplicas * ( currentMetricValue / targetMetricValue ) ] based on metrics collected from the metrics-server or Prometheus.',
-          'By rebooting the worker node if pod CPU usage drops below 20%.',
-          'By reading manual replica counts written in commit messages.'
-        ],
-        correctAnswer: 1,
-        explanation: 'The HPA loop periodically queries the metrics API and calculates desiredReplicas = ceil[ currentReplicas * (currentMetricValue / targetMetricValue) ]. It also enforces configured min/max boundaries and stabilization delay windows to avoid rapid scaling oscillations (flapping).',
-        difficulty: 'Medium'
-      },
-      {
-        id: 'devops-3',
-        q: 'Zero-Downtime Deployment: What is the architectural difference between Blue-Green deployments and Canary deployments?',
-        options: [
-          'Blue-Green runs on mobile devices; Canary runs only in desktop web browsers.',
-          'Blue-Green maintains two identical environments and swaps 100% of traffic instantly at the router; Canary routes a small percentage (e.g. 5%) of live traffic to the new version first to monitor health before broader rollout.',
-          'Canary requires shutting down the cluster database; Blue-Green does not use a database.',
-          'Blue-Green is an AWS exclusive feature; Canary is restricted to Linux Docker.'
-        ],
-        correctAnswer: 1,
-        explanation: 'Blue-Green maintains two parallel production environments; traffic is instantly switched from Blue (old) to Green (new) via load balancer. Canary releases deploy the new version alongside existing pods, directing a small fraction of real production traffic (e.g. 2%-10%) while tracking error rates and telemetry before progressively expanding to 100%.',
-        difficulty: 'Hard'
-      },
-      {
-        id: 'devops-4',
-        q: 'Site Reliability Engineering (SRE): How are SLA, SLO, and SLI related, and what is an Error Budget?',
-        options: [
-          'They are financial metrics used by the accounting department to calculate cloud tax deductions.',
-          'SLI is the measured metric (e.g. latency), SLO is the internal target (e.g. 99.9% under 200ms), SLA is the legal customer commitment with penalties, and the Error Budget is the remaining permitted unreliability (100% - SLO) usable for feature velocity.',
-          'SLA is measured in bits, SLO in bytes, and SLI in gigabytes.',
-          'Error Budget is the maximum dollar amount an engineering team can spend on AWS in a month.'
-        ],
-        correctAnswer: 1,
-        explanation: 'SLI (Service Level Indicator) measures actual system performance (e.g. percentage of successful requests). SLO (Service Level Objective) is the internal reliability target agreed upon with product teams (e.g. 99.9%). SLA (Service Level Agreement) is the external contractual commitment with business consequences. The Error Budget is 1 - SLO (e.g. 0.1% downtime); if exhausted, feature deploys pause in favor of stability.',
-        difficulty: 'Easy'
-      }
-    ]
+    questions: shuffleQuestions(allMCQQuestionsByTopic['DevOps & SRE'] || [])
   }
 };
 
@@ -631,6 +115,44 @@ export const TopicPractice: React.FC = () => {
     filteredQuestions.length > 0 && selectedQuestionIndex < filteredQuestions.length
       ? filteredQuestions[selectedQuestionIndex]
       : (filteredQuestions[0] || null);
+
+  // Randomize the 20 questions freshly each time the topic is selected
+  const handleSelectTopic = (topicName: string) => {
+    const baseQuestions = allMCQQuestionsByTopic[topicName] || [];
+    const randomizedQuestions = shuffleQuestions(baseQuestions);
+
+    setTopicBank(prev => ({
+      ...prev,
+      [topicName]: {
+        ...prev[topicName],
+        questions: randomizedQuestions
+      }
+    }));
+    setSelectedTopic(topicName);
+    setSelectedQuestionIndex(0);
+    setSelectedOption(null);
+    setIsSubmitted(false);
+    setAiCoaching(null);
+  };
+
+  // Re-shuffle current topic questions on demand
+  const handleShuffleTopicQuestions = () => {
+    if (!selectedTopic) return;
+    const baseQuestions = allMCQQuestionsByTopic[selectedTopic] || [];
+    const randomizedQuestions = shuffleQuestions(baseQuestions);
+
+    setTopicBank(prev => ({
+      ...prev,
+      [selectedTopic]: {
+        ...prev[selectedTopic],
+        questions: randomizedQuestions
+      }
+    }));
+    setSelectedQuestionIndex(0);
+    setSelectedOption(null);
+    setIsSubmitted(false);
+    setAiCoaching(null);
+  };
 
   // Sync selection when switching question
   const handleSelectQuestion = (idx: number, q: MCQPracticeQuestion) => {
@@ -910,13 +432,7 @@ export const TopicPractice: React.FC = () => {
                 return (
                   <div
                     key={topic}
-                    onClick={() => {
-                      setSelectedTopic(topic);
-                      setSelectedQuestionIndex(0);
-                      setSelectedOption(null);
-                      setIsSubmitted(false);
-                      setAiCoaching(null);
-                    }}
+                    onClick={() => handleSelectTopic(topic)}
                     className={`p-5 rounded-3xl border-2 border-vast-ink cursor-pointer transition-all duration-200 hover:scale-[1.01] ${
                       isSelected 
                         ? 'bg-vast-ink text-lumen-cream shadow-md' 
@@ -1004,6 +520,16 @@ export const TopicPractice: React.FC = () => {
                       </button>
                     ))}
                   </div>
+
+                  {/* Random Shuffle Mix Button */}
+                  <button
+                    onClick={handleShuffleTopicQuestions}
+                    className="px-3 py-1.5 rounded-full bg-lumen-cream border-2 border-vast-ink text-vast-ink hover:bg-lumen-stone/50 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition"
+                    title="Randomly shuffle questions in this topic"
+                  >
+                    <Shuffle className="w-3.5 h-3.5 text-vast-ink" />
+                    <span>Shuffle Mix</span>
+                  </button>
 
                   {/* Generate More with AI */}
                   <button
