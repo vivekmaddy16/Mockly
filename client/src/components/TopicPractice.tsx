@@ -7,7 +7,8 @@ import {
   CheckCircle2, Sparkles, 
   Brain, GitBranch, Target, Building2, Server, Search, 
   AlertCircle, FileText, Check, X, XCircle, RotateCcw, 
-  ArrowRight, ArrowLeft, Lightbulb, RefreshCw, Trophy, Shuffle
+  ArrowRight, ArrowLeft, Lightbulb, RefreshCw, Trophy, Shuffle,
+  SkipForward, Lock, FastForward
 } from 'lucide-react';
 import { MCQPracticeQuestion, MCQAICoaching } from '@/types';
 import { explainMCQWithAI, generateMCQsForTopic } from '@/lib/gemini';
@@ -27,6 +28,7 @@ interface QuestionAttempt {
   selectedOption: number;
   isSubmitted: boolean;
   isCorrect: boolean;
+  isSkipped?: boolean;
 }
 
 const initialTopicBank: Record<string, TopicData> = {
@@ -107,9 +109,12 @@ export const TopicPractice: React.FC = () => {
 
   // Active topic questions
   const currentTopicData = selectedTopic ? topicBank[selectedTopic] : null;
-  const filteredQuestions = currentTopicData
-    ? currentTopicData.questions.filter(q => selectedDifficulty === 'All' || q.difficulty === selectedDifficulty)
-    : [];
+  const filteredQuestions = React.useMemo(() => {
+    if (!currentTopicData) return [];
+    return selectedDifficulty === 'All'
+      ? currentTopicData.questions
+      : currentTopicData.questions.filter(q => q.difficulty === selectedDifficulty);
+  }, [currentTopicData, selectedDifficulty]);
 
   const currentQuestion: MCQPracticeQuestion | null = 
     filteredQuestions.length > 0 && selectedQuestionIndex < filteredQuestions.length
@@ -154,13 +159,46 @@ export const TopicPractice: React.FC = () => {
     setAiCoaching(null);
   };
 
+  // Check if any question prior to the current question was skipped
+  const hasSkippedPrior = filteredQuestions.slice(0, selectedQuestionIndex).some(q => attempts[q.id]?.isSkipped);
+
+  // Verify if a question can be navigated to:
+  // 1. Without answering current question, cannot go to future questions
+  // 2. After a skip, cannot go back to previous questions
+  const isChipAccessible = (idx: number) => {
+    if (idx === selectedQuestionIndex) return true;
+    
+    // Attempting to navigate to previous question
+    if (idx < selectedQuestionIndex) {
+      // Locked if any skip occurred prior to or at current point, or if that specific question was skipped
+      if (hasSkippedPrior) return false;
+      return !attempts[filteredQuestions[idx]?.id]?.isSkipped;
+    }
+
+    // Attempting to navigate to a future question
+    if (idx > selectedQuestionIndex) {
+      // Must have answered current and every intervening question up to target
+      for (let i = selectedQuestionIndex; i < idx; i++) {
+        const qId = filteredQuestions[i]?.id;
+        if (!attempts[qId]?.isSubmitted) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    return false;
+  };
+
   // Sync selection when switching question
   const handleSelectQuestion = (idx: number, q: MCQPracticeQuestion) => {
+    if (!isChipAccessible(idx)) return;
+
     setSelectedQuestionIndex(idx);
     setAiCoaching(null);
     const existingAttempt = attempts[q.id];
     if (existingAttempt) {
-      setSelectedOption(existingAttempt.selectedOption);
+      setSelectedOption(existingAttempt.selectedOption >= 0 ? existingAttempt.selectedOption : null);
       setIsSubmitted(existingAttempt.isSubmitted);
     } else {
       setSelectedOption(null);
@@ -184,14 +222,50 @@ export const TopicPractice: React.FC = () => {
       [currentQuestion.id]: {
         selectedOption,
         isSubmitted: true,
-        isCorrect
+        isCorrect,
+        isSkipped: false
       }
     }));
   };
 
-  // Reset / Retry Current Question
-  const handleRetryQuestion = () => {
+  // Skip Question Handler
+  // Marks current question as skipped and advances forward; blocks returning back
+  const handleSkipQuestion = () => {
     if (!currentQuestion) return;
+    
+    // Mark current question as skipped
+    setAttempts(prev => ({
+      ...prev,
+      [currentQuestion.id]: {
+        selectedOption: -1,
+        isSubmitted: true,
+        isCorrect: false,
+        isSkipped: true
+      }
+    }));
+    setIsSubmitted(true);
+    setSelectedOption(null);
+
+    // If there is a next question, automatically advance forward to it
+    if (selectedQuestionIndex < filteredQuestions.length - 1) {
+      const nextIdx = selectedQuestionIndex + 1;
+      const nextQ = filteredQuestions[nextIdx];
+      setSelectedQuestionIndex(nextIdx);
+      setAiCoaching(null);
+      const existingAttempt = attempts[nextQ.id];
+      if (existingAttempt) {
+        setSelectedOption(existingAttempt.selectedOption >= 0 ? existingAttempt.selectedOption : null);
+        setIsSubmitted(existingAttempt.isSubmitted);
+      } else {
+        setSelectedOption(null);
+        setIsSubmitted(false);
+      }
+    }
+  };
+
+  // Reset / Retry Current Question (cannot retry skipped questions)
+  const handleRetryQuestion = () => {
+    if (!currentQuestion || attempts[currentQuestion.id]?.isSkipped) return;
     setIsSubmitted(false);
     setSelectedOption(null);
     setAiCoaching(null);
@@ -202,16 +276,18 @@ export const TopicPractice: React.FC = () => {
     });
   };
 
-  // Navigate to Next Question
+  // Navigate to Next Question (only permitted once current question is submitted or skipped)
   const handleNextQuestion = () => {
+    if (!isSubmitted) return;
     if (selectedQuestionIndex < filteredQuestions.length - 1) {
       const nextIdx = selectedQuestionIndex + 1;
       handleSelectQuestion(nextIdx, filteredQuestions[nextIdx]);
     }
   };
 
-  // Navigate to Previous Question
+  // Navigate to Previous Question (disabled if any previous question was skipped)
   const handlePrevQuestion = () => {
+    if (hasSkippedPrior) return;
     if (selectedQuestionIndex > 0) {
       const prevIdx = selectedQuestionIndex - 1;
       handleSelectQuestion(prevIdx, filteredQuestions[prevIdx]);
@@ -280,19 +356,25 @@ export const TopicPractice: React.FC = () => {
 
   // Compute topic stats
   const topicStats = React.useMemo(() => {
-    if (!currentTopicData) return { total: 0, attempted: 0, correct: 0, scorePercent: 0 };
+    if (!currentTopicData) return { total: 0, attempted: 0, correct: 0, skipped: 0, scorePercent: 0 };
     const total = currentTopicData.questions.length;
     let attempted = 0;
     let correct = 0;
+    let skipped = 0;
     currentTopicData.questions.forEach(q => {
       const att = attempts[q.id];
       if (att && att.isSubmitted) {
         attempted++;
-        if (att.isCorrect) correct++;
+        if (att.isSkipped) {
+          skipped++;
+        } else if (att.isCorrect) {
+          correct++;
+        }
       }
     });
-    const scorePercent = attempted > 0 ? Math.round((correct / attempted) * 100) : 0;
-    return { total, attempted, correct, scorePercent };
+    const answeredCount = attempted - skipped;
+    const scorePercent = answeredCount > 0 ? Math.round((correct / answeredCount) * 100) : 0;
+    return { total, attempted, correct, skipped, scorePercent };
   }, [currentTopicData, attempts]);
 
   // Authentication Gate
@@ -566,20 +648,36 @@ export const TopicPractice: React.FC = () => {
                   {filteredQuestions.map((q, idx) => {
                     const isCurrent = currentQuestion?.id === q.id;
                     const attempt = attempts[q.id];
+                    const accessible = isChipAccessible(idx);
 
                     return (
                       <button
                         key={q.id}
                         onClick={() => handleSelectQuestion(idx, q)}
-                        className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 shrink-0 transition-all border cursor-pointer ${
+                        disabled={!accessible}
+                        className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 shrink-0 transition-all border ${
                           isCurrent
-                            ? 'bg-vast-ink text-lumen-cream border-vast-ink shadow-sm'
-                            : 'bg-lumen-cream text-vast-ink border-vast-ink/20 hover:border-vast-ink'
+                            ? 'bg-vast-ink text-lumen-cream border-vast-ink shadow-sm cursor-default'
+                            : !accessible
+                            ? 'bg-lumen-stone/20 text-vast-ink/35 border-dashed border-vast-ink/15 cursor-not-allowed'
+                            : 'bg-lumen-cream text-vast-ink border-vast-ink/20 hover:border-vast-ink cursor-pointer'
                         }`}
+                        title={
+                          !accessible
+                            ? idx < selectedQuestionIndex
+                              ? 'Previous questions locked after skipping'
+                              : 'Answer current question to unlock next questions'
+                            : `Question ${idx + 1}`
+                        }
                       >
                         <span>Q{idx + 1}</span>
+                        {!accessible && idx !== selectedQuestionIndex && (
+                          <Lock className="w-3 h-3 text-vast-ink/30" />
+                        )}
                         {attempt && attempt.isSubmitted && (
-                          attempt.isCorrect ? (
+                          attempt.isSkipped ? (
+                            <FastForward className="w-3.5 h-3.5 text-amber-600" />
+                          ) : attempt.isCorrect ? (
                             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
                           ) : (
                             <XCircle className="w-3.5 h-3.5 text-rose-500" />
@@ -621,11 +719,17 @@ export const TopicPractice: React.FC = () => {
                     {/* Status Badge */}
                     {isSubmitted && (
                       <div className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 ${
-                        attempts[currentQuestion.id]?.isCorrect
+                        attempts[currentQuestion.id]?.isSkipped
+                          ? 'bg-amber-500/15 text-amber-900 border border-amber-500/30'
+                          : attempts[currentQuestion.id]?.isCorrect
                           ? 'bg-emerald-500/15 text-emerald-800 border border-emerald-500/30'
                           : 'bg-rose-500/15 text-rose-800 border border-rose-500/30'
                       }`}>
-                        {attempts[currentQuestion.id]?.isCorrect ? (
+                        {attempts[currentQuestion.id]?.isSkipped ? (
+                          <>
+                            <FastForward className="w-3.5 h-3.5 text-amber-700" /> Skipped
+                          </>
+                        ) : attempts[currentQuestion.id]?.isCorrect ? (
                           <>
                             <Check className="w-3.5 h-3.5 text-emerald-600" /> Correct
                           </>
@@ -719,22 +823,40 @@ export const TopicPractice: React.FC = () => {
 
                   {/* Actions & Navigation Toolbar */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-4 border-t border-vast-ink/10">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       {!isSubmitted ? (
-                        <button
-                          onClick={handleSubmitAnswer}
-                          disabled={selectedOption === null}
-                          className="px-6 py-2.5 rounded-full bg-vast-ink text-lumen-cream hover:bg-vast-ink/90 font-semibold text-xs transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-sm flex items-center gap-2"
-                        >
-                          <CheckCircle2 className="w-4 h-4" /> Check Answer
-                        </button>
+                        <>
+                          <button
+                            onClick={handleSubmitAnswer}
+                            disabled={selectedOption === null}
+                            className="px-6 py-2.5 rounded-full bg-vast-ink text-lumen-cream hover:bg-vast-ink/90 font-semibold text-xs transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-sm flex items-center gap-2"
+                          >
+                            <CheckCircle2 className="w-4 h-4" /> Check Answer
+                          </button>
+
+                          <button
+                            onClick={handleSkipQuestion}
+                            className="px-4 py-2.5 rounded-full bg-lumen-cream text-vast-ink/80 hover:text-vast-ink border-2 border-vast-ink/25 hover:border-vast-ink hover:bg-lumen-stone/40 font-semibold text-xs transition cursor-pointer flex items-center gap-1.5 shadow-xs"
+                            title="Skip this question and move to the next (previous questions will be locked)"
+                          >
+                            <SkipForward className="w-3.5 h-3.5 text-vast-ink/70" /> Skip Question
+                          </button>
+                        </>
                       ) : (
-                        <button
-                          onClick={handleRetryQuestion}
-                          className="px-5 py-2.5 rounded-full bg-lumen-cream text-vast-ink border-2 border-vast-ink hover:bg-lumen-stone/50 font-semibold text-xs transition cursor-pointer flex items-center gap-2"
-                        >
-                          <RotateCcw className="w-3.5 h-3.5" /> Retry Question
-                        </button>
+                        <div className="flex items-center gap-2">
+                          {!attempts[currentQuestion.id]?.isSkipped ? (
+                            <button
+                              onClick={handleRetryQuestion}
+                              className="px-5 py-2.5 rounded-full bg-lumen-cream text-vast-ink border-2 border-vast-ink hover:bg-lumen-stone/50 font-semibold text-xs transition cursor-pointer flex items-center gap-2"
+                            >
+                              <RotateCcw className="w-3.5 h-3.5" /> Retry Question
+                            </button>
+                          ) : (
+                            <div className="text-xs font-semibold text-amber-900 flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-amber-500/15 border border-amber-500/30">
+                              <FastForward className="w-3.5 h-3.5 text-amber-700" /> Skipped Question
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
 
@@ -742,17 +864,30 @@ export const TopicPractice: React.FC = () => {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={handlePrevQuestion}
-                        disabled={selectedQuestionIndex === 0}
+                        disabled={selectedQuestionIndex === 0 || hasSkippedPrior}
                         className="p-2.5 rounded-full border-2 border-vast-ink bg-lumen-cream hover:bg-lumen-stone/50 text-vast-ink transition cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-                        title="Previous Question"
+                        title={
+                          hasSkippedPrior
+                            ? "Cannot return to previous question after skipping"
+                            : selectedQuestionIndex === 0
+                            ? "First question"
+                            : "Previous Question"
+                        }
                       >
                         <ArrowLeft className="w-4 h-4" />
                       </button>
 
                       <button
                         onClick={handleNextQuestion}
-                        disabled={selectedQuestionIndex >= filteredQuestions.length - 1}
+                        disabled={!isSubmitted || selectedQuestionIndex >= filteredQuestions.length - 1}
                         className="px-5 py-2.5 rounded-full border-2 border-vast-ink bg-vast-ink text-lumen-cream hover:bg-vast-ink/90 font-semibold text-xs transition cursor-pointer flex items-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed"
+                        title={
+                          !isSubmitted 
+                            ? "Please answer or skip this question to proceed" 
+                            : selectedQuestionIndex >= filteredQuestions.length - 1
+                            ? "Last question"
+                            : "Next Question"
+                        }
                       >
                         Next Question <ArrowRight className="w-4 h-4" />
                       </button>
@@ -771,18 +906,24 @@ export const TopicPractice: React.FC = () => {
                       >
                         {/* Status Callout Banner */}
                         <div className={`p-4.5 rounded-2xl border-2 flex items-start gap-3.5 ${
-                          attempts[currentQuestion.id]?.isCorrect
+                          attempts[currentQuestion.id]?.isSkipped
+                            ? 'bg-amber-500/10 border-amber-600/30 text-amber-950'
+                            : attempts[currentQuestion.id]?.isCorrect
                             ? 'bg-emerald-500/10 border-emerald-600/30 text-emerald-950'
                             : 'bg-rose-500/10 border-rose-600/30 text-rose-950'
                         }`}>
-                          {attempts[currentQuestion.id]?.isCorrect ? (
+                          {attempts[currentQuestion.id]?.isSkipped ? (
+                            <FastForward className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                          ) : attempts[currentQuestion.id]?.isCorrect ? (
                             <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
                           ) : (
                             <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
                           )}
                           <div className="space-y-1">
                             <h5 className="font-bold text-sm">
-                              {attempts[currentQuestion.id]?.isCorrect 
+                              {attempts[currentQuestion.id]?.isSkipped
+                                ? '⏩ Question Skipped'
+                                : attempts[currentQuestion.id]?.isCorrect 
                                 ? '🎉 Correct! Well done.' 
                                 : '💡 Not quite! Take a close look at the concept breakdown below.'}
                             </h5>
