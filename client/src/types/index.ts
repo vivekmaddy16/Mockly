@@ -109,3 +109,22 @@ export interface UserProgressStats {
   strongTopics: string[];
   recentScores: { date: string; score: number; role: string }[];
 }
+
+export interface MCQPracticeQuestion {
+  id: string;
+  q: string;
+  options: string[];
+  correctAnswer: number; // 0, 1, 2, or 3
+  explanation: string;
+  difficulty: 'Easy' | 'Medium' | 'Hard';
+  codeSnippet?: string;
+  tag?: string;
+}
+
+export interface MCQAICoaching {
+  deepDive: string;
+  interviewTips: string[];
+  commonTrap: string;
+  realWorldAnalogy: string;
+}
+
