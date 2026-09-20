@@ -20,6 +20,15 @@ export const Navbar: React.FC = () => {
     setIsMobileMenuOpen(false);
   }, [pathname]);
 
+  useEffect(() => {
+    const handleOpenAuth = (e: any) => {
+      if (e?.detail?.mode) setAuthMode(e.detail.mode);
+      setIsAuthModalOpen(true);
+    };
+    window.addEventListener('mockly:openAuthModal', handleOpenAuth);
+    return () => window.removeEventListener('mockly:openAuthModal', handleOpenAuth);
+  }, []);
+
   const navLinks = [
     { name: 'Mock Interview', href: '/setup', icon: PlayCircle },
     { name: 'Topic Practice', href: '/practice', icon: BookOpen },
