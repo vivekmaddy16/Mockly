@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { 
   Mic, BookOpen, BarChart3, Heart, 
-  ArrowUpRight, Sparkles, Terminal, Code2, Layers, Cpu
+  Sparkles, Terminal, Code2, Layers, Cpu
 } from 'lucide-react';
 
 export const Footer: React.FC = () => {
