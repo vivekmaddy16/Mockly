@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { 
-  Mic, ArrowRight, Sparkles, ChevronRight,
+  Mic, ArrowRight, ChevronRight,
   FileText, BookOpen, BarChart3, Zap, 
   Code2, Shield, Award, Users, Layers, Check, 
   Cpu, Terminal
@@ -101,20 +101,6 @@ export default function HomePage() {
          ════════════════════════════════════════════════════════════════ */}
       <section className="text-center pt-8 pb-4 max-w-5xl mx-auto space-y-8">
         
-        {/* Status Badge */}
-        <div className="inline-flex items-center gap-2">
-          <div className="badge-teal">
-            <Sparkles className="w-4 h-4 text-lavender-whisper" />
-            <span>AI-Powered Interview Simulator</span>
-          </div>
-          <div className="hidden sm:inline-flex waveform-visualizer-pill">
-            <div className="waveform-bar" />
-            <div className="waveform-bar" />
-            <div className="waveform-bar" />
-            <div className="waveform-bar" />
-            <div className="waveform-bar" />
-          </div>
-        </div>
 
         {/* Display Headline in EB Garamond 400 */}
         <div className="space-y-4">
