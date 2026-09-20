@@ -1,107 +1,68 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
 import { 
-  Sparkles, Shield, BookOpen, Layers, Heart, ArrowRight, 
-  CheckCircle2, Mic, BarChart3, Mail, Check
+  Mic, BookOpen, BarChart3, Heart, 
+  ArrowUpRight, Sparkles, Terminal, Code2, Layers, Cpu
 } from 'lucide-react';
 
 export const Footer: React.FC = () => {
-  const [email, setEmail] = useState('');
-  const [isSubscribed, setIsSubscribed] = useState(false);
-
-  const handleSubscribe = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (email.trim()) {
-      setIsSubscribed(true);
-      setEmail('');
-      setTimeout(() => setIsSubscribed(false), 4000);
-    }
-  };
-
   return (
-    <footer className="w-full mt-20">
-      <div className="bg-vast-ink text-lumen-cream rounded-t-[40px] md:rounded-t-[64px] border-t-2 border-vast-ink p-8 sm:p-14 space-y-12">
+    <footer className="w-full mt-24">
+      <div className="bg-vast-ink text-lumen-cream rounded-t-[40px] md:rounded-t-[64px] border-t-2 border-vast-ink p-8 sm:p-14">
         <div className="max-w-[1200px] mx-auto space-y-12">
 
-          {/* Top Newsletter Strip */}
-          <div className="card-forest-panel flex flex-col lg:flex-row items-center justify-between gap-6">
-            <div className="space-y-1 text-center lg:text-left">
-              <div className="badge-ember text-xs">
-                <Sparkles className="w-3.5 h-3.5" /> Weekly Interview Digest
+          {/* Top Brand Strip */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 pb-8 border-b border-lumen-stone/15">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-lumen-cream text-vast-ink flex items-center justify-center font-bold shadow-md">
+                <Mic className="w-5 h-5 text-forest-ink" />
               </div>
-              <h3 className="font-garamond text-2xl sm:text-3xl text-lumen-cream font-normal mt-2">
-                High-Frequency FAANG & Tech Practice Questions
-              </h3>
-              <p className="text-sm text-lumen-stone/80 max-w-xl">
-                Curated System Design architectures, DSA patterns, and STAR behavioral prompt breakdowns sent weekly.
-              </p>
+              <div>
+                <span className="font-garamond text-3xl text-lumen-cream tracking-tight font-normal">Mockly.ai</span>
+                <p className="text-xs text-fog font-medium">AI-Powered Tech & Behavioral Interview Simulator</p>
+              </div>
             </div>
 
-            <form onSubmit={handleSubscribe} className="w-full lg:w-auto flex flex-col sm:flex-row items-center gap-3">
-              {isSubscribed ? (
-                <div className="px-6 py-3 rounded-xl bg-lumen-cream text-vast-ink text-sm font-medium flex items-center gap-2 border-2 border-vast-ink">
-                  <Check className="w-4 h-4 text-forest-ink" /> Subscribed successfully!
-                </div>
-              ) : (
-                <>
-                  <div className="relative w-full sm:w-72">
-                    <Mail className="w-4 h-4 text-vast-ink/50 absolute left-4 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="Enter your email"
-                      required
-                      className="input-wispr pl-11 py-3 text-sm"
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    className="btn-primary-cta w-full sm:w-auto py-3 px-6 text-sm shrink-0"
-                  >
-                    <span>Subscribe</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                </>
-              )}
-            </form>
+            {/* Live Engine Status Badge */}
+            <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full border border-white/15 bg-white/5 text-xs text-lumen-cream font-semibold">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
+              </span>
+              <span>Gemini 2.5 Evaluation Engine Active</span>
+            </div>
           </div>
 
           {/* Main Footer Navigation Columns */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 pt-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10">
             
-            {/* Brand Column */}
+            {/* Brand Mission Column */}
             <div className="lg:col-span-2 space-y-4">
-              <Link href="/" className="flex items-center gap-2.5 group">
-                <div className="w-9 h-9 rounded-full bg-lumen-cream text-vast-ink flex items-center justify-center font-bold">
-                  <Mic className="w-4 h-4 text-forest-ink" />
-                </div>
-                <div className="font-garamond text-3xl text-lumen-cream">
-                  Mockly.ai
-                </div>
-              </Link>
-
-              <p className="text-sm text-fog leading-relaxed max-w-sm">
-                An AI-powered technical & behavioral interview simulator built like an editorial broadsheet. Practice real-time voice speech dictation, STAR answer structure hints, and objective scorecard analytics.
+              <h4 className="font-figtree font-semibold text-xs uppercase tracking-wider text-lavender-whisper">
+                Editorial Broadsheet Simulator
+              </h4>
+              <p className="text-sm text-lumen-stone/80 leading-relaxed max-w-sm font-normal">
+                Mockly transforms high-stakes technical preparation into structured practice. Synthesizing real-time voice speech dictation, STAR answer frameworks, and multi-dimensional scorecard telemetry.
               </p>
-
-              <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full border border-lumen-stone/20 text-xs text-fog">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-ember-glow opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-ember-glow" />
-                </span>
-                <span>Gemini AI Speech Evaluation Engine Active</span>
+              <div className="pt-2">
+                <Link
+                  href="/setup"
+                  className="inline-flex items-center gap-2 text-xs font-bold text-lavender-whisper hover:underline"
+                >
+                  <span>Launch Practice Simulator</span>
+                  <ArrowUpRight className="w-3.5 h-3.5" />
+                </Link>
               </div>
             </div>
 
             {/* Column 1: Studio Navigation */}
             <div className="space-y-3">
               <h4 className="font-figtree font-semibold text-xs uppercase tracking-wider text-lavender-whisper">
-                Studio Navigation
+                Studio
               </h4>
-              <ul className="space-y-2 text-sm text-fog">
+              <ul className="space-y-2.5 text-sm text-lumen-stone/75">
                 <li>
                   <Link href="/setup" className="hover:text-lumen-cream transition-colors flex items-center gap-2">
                     <Mic className="w-3.5 h-3.5 text-lavender-whisper" /> AI Mock Interview
@@ -118,68 +79,97 @@ export const Footer: React.FC = () => {
                   </Link>
                 </li>
                 <li>
-                  <Link href="/reset-password" className="hover:text-lumen-cream transition-colors">
-                    Account Recovery
+                  <Link href="/dashboard" className="hover:text-lumen-cream transition-colors flex items-center gap-2">
+                    <Sparkles className="w-3.5 h-3.5 text-lavender-whisper" /> Cohort Analytics
                   </Link>
                 </li>
               </ul>
             </div>
 
-            {/* Column 2: CS Topics */}
+            {/* Column 2: Core CS Topics */}
             <div className="space-y-3">
               <h4 className="font-figtree font-semibold text-xs uppercase tracking-wider text-lavender-whisper">
-                Core CS Topics
+                Curriculum
               </h4>
-              <ul className="space-y-2 text-sm text-fog">
-                <li><Link href="/practice" className="hover:text-lumen-cream transition-colors">Data Structures & Algorithms</Link></li>
-                <li><Link href="/practice" className="hover:text-lumen-cream transition-colors">Distributed System Design</Link></li>
-                <li><Link href="/practice" className="hover:text-lumen-cream transition-colors">DBMS & SQL Indexing</Link></li>
-                <li><Link href="/practice" className="hover:text-lumen-cream transition-colors">Operating Systems & Concurrency</Link></li>
-                <li><Link href="/practice" className="hover:text-lumen-cream transition-colors">STAR Behavioral Framework</Link></li>
+              <ul className="space-y-2.5 text-sm text-lumen-stone/75">
+                <li>
+                  <Link href="/practice" className="hover:text-lumen-cream transition-colors flex items-center gap-2">
+                    <Code2 className="w-3.5 h-3.5 text-lavender-whisper" /> Data Structures & Algorithms
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/practice" className="hover:text-lumen-cream transition-colors flex items-center gap-2">
+                    <Layers className="w-3.5 h-3.5 text-ember-glow" /> System Design & Architecture
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/practice" className="hover:text-lumen-cream transition-colors flex items-center gap-2">
+                    <Terminal className="w-3.5 h-3.5 text-lumen-cream" /> DBMS & SQL Indexing
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/practice" className="hover:text-lumen-cream transition-colors flex items-center gap-2">
+                    <Cpu className="w-3.5 h-3.5 text-lavender-whisper" /> OS & Concurrency
+                  </Link>
+                </li>
               </ul>
             </div>
 
-            {/* Column 3: Platform Features */}
+            {/* Column 3: Platform Capabilities */}
             <div className="space-y-3">
               <h4 className="font-figtree font-semibold text-xs uppercase tracking-wider text-lavender-whisper">
-                Platform Features
+                Capabilities
               </h4>
-              <ul className="space-y-2 text-sm text-fog">
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-lavender-whisper shrink-0" />
-                  Gemini AI Evaluation
+              <ul className="space-y-2.5 text-sm text-lumen-stone/75">
+                <li>
+                  <Link href="/setup" className="hover:text-lumen-cream transition-colors">
+                    Speech-to-Text Dictation
+                  </Link>
                 </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-lavender-whisper shrink-0" />
-                  Real-Time Voice Dictation
+                <li>
+                  <Link href="/setup" className="hover:text-lumen-cream transition-colors">
+                    STAR Guided Prompt Drawer
+                  </Link>
                 </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-lavender-whisper shrink-0" />
-                  STAR Structure Hints Drawer
+                <li>
+                  <Link href="/practice" className="hover:text-lumen-cream transition-colors">
+                    Golden Answer Benchmarks
+                  </Link>
                 </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-lavender-whisper shrink-0" />
-                  Side-by-Side Golden Answers
+                <li>
+                  <Link href="/dashboard" className="hover:text-lumen-cream transition-colors">
+                    Multi-Domain Skill Radar
+                  </Link>
                 </li>
               </ul>
             </div>
 
           </div>
 
-          {/* Bottom Copyright */}
+          {/* Bottom Copyright & Tech Stack Strip */}
           <div className="border-t border-lumen-stone/15 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-fog">
             <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4">
               <p>© {new Date().getFullYear()} Mockly.ai Inc. All rights reserved.</p>
               <span>•</span>
-              <span className="flex items-center gap-1">
+              <span className="flex items-center gap-1.5">
                 Built with <Heart className="w-3.5 h-3.5 text-ember-glow fill-ember-glow" /> for software engineers
               </span>
             </div>
 
-            <div className="flex items-center gap-2">
-              <span className="badge-dark-sq">Next.js 15</span>
-              <span className="badge-dark-sq">Tailwind CSS</span>
-              <span className="badge-dark-sq">Gemini AI</span>
+            {/* High-Contrast Clear Tech Badges */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="px-3 py-1 rounded-full bg-white/10 border border-white/20 text-lumen-cream font-semibold text-[11px]">
+                Next.js 15
+              </span>
+              <span className="px-3 py-1 rounded-full bg-white/10 border border-white/20 text-lumen-cream font-semibold text-[11px]">
+                Tailwind CSS
+              </span>
+              <span className="px-3 py-1 rounded-full bg-white/10 border border-white/20 text-lumen-cream font-semibold text-[11px]">
+                Gemini 2.5
+              </span>
+              <span className="px-3 py-1 rounded-full bg-white/10 border border-white/20 text-lumen-cream font-semibold text-[11px]">
+                Web Speech API
+              </span>
             </div>
           </div>
 
