@@ -141,7 +141,6 @@ const InterviewSessionSchema = new mongoose.Schema(
 
 // ─── Indexes for Performance ─────────────────────────────────
 InterviewSessionSchema.index({ user: 1, createdAt: -1 });
-InterviewSessionSchema.index({ sessionId: 1 });
 InterviewSessionSchema.index({ user: 1, status: 1 });
 
 module.exports = mongoose.models.InterviewSession || mongoose.model('InterviewSession', InterviewSessionSchema);
