@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { 
   Sparkles, Shield, BookOpen, Layers, Heart, ArrowRight, 
-  CheckCircle2, Mic, BarChart3, Mail, Check, Monitor, Smartphone, Apple, Laptop
+  CheckCircle2, Mic, BarChart3, Mail, Check
 } from 'lucide-react';
 
 export const Footer: React.FC = () => {
@@ -20,37 +20,10 @@ export const Footer: React.FC = () => {
     }
   };
 
-  const platforms = [
-    { name: 'Mac App', icon: Apple },
-    { name: 'Windows', icon: Monitor },
-    { name: 'Web Studio', icon: Laptop },
-    { name: 'iPhone & Mobile', icon: Smartphone },
-  ];
-
   return (
     <footer className="w-full mt-20">
       <div className="bg-vast-ink text-lumen-cream rounded-t-[40px] md:rounded-t-[64px] border-t-2 border-vast-ink p-8 sm:p-14 space-y-12">
         <div className="max-w-[1200px] mx-auto space-y-12">
-          
-          {/* Platform Selector Row */}
-          <div className="flex flex-wrap items-center justify-between gap-4 pb-8 border-b border-lumen-stone/10">
-            <div className="space-y-1">
-              <span className="font-garamond text-2xl text-lumen-cream">Available everywhere</span>
-              <p className="text-xs text-fog font-normal">Practice interviews on your desktop, browser, or mobile device.</p>
-            </div>
-            
-            <div className="flex flex-wrap items-center gap-3">
-              {platforms.map((p) => {
-                const Icon = p.icon;
-                return (
-                  <div key={p.name} className="badge-platform">
-                    <Icon className="w-4 h-4 text-lumen-cream" />
-                    <span>{p.name}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
 
           {/* Top Newsletter Strip */}
           <div className="card-forest-panel flex flex-col lg:flex-row items-center justify-between gap-6">
