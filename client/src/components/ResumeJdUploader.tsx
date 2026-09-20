@@ -127,7 +127,7 @@ export const ResumeJdUploader: React.FC = () => {
         infractions: 0,
         proctoringFailed: false,
       };
-      saveSession(newSession);
+      await saveSession(newSession);
       router.push(`/interview/${newSession.id}`);
     } catch (err: unknown) {
       console.error(err);

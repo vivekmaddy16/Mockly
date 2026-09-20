@@ -368,6 +368,7 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
     text: string;
     type: 'filler' | 'pause' | 'pacing' | 'concept' | 'strength' | 'weakness';
   }>>([]);
+  const speechHeartbeatRef = useRef<NodeJS.Timeout | null>(null);
 
   // Proctoring and Security States
   const [hasStarted, setHasStarted] = useState(false);
@@ -588,13 +589,71 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
 
   const speakQuestion = useCallback(() => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-    if (isSpeaking) { window.speechSynthesis.cancel(); setIsSpeaking(false); return; }
+    if (speechHeartbeatRef.current) {
+      clearInterval(speechHeartbeatRef.current);
+      speechHeartbeatRef.current = null;
+    }
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+      return;
+    }
     const u = new SpeechSynthesisUtterance(currentQuestion.questionText);
-    u.onend = () => setIsSpeaking(false);
-    u.onerror = () => setIsSpeaking(false);
+
+    // Keep-alive heartbeat: prevents Chromium 15s freeze bug
+    speechHeartbeatRef.current = setInterval(() => {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window && window.speechSynthesis.speaking) {
+        window.speechSynthesis.pause();
+        window.speechSynthesis.resume();
+      }
+    }, 10000);
+
+    const cleanupSpeaking = () => {
+      if (speechHeartbeatRef.current) {
+        clearInterval(speechHeartbeatRef.current);
+        speechHeartbeatRef.current = null;
+      }
+      setIsSpeaking(false);
+    };
+
+    u.onend = cleanupSpeaking;
+    u.onerror = cleanupSpeaking;
     setIsSpeaking(true);
     window.speechSynthesis.speak(u);
   }, [isSpeaking, currentQuestion.questionText]);
+
+  const finalizeAudioRecording = useCallback((): Promise<Blob | null> => {
+    return new Promise((resolve) => {
+      const recorder = mediaRecorderRef.current;
+      if (!recorder || recorder.state === 'inactive') {
+        if (audioChunksRef.current.length > 0) {
+          const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+          currentAudioBlobRef.current = blob;
+          resolve(blob);
+        } else {
+          resolve(currentAudioBlobRef.current);
+        }
+        return;
+      }
+
+      const onStop = () => {
+        if (audioChunksRef.current.length > 0) {
+          const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+          currentAudioBlobRef.current = blob;
+          resolve(blob);
+        } else {
+          resolve(currentAudioBlobRef.current);
+        }
+      };
+
+      recorder.addEventListener('stop', onStop, { once: true });
+      try {
+        recorder.stop();
+      } catch {
+        resolve(currentAudioBlobRef.current);
+      }
+    });
+  }, []);
 
   const stopAudioRecording = useCallback(() => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
@@ -757,17 +816,10 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
       }
       setIsListening(false);
     }
+
+    // Reliably finalize audio recording blob
+    const recordedBlob = await finalizeAudioRecording();
     stopAudioRecording();
-
-    // Finalize audio blob collection
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      try { mediaRecorderRef.current.stop(); } catch {}
-    }
-    await new Promise(resolve => setTimeout(resolve, 150));
-
-    if (audioChunksRef.current.length > 0 && !currentAudioBlobRef.current) {
-      currentAudioBlobRef.current = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-    }
 
     const recordingDuration = Math.max(1, Math.round((Date.now() - (audioRecordingStartTimeRef.current || Date.now())) / 1000));
 
@@ -790,8 +842,9 @@ export const InterviewRoom: React.FC<InterviewRoomProps> = ({ session: initialSe
       result.inputMode = inputMode;
 
       // Persist real audio recording to IndexedDB
-      if (currentAudioBlobRef.current && currentAudioBlobRef.current.size > 0) {
-        await saveAudioRecording(session.id, currentQuestion.id, currentAudioBlobRef.current);
+      const finalBlob = recordedBlob || currentAudioBlobRef.current;
+      if (finalBlob && finalBlob.size > 0) {
+        await saveAudioRecording(session.id, currentQuestion.id, finalBlob);
         result.hasAudio = true;
         result.audioDurationSec = recordingDuration;
         result.audioEventMarkers = audioEventMarkersRef.current;

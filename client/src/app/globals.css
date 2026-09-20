@@ -1,8 +1,8 @@
+@import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Figtree:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Figtree:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
 
 @layer base {
   :root {
@@ -503,6 +503,114 @@
     color: var(--color-vast-ink);
     border-radius: 32px;
     border: 2px solid var(--color-vast-ink);
+  }
+
+  /* Modals & Overlays */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(26, 26, 26, 0.65);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    z-index: 50;
+  }
+
+  .modal-card-castrio {
+    background-color: var(--color-lumen-cream);
+    color: var(--color-vast-ink);
+    border: 2px solid var(--color-vast-ink);
+    border-radius: 32px;
+    padding: 32px;
+    max-width: 500px;
+    width: 100%;
+    box-shadow: 0 20px 40px -15px rgba(26, 26, 26, 0.3);
+    position: relative;
+  }
+
+  .modal-wispr {
+    background-color: var(--color-lumen-cream);
+    color: var(--color-vast-ink);
+    border: 2px solid var(--color-vast-ink);
+    border-radius: 32px;
+    box-shadow: 0 25px 50px -12px rgba(26, 26, 26, 0.25);
+    width: 100%;
+    max-width: 480px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Buttons & Utilities */
+  .btn-yellow {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background-color: var(--color-ember-glow);
+    color: var(--color-vast-ink);
+    border: 2px solid var(--color-vast-ink);
+    border-radius: 12px;
+    padding: 12px 24px;
+    font-family: var(--font-figtree);
+    font-weight: 600;
+    font-size: 15px;
+    cursor: pointer;
+    transition: transform 0.15s ease, filter 0.15s ease;
+  }
+
+  .btn-yellow:hover {
+    transform: translateY(-1px);
+    filter: brightness(0.96);
+  }
+
+  .btn-dual-pill-light {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background-color: var(--color-lumen-cream);
+    color: var(--color-vast-ink);
+    border: 2px solid var(--color-vast-ink);
+    border-radius: 9999px;
+    padding: 6px 20px 6px 8px;
+    font-family: var(--font-figtree);
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: transform 0.15s ease, background-color 0.15s ease;
+    text-decoration: none;
+  }
+
+  .btn-dual-pill-light:hover {
+    background-color: var(--color-lumen-stone);
+    transform: translateY(-1px);
+  }
+
+  .btn-dual-pill-light .icon-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 9999px;
+    background-color: var(--color-vast-ink);
+    color: var(--color-lumen-cream);
+    flex-shrink: 0;
+  }
+
+  .btn-dual-pill-light .btn-label {
+    font-family: var(--font-figtree);
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--color-vast-ink);
+    white-space: nowrap;
+  }
+
+  .charcoal-light {
+    background-color: var(--color-lumen-stone);
+    color: var(--color-vast-ink);
   }
 }
 

@@ -37,8 +37,8 @@ export const generateInterviewQuestions = async (
   roundType: 'technical_screen' | 'dsa' | 'system_design' | 'behavioral' = 'technical_screen',
   aiEngine: 'gemini' | 'openai' | 'claude' | 'ollama' = 'gemini'
 ): Promise<{ questions: Question[]; extractedSkills: string[] }> => {
-  // Client side proxy check for Ollama, OpenAI, and Anthropic Claude
-  if (typeof window !== 'undefined' && (aiEngine === 'ollama' || aiEngine === 'openai' || aiEngine === 'claude')) {
+  // Client side proxy check for all AI engines (keeps API keys secure on server)
+  if (typeof window !== 'undefined') {
     try {
       const res = await fetch('/api/generate-questions', {
         method: 'POST',
@@ -47,7 +47,12 @@ export const generateInterviewQuestions = async (
           targetRole, experienceLevel, resumeText, jobDescriptionText, questionCount, difficultyMode, roundType, aiEngine
         })
       });
-      return await res.json();
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.questions && Array.isArray(data.questions) && data.questions.length > 0) {
+          return data;
+        }
+      }
     } catch (e) {
       console.warn(`Client-side ${aiEngine} proxy call failed, using dynamic local generator:`, e);
     }
@@ -751,8 +756,8 @@ export const evaluateAnswer = async (
   targetRole: string,
   aiEngine: 'gemini' | 'openai' | 'claude' | 'ollama' = 'gemini'
 ): Promise<QuestionEvaluation> => {
-  // Client side proxy check for Ollama, OpenAI, and Anthropic Claude
-  if (typeof window !== 'undefined' && (aiEngine === 'ollama' || aiEngine === 'openai' || aiEngine === 'claude')) {
+  // Client side proxy check for all AI engines (keeps API keys secure on server)
+  if (typeof window !== 'undefined') {
     try {
       const res = await fetch('/api/evaluate-answer', {
         method: 'POST',
@@ -761,9 +766,14 @@ export const evaluateAnswer = async (
           question, userAnswer, targetRole, aiEngine
         })
       });
-      return await res.json();
+      if (res.ok) {
+        const data = await res.json();
+        if (data && typeof data.score === 'number') {
+          return data;
+        }
+      }
     } catch (e) {
-      console.warn(`Client-side ${aiEngine} evaluation proxy call failed:`, e);
+      console.warn(`Client-side ${aiEngine} evaluation proxy call failed, falling back to local engine:`, e);
     }
   }
 
@@ -1205,6 +1215,31 @@ export const explainMCQWithAI = async (
     return mcqCoachingCache.get(cacheKey)!;
   }
 
+  // Client side proxy (keeps Gemini key secure on server)
+  if (typeof window !== 'undefined') {
+    try {
+      const res = await fetch('/api/mcq-coach', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'explain',
+          topic,
+          question,
+          userSelectedIndex,
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.deepDive) {
+          mcqCoachingCache.set(cacheKey, data);
+          return data;
+        }
+      }
+    } catch (e) {
+      console.warn('Client-side MCQ coaching proxy failed, falling back:', e);
+    }
+  }
+
   const genAI = getGeminiClient();
   const selectedText = typeof userSelectedIndex === 'number' && question.options[userSelectedIndex]
     ? question.options[userSelectedIndex]
@@ -1271,6 +1306,30 @@ export const generateMCQsForTopic = async (
   difficulty: 'Easy' | 'Medium' | 'Hard' = 'Medium',
   count: number = 2
 ): Promise<MCQPracticeQuestion[]> => {
+  // Client side proxy (keeps Gemini key secure on server)
+  if (typeof window !== 'undefined') {
+    try {
+      const res = await fetch('/api/mcq-coach', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'generate',
+          topic,
+          difficulty,
+          count,
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.questions && Array.isArray(data.questions) && data.questions.length > 0) {
+          return data.questions;
+        }
+      }
+    } catch (e) {
+      console.warn('Client-side MCQ generation proxy failed, falling back:', e);
+    }
+  }
+
   const genAI = getGeminiClient();
 
   if (genAI) {

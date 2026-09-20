@@ -40,8 +40,18 @@ export const setStoredUser = (user: AuthUser | null) => {
   }
 };
 
-// ─── Refresh Token Lock (prevents concurrent refresh requests) ─
-let isRefreshing = false;
+// Helper to detect network connection failures (e.g. backend server offline)
+const isNetworkError = (err: unknown): boolean => {
+  if (err instanceof TypeError) return true;
+  if (typeof err === 'object' && err !== null && 'message' in err) {
+    const msg = String((err as any).message);
+    return msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('Load failed');
+  }
+  return false;
+};
+
+// ─── Refresh Token Lock (deduplicates concurrent refresh requests) ─
+let activeRefreshPromise: Promise<string | null> | null = null;
 let refreshSubscribers: Array<(token: string) => void> = [];
 
 const subscribeTokenRefresh = (callback: (token: string) => void) => {
@@ -53,29 +63,47 @@ const onTokenRefreshed = (newToken: string) => {
   refreshSubscribers = [];
 };
 
-// ─── Refresh Access Token ────────────────────────────────────
+// ─── Refresh Access Token (Singleton Promise) ────────────────
 export const refreshAccessToken = async (): Promise<string | null> => {
-  try {
-    const res = await fetch(`${API_BASE_URL}/auth/refresh-token`, {
-      method: 'POST',
-      credentials: 'include', // sends httpOnly cookie
-      headers: { 'Content-Type': 'application/json' },
-    });
-
-    if (!res.ok) {
-      throw new Error('Refresh failed');
-    }
-
-    const data = await res.json();
-    setAuthToken(data.token);
-    setStoredUser(data);
-    return data.token;
-  } catch {
-    // Refresh failed — clear everything
-    setAuthToken(null);
-    setStoredUser(null);
-    return null;
+  if (activeRefreshPromise) {
+    return activeRefreshPromise;
   }
+
+  activeRefreshPromise = (async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/refresh-token`, {
+        method: 'POST',
+        credentials: 'include', // sends httpOnly cookie
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Refresh failed');
+      }
+
+      const data = await res.json();
+      setAuthToken(data.token);
+      setStoredUser(data);
+      onTokenRefreshed(data.token);
+      return data.token;
+    } catch (err: unknown) {
+      if (isNetworkError(err)) {
+        // Backend offline / network failure: preserve stored local offline user
+        console.warn('Backend offline during token refresh, preserving local user state.');
+        const stored = getStoredUser();
+        return stored?.token || null;
+      }
+      // Actual auth rejection / invalid token — clear auth state
+      setAuthToken(null);
+      setStoredUser(null);
+      return null;
+    } finally {
+      activeRefreshPromise = null;
+    }
+  })();
+
+  return activeRefreshPromise;
 };
 
 // ─── Generic API Fetch with Auto-Refresh ─────────────────────
@@ -101,41 +129,29 @@ async function apiFetch<T>(endpoint: string, options: RequestInit = {}, retry = 
     const errorData = await res.json().catch(() => ({}));
 
     if (errorData.code === 'TOKEN_EXPIRED') {
-      if (!isRefreshing) {
-        isRefreshing = true;
+      const newToken = await refreshAccessToken();
 
-        const newToken = await refreshAccessToken();
-        isRefreshing = false;
-
-        if (newToken) {
-          onTokenRefreshed(newToken);
-          // Retry the original request with new token
-          return apiFetch<T>(endpoint, options, false);
-        } else {
-          // Force logout
-          if (typeof window !== 'undefined') {
-            window.dispatchEvent(new CustomEvent('mockly:forceLogout'));
-          }
-          throw new Error('Session expired. Please login again.');
-        }
-      } else {
-        // Wait for the ongoing refresh to complete
-        return new Promise<T>((resolve, reject) => {
-          subscribeTokenRefresh((newToken: string) => {
-            headers['Authorization'] = `Bearer ${newToken}`;
-            fetch(`${API_BASE_URL}${endpoint}`, {
-              ...options,
-              headers,
-              credentials: 'include',
-            })
-              .then((retryRes) => {
-                if (!retryRes.ok) throw new Error('Retry failed');
-                return retryRes.json();
-              })
-              .then((data) => resolve(data as T))
-              .catch(reject);
-          });
+      if (newToken) {
+        // Retry the original request with new token
+        headers['Authorization'] = `Bearer ${newToken}`;
+        const retryRes = await fetch(`${API_BASE_URL}${endpoint}`, {
+          ...options,
+          headers,
+          credentials: 'include',
         });
+
+        if (!retryRes.ok) {
+          const retryError = await retryRes.json().catch(() => ({}));
+          throw new Error(retryError.error || 'Request failed after refresh');
+        }
+
+        return retryRes.json();
+      } else {
+        // Force logout
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('mockly:forceLogout'));
+        }
+        throw new Error('Session expired. Please login again.');
       }
     }
 
@@ -148,16 +164,6 @@ async function apiFetch<T>(endpoint: string, options: RequestInit = {}, retry = 
   }
   return data as T;
 }
-
-// Helper to detect network connection failures (e.g. backend server offline)
-const isNetworkError = (err: unknown): boolean => {
-  if (err instanceof TypeError) return true;
-  if (typeof err === 'object' && err !== null && 'message' in err) {
-    const msg = String((err as any).message);
-    return msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('Load failed');
-  }
-  return false;
-};
 
 // ═══════════════════════════════════════════════════════════════
 // AUTH API

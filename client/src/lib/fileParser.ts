@@ -3,8 +3,8 @@
  * to extract text from PDF and DOCX files, keeping mockly serverless and lightweight.
  */
 
-// Helper to dynamically load a script from CDN
-const loadScript = (src: string, globalName: string): Promise<any> => {
+// Helper to dynamically load a script from CDN with a safety timeout
+const loadScript = (src: string, globalName: string, timeoutMs: number = 10000): Promise<any> => {
   return new Promise((resolve, reject) => {
     if (typeof window === 'undefined') {
       reject(new Error('Browser environment required'));
@@ -17,19 +17,41 @@ const loadScript = (src: string, globalName: string): Promise<any> => {
       return;
     }
 
+    let timer: any = null;
+    const cleanup = () => {
+      if (timer) clearTimeout(timer);
+    };
+
+    timer = setTimeout(() => {
+      cleanup();
+      reject(new Error(`Timeout loading document parser library from CDN: ${src}`));
+    }, timeoutMs);
+
     // Check if script is already present
     const existing = document.querySelector(`script[src="${src}"]`);
     if (existing) {
-      existing.addEventListener('load', () => resolve((window as any)[globalName]));
-      existing.addEventListener('error', (e) => reject(e));
+      existing.addEventListener('load', () => {
+        cleanup();
+        resolve((window as any)[globalName]);
+      });
+      existing.addEventListener('error', (e) => {
+        cleanup();
+        reject(e);
+      });
       return;
     }
 
     const script = document.createElement('script');
     script.src = src;
     script.async = true;
-    script.onload = () => resolve((window as any)[globalName]);
-    script.onerror = (e) => reject(new Error(`Failed to load script: ${src}`));
+    script.onload = () => {
+      cleanup();
+      resolve((window as any)[globalName]);
+    };
+    script.onerror = () => {
+      cleanup();
+      reject(new Error(`Failed to load script: ${src}`));
+    };
     document.head.appendChild(script);
   });
 };

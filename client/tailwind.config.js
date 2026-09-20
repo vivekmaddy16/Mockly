@@ -43,6 +43,14 @@ module.exports = {
           forest: '#034f46',
           stone: '#e4e4d0',
         },
+
+        // Brand palette aliases
+        brand: {
+          400: '#ffa946',
+          500: '#034f46',
+          600: '#023832',
+          700: '#012420',
+        },
       },
       fontFamily: {
         garamond: ['"EB Garamond"', '"Cormorant Garamond"', 'serif'],

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import Link from 'next/link';
 import { InterviewRoom } from '@/components/InterviewRoom';
 import { InterviewSession } from '@/types';
 import { fetchSessionByIdAsync, getSessionById } from '@/lib/storage';
@@ -86,7 +87,7 @@ export default function InterviewSessionPage() {
       {isDemo && (
         <div className="mb-4 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-900 text-xs font-bold flex items-center gap-2 max-w-5xl mx-auto animate-fade-in">
           <AlertCircle className="w-4 h-4 shrink-0 text-amber-700" />
-          <span>Session not found in cloud storage — loading a <strong>demo interview</strong> preview. <a href="/setup" className="underline underline-offset-2 hover:text-amber-800">Create a real interview →</a></span>
+          <span>Session not found in cloud storage — loading a <strong>demo interview</strong> preview. <Link href="/setup" className="underline underline-offset-2 hover:text-amber-800">Create a real interview →</Link></span>
         </div>
       )}
       <InterviewRoom session={session} />

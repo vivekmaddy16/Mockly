@@ -43,19 +43,27 @@ export const DashboardView: React.FC = () => {
   }, []);
 
   const completed = sessions.filter(s => Object.keys(s.evaluations).length > 0);
-  const avgScore = stats?.averageScore ?? (completed.length > 0
-    ? Math.round(completed.reduce((a, s) => a + (s.totalScore ?? 75), 0) / completed.length)
+  const avgScore = stats?.averageScore ?? (stats as any)?.avgScore ?? (completed.length > 0
+    ? Math.round(
+        completed.reduce((a, s) => {
+          const evalCount = Object.keys(s.evaluations).length;
+          const score = s.totalScore ?? (evalCount > 0
+            ? Object.values(s.evaluations).reduce((acc, ev) => acc + ev.score, 0) / evalCount
+            : 0);
+          return a + score;
+        }, 0) / completed.length
+      )
     : 0);
   const totalQuestions = stats?.totalQuestionsAnswered ?? completed.reduce((a, s) => a + Object.keys(s.evaluations).length, 0);
 
-  // Radar chart data
+  // Radar chart data - accurately reflects user mastery or 0 baseline
   const radarData = [
-    { subject: 'DSA', score: stats?.categoryScores?.DSA ?? 75 },
-    { subject: 'OOPs', score: stats?.categoryScores?.OOPs ?? 80 },
-    { subject: 'DBMS', score: stats?.categoryScores?.DBMS ?? 70 },
-    { subject: 'OS', score: stats?.categoryScores?.OS ?? 65 },
-    { subject: 'CN', score: stats?.categoryScores?.CN ?? 68 },
-    { subject: 'System Design', score: stats?.categoryScores?.['System Design'] ?? 85 },
+    { subject: 'DSA', score: stats?.categoryScores?.DSA ?? 0 },
+    { subject: 'OOPs', score: stats?.categoryScores?.OOPs ?? 0 },
+    { subject: 'DBMS', score: stats?.categoryScores?.DBMS ?? 0 },
+    { subject: 'OS', score: stats?.categoryScores?.OS ?? 0 },
+    { subject: 'CN', score: stats?.categoryScores?.CN ?? 0 },
+    { subject: 'System Design', score: stats?.categoryScores?.['System Design'] ?? 0 },
   ];
 
   const filtered = sessions.filter(s =>

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import Link from 'next/link';
 import { ResultsView } from '@/components/ResultsView';
 import { InterviewSession } from '@/types';
 import { fetchSessionByIdAsync, getSessionById } from '@/lib/storage';
@@ -65,7 +66,7 @@ export default function InterviewResultsPage() {
   if (!session) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="w-8 h-8 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-charcoal border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -73,9 +74,9 @@ export default function InterviewResultsPage() {
   return (
     <>
       {isDemo && (
-        <div className="mb-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs flex items-center gap-2 max-w-5xl mx-auto animate-fade-in">
-          <AlertCircle className="w-4 h-4 shrink-0" />
-          <span>Session not found — showing <strong>demo results</strong> for preview. <a href="/setup" className="underline underline-offset-2 hover:text-amber-300">Create a real interview →</a></span>
+        <div className="mb-4 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-900 text-xs font-bold flex items-center gap-2 max-w-5xl mx-auto animate-fade-in">
+          <AlertCircle className="w-4 h-4 shrink-0 text-amber-700" />
+          <span>Session not found in cloud storage — showing <strong>demo results</strong> for preview. <Link href="/setup" className="underline underline-offset-2 hover:text-amber-800">Create a real interview →</Link></span>
         </div>
       )}
       <ResultsView session={session} />

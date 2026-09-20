@@ -204,6 +204,19 @@ exports.loginUser = async (req, res) => {
   }
 };
 
+// Grace window map for recently rotated refresh tokens (prevents concurrent race conditions / React StrictMode false positives)
+const recentlyRotatedTokens = new Map();
+
+// Periodic cleanup of rotated tokens older than 30 seconds
+setInterval(() => {
+  const now = Date.now();
+  for (const [token, data] of recentlyRotatedTokens.entries()) {
+    if (now - data.rotatedAt > 30000) {
+      recentlyRotatedTokens.delete(token);
+    }
+  }
+}, 60000);
+
 // ══════════════════════════════════════════════════════════════
 // @desc    Refresh access token using refresh token cookie
 // @route   POST /api/auth/refresh-token
@@ -237,7 +250,22 @@ exports.refreshToken = async (req, res) => {
     );
 
     if (storedTokenIndex === -1) {
-      // Token reuse detected — potential theft. Invalidate ALL refresh tokens.
+      // Check if this token was rotated within the 15-second grace window (e.g. concurrent requests / React StrictMode)
+      const recentRotation = recentlyRotatedTokens.get(hashedToken);
+      if (recentRotation && recentRotation.userId === user._id.toString() && (Date.now() - recentRotation.rotatedAt) < 15000) {
+        return res.json({
+          token: recentRotation.newAccessToken,
+          _id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          targetRole: user.targetRole,
+          experienceLevel: user.experienceLevel,
+          isEmailVerified: user.isEmailVerified,
+        });
+      }
+
+      // Genuine Token reuse detected — potential theft. Invalidate ALL refresh tokens.
       user.refreshTokens = [];
       await user.save({ validateBeforeSave: false });
       clearRefreshTokenCookie(res);
@@ -254,10 +282,18 @@ exports.refreshToken = async (req, res) => {
     const newRefreshToken = generateRefreshToken(user._id);
 
     const refreshExpiry = parseDuration(process.env.JWT_REFRESH_EXPIRE || '7d');
+    const newHashedToken = crypto.createHash('sha256').update(newRefreshToken).digest('hex');
     user.refreshTokens.push({
-      token: crypto.createHash('sha256').update(newRefreshToken).digest('hex'),
+      token: newHashedToken,
       expiresAt: new Date(Date.now() + refreshExpiry),
       userAgent: req.headers['user-agent'] || '',
+    });
+
+    // Record in grace window map
+    recentlyRotatedTokens.set(hashedToken, {
+      userId: user._id.toString(),
+      rotatedAt: Date.now(),
+      newAccessToken,
     });
 
     user.cleanExpiredRefreshTokens();

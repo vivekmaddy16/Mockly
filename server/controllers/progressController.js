@@ -31,7 +31,11 @@ exports.getProgressStats = async (req, res) => {
 
     sessions.forEach((session) => {
       if (session.evaluations) {
-        const evals = Array.from(session.evaluations.values());
+        const evals = session.evaluations instanceof Map
+          ? Array.from(session.evaluations.values())
+          : (typeof session.evaluations.values === 'function'
+            ? Array.from(session.evaluations.values())
+            : Object.values(session.evaluations));
         totalQuestionsAnswered += evals.length;
 
         // Build category-wise scores

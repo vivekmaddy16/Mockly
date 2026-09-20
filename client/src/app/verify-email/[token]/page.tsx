@@ -35,46 +35,46 @@ export default function VerifyEmailPage() {
   }, [token, verifyEmail]);
 
   return (
-    <div className="min-h-[60vh] flex items-center justify-center">
-      <div className="max-w-md w-full mx-auto text-center p-8">
+    <div className="min-h-[60vh] flex items-center justify-center p-4">
+      <div className="card-cream max-w-md w-full mx-auto text-center p-8 shadow-xl">
         {status === 'loading' && (
-          <>
-            <Loader2 className="w-16 h-16 text-brand-400 animate-spin mx-auto mb-6" />
-            <h1 className="text-2xl font-bold text-white mb-2">Verifying Your Email...</h1>
-            <p className="text-neutral-400">Please wait while we verify your email address.</p>
-          </>
+          <div className="py-8 space-y-4">
+            <Loader2 className="w-12 h-12 text-forest-ink animate-spin mx-auto mb-4" />
+            <h1 className="font-garamond text-3xl font-normal text-vast-ink">Verifying Your Email...</h1>
+            <p className="text-sm text-vast-ink/75">Please wait while we verify your email address.</p>
+          </div>
         )}
 
         {status === 'success' && (
-          <>
-            <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-green-500/30 mb-6">
-              <CheckCircle className="w-10 h-10 text-white" />
+          <div className="space-y-4">
+            <div className="w-16 h-16 mx-auto rounded-full bg-forest-ink text-lumen-cream flex items-center justify-center shadow-lg mb-2">
+              <CheckCircle className="w-8 h-8" />
             </div>
-            <h1 className="text-2xl font-bold text-white mb-2">Email Verified! 🎉</h1>
-            <p className="text-neutral-400 mb-8">{message}</p>
+            <h1 className="font-garamond text-3xl font-normal text-vast-ink">Email Verified! 🎉</h1>
+            <p className="text-sm font-normal text-vast-ink/75">{message}</p>
             <button
               onClick={() => router.push('/')}
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-brand-500 to-brand-600 text-white font-semibold hover:from-brand-600 hover:to-brand-700 transition-all shadow-lg shadow-brand-500/25"
+              className="btn-primary-cta w-full mt-4"
             >
               Go to Mockly <ArrowRight className="w-4 h-4" />
             </button>
-          </>
+          </div>
         )}
 
         {status === 'error' && (
-          <>
-            <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-red-500 to-red-700 flex items-center justify-center shadow-lg shadow-red-500/30 mb-6">
-              <XCircle className="w-10 h-10 text-white" />
+          <div className="space-y-4">
+            <div className="w-16 h-16 mx-auto rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center shadow-md mb-2">
+              <XCircle className="w-8 h-8 text-red-600" />
             </div>
-            <h1 className="text-2xl font-bold text-white mb-2">Verification Failed</h1>
-            <p className="text-neutral-400 mb-8">{message}</p>
+            <h1 className="font-garamond text-3xl font-normal text-vast-ink">Verification Failed</h1>
+            <p className="text-sm font-normal text-vast-ink/75">{message}</p>
             <button
               onClick={() => router.push('/')}
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-neutral-800 text-white font-semibold hover:bg-neutral-700 transition-all"
+              className="btn-secondary-outlined w-full mt-4"
             >
               Go to Home <ArrowRight className="w-4 h-4" />
             </button>
-          </>
+          </div>
         )}
       </div>
     </div>

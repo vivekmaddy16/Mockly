@@ -29,17 +29,17 @@ export class ErrorBoundary extends React.Component<
     if (this.state.hasError) {
       return (
         <div className="min-h-[60vh] flex items-center justify-center p-6">
-          <div className="card-dark rounded-3xl p-10 max-w-md text-center space-y-6 border border-red-500/15">
+          <div className="card-cream max-w-md w-full text-center space-y-6 shadow-xl border border-red-500/20">
             <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto">
-              <AlertTriangle className="w-8 h-8 text-red-400" />
+              <AlertTriangle className="w-8 h-8 text-red-600" />
             </div>
             <div className="space-y-2">
-              <h2 className="text-xl font-bold text-white">Something went wrong</h2>
-              <p className="text-sm text-neutral-400">
+              <h2 className="font-garamond text-3xl font-normal text-vast-ink">Something went wrong</h2>
+              <p className="text-sm font-normal text-vast-ink/75">
                 An unexpected error occurred. Please try refreshing the page.
               </p>
               {this.state.error && (
-                <p className="text-xs text-neutral-600 font-mono mt-2 p-2 rounded-lg bg-neutral-900 border border-neutral-800">
+                <p className="text-xs text-vast-ink/70 font-mono mt-2 p-3 rounded-xl bg-vast-ink/5 border border-vast-ink/10 break-all text-left">
                   {this.state.error.message}
                 </p>
               )}
@@ -49,7 +49,7 @@ export class ErrorBoundary extends React.Component<
                 this.setState({ hasError: false, error: null });
                 window.location.reload();
               }}
-              className="btn-yellow text-xs px-6 py-3 inline-flex items-center gap-2"
+              className="btn-primary-cta w-full"
             >
               <RotateCcw className="w-4 h-4" /> Reload Page
             </button>

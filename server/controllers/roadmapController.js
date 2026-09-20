@@ -58,6 +58,7 @@ exports.getRoadmap = async (req, res) => {
 
     res.json({
       roadmap: grouped,
+      steps: enrichedSteps,
       totalSteps: steps.length,
       completedSteps: userProgress.filter((p) => p.isCompleted).length,
     });

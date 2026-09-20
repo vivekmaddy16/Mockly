@@ -28,38 +28,55 @@ interface RoadmapStepItem {
   progress?: StepProgress;
 }
 
+const CATEGORY_OFFSETS: Record<CSCategory, number> = {
+  'DSA': 100,
+  'OOPs': 200,
+  'DBMS': 300,
+  'OS': 400,
+  'CN': 500,
+  'System Design': 600,
+};
+
 const DEFAULT_ROADMAP: Record<CSCategory, Omit<RoadmapStepItem, 'id'>[]> = {
   DSA: [
     { category: 'DSA', title: 'Arrays, Hash Tables & Two Pointers', description: 'Master O(1) hash lookups, sliding window, and two pointer patterns.', displayOrder: 1, difficulty: 'Easy', estimatedHours: 4, prerequisites: [], resources: [{ title: 'NeetCode 150 Arrays', url: 'https://neetcode.io', type: 'practice' }], keyConcepts: ['Hash Map', 'Two Pointers', 'Sliding Window'] },
-    { category: 'DSA', title: 'Linked Lists & Floyd Cycle Detection', description: 'Fast & slow pointers algorithm, reversal, and memory optimization.', displayOrder: 2, difficulty: 'Easy', estimatedHours: 3, prerequisites: [1], resources: [{ title: 'LeetCode 141', url: 'https://leetcode.com', type: 'practice' }], keyConcepts: ['Floyd Algorithm', 'Pointers'] },
-    { category: 'DSA', title: 'Trees, Graphs, BFS & DFS Traversals', description: 'Binary Search Trees, Graph adjacency lists, Topological Sort & Dijkstra.', displayOrder: 3, difficulty: 'Hard', estimatedHours: 8, prerequisites: [1, 2], resources: [{ title: 'Graph Theory Foundations', url: 'https://geeksforgeeks.org', type: 'article' }], keyConcepts: ['BFS', 'DFS', 'Dijkstra', 'Graph'] },
+    { category: 'DSA', title: 'Linked Lists & Floyd Cycle Detection', description: 'Fast & slow pointers algorithm, reversal, and memory optimization.', displayOrder: 2, difficulty: 'Easy', estimatedHours: 3, prerequisites: [101], resources: [{ title: 'LeetCode 141', url: 'https://leetcode.com', type: 'practice' }], keyConcepts: ['Floyd Algorithm', 'Pointers'] },
+    { category: 'DSA', title: 'Trees, Graphs, BFS & DFS Traversals', description: 'Binary Search Trees, Graph adjacency lists, Topological Sort & Dijkstra.', displayOrder: 3, difficulty: 'Hard', estimatedHours: 8, prerequisites: [101, 102], resources: [{ title: 'Graph Theory Foundations', url: 'https://geeksforgeeks.org', type: 'article' }], keyConcepts: ['BFS', 'DFS', 'Dijkstra', 'Graph'] },
   ],
   OOPs: [
     { category: 'OOPs', title: '4 Pillars: Encapsulation, Polymorphism, Abstraction, Inheritance', description: 'Core object-oriented paradigm concepts, method overriding vs overloading.', displayOrder: 1, difficulty: 'Easy', estimatedHours: 3, prerequisites: [], resources: [], keyConcepts: ['Polymorphism', 'Encapsulation'] },
-    { category: 'OOPs', title: 'SOLID Principles & Design Patterns', description: 'Single Responsibility, Open-Closed, Dependency Inversion, Factory & Singleton patterns.', displayOrder: 2, difficulty: 'Medium', estimatedHours: 5, prerequisites: [1], resources: [], keyConcepts: ['SOLID', 'Factory Pattern', 'Singleton'] },
+    { category: 'OOPs', title: 'SOLID Principles & Design Patterns', description: 'Single Responsibility, Open-Closed, Dependency Inversion, Factory & Singleton patterns.', displayOrder: 2, difficulty: 'Medium', estimatedHours: 5, prerequisites: [201], resources: [], keyConcepts: ['SOLID', 'Factory Pattern', 'Singleton'] },
   ],
   DBMS: [
     { category: 'DBMS', title: 'Relational Model, SQL Joins & Aggregations', description: 'INNER, LEFT, RIGHT, FULL OUTER joins, GROUP BY, and subqueries.', displayOrder: 1, difficulty: 'Easy', estimatedHours: 4, prerequisites: [], resources: [], keyConcepts: ['SQL Joins', 'GROUP BY'] },
-    { category: 'DBMS', title: 'ACID Properties, Isolation Levels & B-Tree Indexing', description: 'Atomicity, Consistency, Isolation, Durability, Dirty Reads, and B-Tree indexing performance.', displayOrder: 2, difficulty: 'Hard', estimatedHours: 6, prerequisites: [1], resources: [], keyConcepts: ['ACID', 'B-Tree', 'Dirty Read'] },
+    { category: 'DBMS', title: 'ACID Properties, Isolation Levels & B-Tree Indexing', description: 'Atomicity, Consistency, Isolation, Durability, Dirty Reads, and B-Tree indexing performance.', displayOrder: 2, difficulty: 'Hard', estimatedHours: 6, prerequisites: [301], resources: [], keyConcepts: ['ACID', 'B-Tree', 'Dirty Read'] },
   ],
   OS: [
     { category: 'OS', title: 'Processes vs Threads & Context Switching', description: 'CPU Scheduling, Thread address space sharing, TLB cache invalidation.', displayOrder: 1, difficulty: 'Medium', estimatedHours: 4, prerequisites: [], resources: [], keyConcepts: ['Thread', 'Context Switch', 'TLB'] },
-    { category: 'OS', title: 'Deadlocks, Coffman Conditions & Banker Algorithm', description: 'Mutual Exclusion, Hold and Wait, No Preemption, Circular Wait prevention.', displayOrder: 2, difficulty: 'Medium', estimatedHours: 5, prerequisites: [1], resources: [], keyConcepts: ['Deadlock', 'Coffman'] },
+    { category: 'OS', title: 'Deadlocks, Coffman Conditions & Banker Algorithm', description: 'Mutual Exclusion, Hold and Wait, No Preemption, Circular Wait prevention.', displayOrder: 2, difficulty: 'Medium', estimatedHours: 5, prerequisites: [401], resources: [], keyConcepts: ['Deadlock', 'Coffman'] },
   ],
   CN: [
     { category: 'CN', title: 'OSI Model, TCP 3-Way Handshake vs UDP', description: 'Layer 1-7 responsibilities, SYN/SYN-ACK/ACK, TCP congestion control.', displayOrder: 1, difficulty: 'Easy', estimatedHours: 4, prerequisites: [], resources: [], keyConcepts: ['TCP Handshake', 'UDP', 'OSI'] },
-    { category: 'CN', title: 'HTTP/HTTPS, TLS Handshake & DNS Lifecycle', description: 'Complete network flow of typing a URL into the browser.', displayOrder: 2, difficulty: 'Medium', estimatedHours: 5, prerequisites: [1], resources: [], keyConcepts: ['DNS', 'TLS', 'HTTPS'] },
+    { category: 'CN', title: 'HTTP/HTTPS, TLS Handshake & DNS Lifecycle', description: 'Complete network flow of typing a URL into the browser.', displayOrder: 2, difficulty: 'Medium', estimatedHours: 5, prerequisites: [501], resources: [], keyConcepts: ['DNS', 'TLS', 'HTTPS'] },
   ],
   'System Design': [
     { category: 'System Design', title: 'Load Balancers, API Gateways & Caching (Redis)', description: 'Horizontal scaling, Round Robin, Least Connections, Redis eviction policies.', displayOrder: 1, difficulty: 'Medium', estimatedHours: 6, prerequisites: [], resources: [], keyConcepts: ['Load Balancing', 'Redis', 'Caching'] },
-    { category: 'System Design', title: 'Database Sharding, Replication & CAP Theorem', description: 'Master-slave replication, Partitioning keys, Consistency vs Availability.', displayOrder: 2, difficulty: 'Hard', estimatedHours: 8, prerequisites: [1], resources: [], keyConcepts: ['Sharding', 'CAP Theorem', 'Replication'] },
+    { category: 'System Design', title: 'Database Sharding, Replication & CAP Theorem', description: 'Master-slave replication, Partitioning keys, Consistency vs Availability.', displayOrder: 2, difficulty: 'Hard', estimatedHours: 8, prerequisites: [601], resources: [], keyConcepts: ['Sharding', 'CAP Theorem', 'Replication'] },
   ],
 };
 
 export const RoadmapView: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState<CSCategory>('DSA');
   const [selectedStep, setSelectedStep] = useState<RoadmapStepItem | null>(null);
-  const [completedStepIds, setCompletedStepIds] = useState<number[]>([]);
+  const [completedStepIds, setCompletedStepIds] = useState<number[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('mockly_completed_roadmap_steps');
+        if (saved) return JSON.parse(saved);
+      } catch {}
+    }
+    return [];
+  });
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -67,14 +84,17 @@ export const RoadmapView: React.FC = () => {
       setIsLoading(true);
       try {
         const data = await roadmapApi.getRoadmap(activeCategory);
-        if (data?.steps && data.steps.length > 0) {
-          const completed = data.steps
+        const returnedSteps = data?.steps || (data?.roadmap && data.roadmap[activeCategory]);
+        if (Array.isArray(returnedSteps) && returnedSteps.length > 0) {
+          const completed = returnedSteps
             .filter((s: any) => s.progress?.isCompleted)
             .map((s: any) => s.id);
-          setCompletedStepIds(completed);
+          if (completed.length > 0) {
+            setCompletedStepIds(prev => Array.from(new Set([...prev, ...completed])));
+          }
         }
       } catch {
-        /* Fallback */
+        /* Fallback to local storage */
       } finally {
         setIsLoading(false);
       }
@@ -85,27 +105,32 @@ export const RoadmapView: React.FC = () => {
 
   const toggleStepCompletion = async (stepId: number) => {
     const isAlreadyDone = completedStepIds.includes(stepId);
+    const updated = isAlreadyDone
+      ? completedStepIds.filter(id => id !== stepId)
+      : [...completedStepIds, stepId];
 
-    if (isAlreadyDone) {
-      setCompletedStepIds(prev => prev.filter(id => id !== stepId));
-    } else {
-      setCompletedStepIds(prev => [...prev, stepId]);
-    }
+    setCompletedStepIds(updated);
+    try {
+      localStorage.setItem('mockly_completed_roadmap_steps', JSON.stringify(updated));
+    } catch {}
 
     try {
       await roadmapApi.completeStep(stepId);
     } catch {
-      /* Revert if API fails */
+      /* Revert or silent failover */
     }
   };
 
   const categories: CSCategory[] = ['DSA', 'OOPs', 'DBMS', 'OS', 'CN', 'System Design'];
 
-  const currentCategorySteps: RoadmapStepItem[] = DEFAULT_ROADMAP[activeCategory].map((step, idx) => ({
-    ...step,
-    id: idx + 1,
-    progress: { isCompleted: completedStepIds.includes(idx + 1) },
-  }));
+  const currentCategorySteps: RoadmapStepItem[] = DEFAULT_ROADMAP[activeCategory].map((step, idx) => {
+    const uniqueId = CATEGORY_OFFSETS[activeCategory] + idx + 1;
+    return {
+      ...step,
+      id: uniqueId,
+      progress: { isCompleted: completedStepIds.includes(uniqueId) },
+    };
+  });
 
   const completedCount = currentCategorySteps.filter(s => completedStepIds.includes(s.id)).length;
   const progressPercentage = Math.round((completedCount / (currentCategorySteps.length || 1)) * 100);

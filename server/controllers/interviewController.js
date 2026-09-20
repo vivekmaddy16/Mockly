@@ -2,7 +2,7 @@ const InterviewSession = require('../models/InterviewSession');
 const ProgressTracker = require('../models/ProgressTracker');
 
 // ══════════════════════════════════════════════════════════════
-// @desc    Create new interview session
+// @desc    Create new interview session (with upsert support)
 // @route   POST /api/interviews
 // @access  Private
 // ══════════════════════════════════════════════════════════════
@@ -18,30 +18,50 @@ exports.createSession = async (req, res) => {
       jobDescriptionText,
       extractedSkills,
       questions,
+      evaluations,
       proctoringMode,
       aiEngine,
+      status,
+      totalScore,
+      overallFeedback,
+      infractions,
+      proctoringFailed,
     } = req.body;
 
-    const newSession = await InterviewSession.create({
-      sessionId: sessionId || `sess_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-      user: req.user._id,
-      targetRole,
-      experienceLevel,
-      difficultyMode: difficultyMode || 'Medium',
-      roundType: roundType || 'technical_screen',
-      aiEngine: aiEngine || 'gemini',
-      resumeText,
-      jobDescriptionText,
-      extractedSkills: extractedSkills || [],
-      questions: questions || [],
-      evaluations: {},
-      status: 'in_progress',
-      proctoringMode: proctoringMode || 'standard',
-      infractions: 0,
-      proctoringFailed: false,
-    });
+    const sessionIdentifier = sessionId || `sess_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 
-    res.status(201).json(newSession);
+    // Upsert: create if not exists, or update if existing session
+    const session = await InterviewSession.findOneAndUpdate(
+      { sessionId: sessionIdentifier, user: req.user._id },
+      {
+        $set: {
+          targetRole,
+          experienceLevel,
+          difficultyMode: difficultyMode || 'Medium',
+          roundType: roundType || 'technical_screen',
+          aiEngine: aiEngine || 'gemini',
+          resumeText,
+          jobDescriptionText,
+          extractedSkills: extractedSkills || [],
+          questions: questions || [],
+          ...(evaluations ? { evaluations } : {}),
+          ...(status ? { status } : {}),
+          ...(typeof totalScore === 'number' ? { totalScore } : {}),
+          ...(overallFeedback ? { overallFeedback } : {}),
+          ...(typeof infractions === 'number' ? { infractions } : {}),
+          ...(typeof proctoringFailed === 'boolean' ? { proctoringFailed } : {}),
+          proctoringMode: proctoringMode || 'standard',
+        },
+        $setOnInsert: {
+          sessionId: sessionIdentifier,
+          user: req.user._id,
+          createdAt: new Date(),
+        },
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    res.status(201).json(session);
   } catch (error) {
     res.status(500).json({ error: error.message || 'Server Error' });
   }
