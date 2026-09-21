@@ -207,7 +207,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMo
                 </div>
               </div>
 
-              <button onClick={() => { view === 'forgot-sent' ? setView('login') : onClose(); resetFields(); }} className="btn-primary-cta w-full py-3 text-sm">
+              <button onClick={() => { if (view === 'forgot-sent') { setView('login'); } else { onClose(); } resetFields(); }} className="btn-primary-cta w-full py-3 text-sm">
                 {view === 'forgot-sent' ? 'Back to Sign In' : 'Got it!'}
               </button>
             </motion.div>
