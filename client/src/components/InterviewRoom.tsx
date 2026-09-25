@@ -74,15 +74,25 @@ const AudioWaveformCanvas: React.FC<{ isRecording: boolean }> = ({ isRecording }
 const WebcamTelemetry: React.FC<{
   isInterviewing: boolean;
   onMetricsUpdate: (metrics: { eyeContact: number; stability: number; pacing: number; emotion: string; confidence: number }) => void;
-}> = ({ isInterviewing, onMetricsUpdate }) => {
+}> = ({ onMetricsUpdate }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const faceLandmarkerRef = useRef<{ detectForVideo: (video: HTMLVideoElement, timestamp: number) => FaceLandmarkerResult; close?: () => void } | null>(null);
+  const faceLandmarkerRef = useRef<any>(null);
   const animationFrameRef = useRef<number | null>(null);
   const lastAnalysisRef = useRef(0);
   const previousNoseRef = useRef<{ x: number; y: number } | null>(null);
+  const isInitializingModelRef = useRef(false);
+
+  const smoothedMetricsRef = useRef<{ eyeContact: number; stability: number; confidence: number }>({
+    eyeContact: 85,
+    stability: 90,
+    confidence: 85
+  });
+
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [cameraActive, setCameraActive] = useState(false);
+  const [isModelLoading, setIsModelLoading] = useState(false);
+  const [isFaceDetected, setIsFaceDetected] = useState(false);
   const [metrics, setMetrics] = useState({
     eyeContact: 0,
     stability: 0,
@@ -92,10 +102,6 @@ const WebcamTelemetry: React.FC<{
   });
 
   type Blendshape = { categoryName: string; score: number };
-  type FaceLandmarkerResult = {
-    faceLandmarks: Array<Array<{ x: number; y: number }>>;
-    faceBlendshapes?: Array<{ categories: Blendshape[] }>;
-  };
 
   const updateMetrics = (nextMetrics: typeof metrics) => {
     setMetrics(nextMetrics);
@@ -105,92 +111,273 @@ const WebcamTelemetry: React.FC<{
   const scoreFor = (shapes: Blendshape[], name: string) =>
     shapes.find(shape => shape.categoryName === name)?.score ?? 0;
 
-  const analyzeFrame = (timestamp: number) => {
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    const landmarker = faceLandmarkerRef.current;
-    if (!video || !canvas || !landmarker || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return;
+  // Initialize MediaPipe FaceLandmarker with GPU delegate and CPU fallback
+  const initFaceLandmarker = async () => {
+    if (faceLandmarkerRef.current || isInitializingModelRef.current) return;
+    isInitializingModelRef.current = true;
+    setIsModelLoading(true);
 
-    // Face landmark inference is intentionally throttled; it uses the real camera
-    // frame, rather than inventing values between animation frames.
-    if (timestamp - lastAnalysisRef.current < 180) return;
-    lastAnalysisRef.current = timestamp;
-
-    const result = landmarker.detectForVideo(video, timestamp);
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    const landmarks = result.faceLandmarks[0];
-    if (!landmarks) {
-      previousNoseRef.current = null;
-      updateMetrics({ eyeContact: 0, stability: 0, pacing: 0, emotion: 'Face not detected', confidence: 0 });
-      return;
-    }
-
-    // The preview is mirrored, so landmarks are mirrored only for the overlay.
-    ctx.fillStyle = '#7BD695';
-    landmarks.forEach(point => {
-      ctx.beginPath();
-      ctx.arc((1 - point.x) * canvas.width, point.y * canvas.height, 1.15, 0, Math.PI * 2);
-      ctx.fill();
-    });
-
-    const nose = landmarks[1];
-    const displacement = previousNoseRef.current
-      ? Math.hypot(nose.x - previousNoseRef.current.x, nose.y - previousNoseRef.current.y)
-      : 0;
-    previousNoseRef.current = { x: nose.x, y: nose.y };
-
-    const shapes = result.faceBlendshapes?.[0]?.categories ?? [];
-    const gazeMovement = ['eyeLookInLeft', 'eyeLookInRight', 'eyeLookOutLeft', 'eyeLookOutRight', 'eyeLookUpLeft', 'eyeLookUpRight', 'eyeLookDownLeft', 'eyeLookDownRight']
-      .reduce((total, category) => total + scoreFor(shapes, category), 0);
-    const eyeContact = Math.round(Math.max(0, Math.min(100, 100 - gazeMovement * 24)));
-    const stability = Math.round(Math.max(0, Math.min(100, 100 - displacement * 850)));
-    const centered = Math.max(0, 100 - (Math.abs(nose.x - 0.5) + Math.abs(nose.y - 0.48)) * 140);
-    const confidence = Math.round(eyeContact * 0.4 + stability * 0.35 + centered * 0.25);
-
-    const smile = (scoreFor(shapes, 'mouthSmileLeft') + scoreFor(shapes, 'mouthSmileRight')) / 2;
-    const jawOpen = scoreFor(shapes, 'jawOpen');
-    const browRaised = (scoreFor(shapes, 'browInnerUp') + scoreFor(shapes, 'browOuterUpLeft') + scoreFor(shapes, 'browOuterUpRight')) / 3;
-    const emotion = smile > 0.25 ? 'Positive' : jawOpen > 0.3 || browRaised > 0.2 ? 'Engaged' : 'Neutral';
-
-    updateMetrics({ eyeContact, stability, pacing: 0, emotion, confidence });
-  };
-
-  // Enable/Disable webcam
-  const startCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240 } });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        const playPromise = videoRef.current.play();
-        if (playPromise !== undefined) {
-          playPromise.catch(error => {
-            // Auto-play was interrupted by stopCamera/unmount
-            console.log("Webcam video play interrupted or prevented:", error.message);
-          });
-        }
-      }
-      if (!faceLandmarkerRef.current) {
-        const { FaceLandmarker, FilesetResolver } = await import('@mediapipe/tasks-vision');
-        const vision = await FilesetResolver.forVisionTasks(
-          'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22-rc.20250304/wasm'
-        );
+      const { FaceLandmarker, FilesetResolver } = await import('@mediapipe/tasks-vision');
+      const vision = await FilesetResolver.forVisionTasks(
+        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22-rc.20250304/wasm'
+      );
+
+      const modelAssetPath = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/latest/face_landmarker.task';
+
+      // First attempt: GPU acceleration
+      try {
         faceLandmarkerRef.current = await FaceLandmarker.createFromOptions(vision, {
           baseOptions: {
-            modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/latest/face_landmarker.task',
+            modelAssetPath,
             delegate: 'GPU'
           },
           runningMode: 'VIDEO',
           numFaces: 1,
           outputFaceBlendshapes: true
         });
+      } catch (gpuErr) {
+        console.warn('FaceLandmarker GPU delegate unavailable, falling back to CPU delegate:', gpuErr);
+        // Fallback attempt: CPU execution
+        faceLandmarkerRef.current = await FaceLandmarker.createFromOptions(vision, {
+          baseOptions: {
+            modelAssetPath,
+            delegate: 'CPU'
+          },
+          runningMode: 'VIDEO',
+          numFaces: 1,
+          outputFaceBlendshapes: true
+        });
       }
+    } catch (err) {
+      console.warn('Failed to load FaceLandmarker vision model:', err);
+    } finally {
+      setIsModelLoading(false);
+      isInitializingModelRef.current = false;
+    }
+  };
+
+  // Draw detected facial contours and key feature points on overlay canvas
+  const drawFaceOverlay = (ctx: CanvasRenderingContext2D, landmarks: Array<{ x: number; y: number }>, width: number, height: number) => {
+    ctx.clearRect(0, 0, width, height);
+
+    const faceContours = [
+      // Left eye contour
+      [33, 7, 163, 144, 145, 153, 154, 155, 133, 173, 157, 158, 159, 160, 161, 246, 33],
+      // Right eye contour
+      [263, 249, 390, 373, 374, 380, 381, 382, 362, 398, 384, 385, 386, 387, 388, 466, 263],
+      // Lips outer contour
+      [61, 146, 91, 181, 84, 17, 314, 405, 321, 375, 291, 409, 270, 269, 267, 0, 37, 39, 40, 185, 61],
+      // Left eyebrow
+      [70, 63, 105, 66, 107],
+      // Right eyebrow
+      [300, 293, 334, 296, 336]
+    ];
+
+    ctx.strokeStyle = 'rgba(123, 214, 149, 0.4)';
+    ctx.lineWidth = 1;
+    faceContours.forEach(contour => {
+      ctx.beginPath();
+      contour.forEach((idx, i) => {
+        const pt = landmarks[idx];
+        if (!pt) return;
+        const x = pt.x * width;
+        const y = pt.y * height;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+    });
+
+    // Tracking landmark nodes
+    ctx.fillStyle = '#7BD695';
+    const keyPoints = [1, 4, 10, 152, 61, 291, 13, 14, 33, 133, 263, 362, 70, 107, 300, 336];
+    keyPoints.forEach(idx => {
+      const pt = landmarks[idx];
+      if (!pt) return;
+      ctx.beginPath();
+      ctx.arc(pt.x * width, pt.y * height, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  };
+
+  // Perform multi-factor emotion and biometric signal analysis
+  const analyzeFaceTelemetry = (landmarks: Array<{ x: number; y: number }>, shapes: Blendshape[]) => {
+    const nose = landmarks[1] || landmarks[4] || { x: 0.5, y: 0.5 };
+
+    // Head stability tracking
+    const displacement = previousNoseRef.current
+      ? Math.hypot(nose.x - previousNoseRef.current.x, nose.y - previousNoseRef.current.y)
+      : 0;
+    previousNoseRef.current = { x: nose.x, y: nose.y };
+    const rawStability = Math.round(Math.max(0, Math.min(100, 100 - displacement * 820)));
+
+    // Blendshape expression metrics
+    const smile = (scoreFor(shapes, 'mouthSmileLeft') + scoreFor(shapes, 'mouthSmileRight')) / 2;
+    const browFurrow = (scoreFor(shapes, 'browDownLeft') + scoreFor(shapes, 'browDownRight')) / 2;
+    const browInnerUp = scoreFor(shapes, 'browInnerUp');
+    const browOuterUp = (scoreFor(shapes, 'browOuterUpLeft') + scoreFor(shapes, 'browOuterUpRight')) / 2;
+    const jawOpen = scoreFor(shapes, 'jawOpen');
+    const eyeSquint = (scoreFor(shapes, 'eyeSquintLeft') + scoreFor(shapes, 'eyeSquintRight')) / 2;
+    const mouthPress = (scoreFor(shapes, 'mouthPressLeft') + scoreFor(shapes, 'mouthPressRight')) / 2;
+    const mouthPucker = scoreFor(shapes, 'mouthPucker');
+    const mouthStretch = (scoreFor(shapes, 'mouthStretchLeft') + scoreFor(shapes, 'mouthStretchRight')) / 2;
+    const tensionScore = mouthPress * 0.4 + mouthPucker * 0.3 + mouthStretch * 0.3;
+
+    // Gaze direction tracking
+    const gazeMovement = [
+      'eyeLookInLeft', 'eyeLookInRight',
+      'eyeLookOutLeft', 'eyeLookOutRight',
+      'eyeLookUpLeft', 'eyeLookUpRight',
+      'eyeLookDownLeft', 'eyeLookDownRight'
+    ].reduce((total, category) => total + scoreFor(shapes, category), 0);
+
+    // Fallback geometric estimation if blendshapes are not emitted
+    let geoSmile = 0;
+    let geoJawOpen = 0;
+    if (shapes.length === 0 && landmarks.length >= 468) {
+      const mouthLeft = landmarks[61];
+      const mouthRight = landmarks[291];
+      const upperLip = landmarks[13];
+      const lowerLip = landmarks[14];
+      const faceLeft = landmarks[234];
+      const faceRight = landmarks[454];
+      const faceWidth = Math.hypot(faceRight.x - faceLeft.x, faceRight.y - faceLeft.y) || 1;
+      const mouthWidth = Math.hypot(mouthRight.x - mouthLeft.x, mouthRight.y - mouthLeft.y);
+      const mouthHeight = Math.hypot(lowerLip.x - upperLip.x, lowerLip.y - upperLip.y);
+      geoSmile = Math.max(0, (mouthWidth / faceWidth - 0.38) * 4);
+      geoJawOpen = Math.max(0, (mouthHeight / faceWidth - 0.04) * 5);
+    }
+
+    const effectiveSmile = Math.max(smile, geoSmile);
+    const effectiveJawOpen = Math.max(jawOpen, geoJawOpen);
+
+    const rawEyeContact = Math.round(Math.max(0, Math.min(100, 100 - gazeMovement * 22)));
+    const centered = Math.max(0, 100 - (Math.abs(nose.x - 0.5) + Math.abs(nose.y - 0.48)) * 130);
+
+    // Temporal smoothing to prevent noisy flicker
+    const sm = smoothedMetricsRef.current;
+    sm.eyeContact = Math.round(sm.eyeContact * 0.65 + rawEyeContact * 0.35);
+    sm.stability = Math.round(sm.stability * 0.65 + rawStability * 0.35);
+    const rawConfidence = Math.round(sm.eyeContact * 0.4 + sm.stability * 0.35 + centered * 0.25);
+    sm.confidence = Math.round(sm.confidence * 0.7 + rawConfidence * 0.3);
+
+    // Dynamic emotion classification
+    let emotion = 'Neutral';
+    if (effectiveSmile > 0.22 && sm.eyeContact >= 60 && browFurrow < 0.25) {
+      emotion = 'Confident';
+    } else if (effectiveSmile > 0.18) {
+      emotion = 'Positive';
+    } else if (tensionScore > 0.24 || (browInnerUp > 0.30 && sm.eyeContact < 65) || (browFurrow > 0.35 && tensionScore > 0.16)) {
+      emotion = 'Nervous';
+    } else if (browFurrow > 0.22 || (eyeSquint > 0.20 && sm.eyeContact < 75)) {
+      emotion = 'Thoughtful';
+    } else if (effectiveJawOpen > 0.12 || browOuterUp > 0.20 || (sm.eyeContact >= 65 && browInnerUp > 0.15)) {
+      emotion = 'Engaged';
+    } else if (sm.eyeContact >= 70 && sm.stability >= 70) {
+      emotion = 'Focused';
+    } else {
+      emotion = 'Neutral';
+    }
+
+    return {
+      eyeContact: sm.eyeContact,
+      stability: sm.stability,
+      confidence: sm.confidence,
+      emotion
+    };
+  };
+
+  const analyzeFrame = () => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const landmarker = faceLandmarkerRef.current;
+
+    if (!video || !canvas || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return;
+    if (video.videoWidth === 0 || video.videoHeight === 0 || video.paused) return;
+
+    // Synchronize canvas resolution with video dimensions
+    if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+    }
+
+    const now = performance.now();
+    if (now - lastAnalysisRef.current < 120) return;
+    lastAnalysisRef.current = now;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    if (!landmarker) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      return;
+    }
+
+    try {
+      const result = landmarker.detectForVideo(video, now);
+      const landmarks = result?.faceLandmarks?.[0];
+
+      if (!landmarks || landmarks.length === 0) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        previousNoseRef.current = null;
+        setIsFaceDetected(false);
+        updateMetrics({
+          eyeContact: 0,
+          stability: 0,
+          pacing: 0,
+          emotion: 'Face not detected',
+          confidence: 0
+        });
+        return;
+      }
+
+      setIsFaceDetected(true);
+      drawFaceOverlay(ctx, landmarks, canvas.width, canvas.height);
+
+      const shapes = result.faceBlendshapes?.[0]?.categories ?? [];
+      const computed = analyzeFaceTelemetry(landmarks, shapes);
+
+      updateMetrics({
+        eyeContact: computed.eyeContact,
+        stability: computed.stability,
+        pacing: 0,
+        emotion: computed.emotion,
+        confidence: computed.confidence
+      });
+    } catch (err) {
+      // Individual frame inference error caught gracefully without halting animation loop
+      console.debug('Telemetry frame inference skipped:', err);
+    }
+  };
+
+  // Start webcam stream
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: { ideal: 480, max: 640 },
+          height: { ideal: 360, max: 480 },
+          facingMode: 'user'
+        }
+      });
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current?.play().catch(error => {
+            console.log('Webcam video play prevented:', error.message);
+          });
+        };
+      }
+
       setHasPermission(true);
       setCameraActive(true);
+
+      // Initialize AI model in background
+      initFaceLandmarker();
     } catch (err) {
-      console.warn("Camera access denied or unavailable:", err);
+      console.warn('Camera access denied or unavailable:', err);
       setHasPermission(false);
       setCameraActive(false);
     }
@@ -206,10 +393,11 @@ const WebcamTelemetry: React.FC<{
     animationFrameRef.current = null;
     previousNoseRef.current = null;
     setCameraActive(false);
+    setIsFaceDetected(false);
   };
 
   useEffect(() => {
-    startCamera(); // auto-start on load
+    startCamera(); // auto-start on mount
     return () => {
       stopCamera();
       faceLandmarkerRef.current?.close?.();
@@ -217,25 +405,52 @@ const WebcamTelemetry: React.FC<{
     };
   }, []);
 
-  // Analyze the actual webcam stream and draw its detected face landmarks.
+  // Continuous animation frame loop
   useEffect(() => {
     if (!cameraActive) return;
-    const run = (timestamp: number) => {
-      analyzeFrame(timestamp);
+    let isRunning = true;
+
+    const run = () => {
+      if (!isRunning) return;
+      analyzeFrame();
       animationFrameRef.current = requestAnimationFrame(run);
     };
+
     animationFrameRef.current = requestAnimationFrame(run);
     return () => {
+      isRunning = false;
       if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = null;
     };
   }, [cameraActive]);
 
+  // Color helper for emotion tags
+  const getEmotionBadgeClass = (emotion: string) => {
+    if (!cameraActive) return 'text-charcoal/50 bg-charcoal/5 border-charcoal/10';
+    switch (emotion) {
+      case 'Confident':
+      case 'Positive':
+        return 'text-emerald-700 bg-emerald-50 border-emerald-200';
+      case 'Focused':
+        return 'text-sky-700 bg-sky-50 border-sky-200';
+      case 'Engaged':
+        return 'text-indigo-700 bg-indigo-50 border-indigo-200';
+      case 'Thoughtful':
+        return 'text-violet-700 bg-violet-50 border-violet-200';
+      case 'Nervous':
+        return 'text-coral bg-coral/10 border-coral/20';
+      case 'Face not detected':
+        return 'text-amber-700 bg-amber-50 border-amber-200';
+      default:
+        return 'text-charcoal bg-charcoal/5 border-charcoal/10';
+    }
+  };
+
   return (
     <div className="card-cream p-5 space-y-4 border border-white shadow-xl flex flex-col h-full justify-between animate-fade-in">
       <div className="space-y-1">
         <h4 className="font-display font-black text-sm text-charcoal">Visual Telemetry Console</h4>
-        <p className="text-[10px] text-charcoal/50 font-bold">Live facial landmarks and expression signals</p>
+        <p className="text-[10px] text-charcoal/50 font-bold">Live AI facial landmarks & expression recognition</p>
       </div>
 
       {/* Video Box */}
@@ -243,7 +458,7 @@ const WebcamTelemetry: React.FC<{
         {hasPermission === false ? (
           <div className="p-4 text-center space-y-2 text-cream/70">
             <span className="text-[11px] font-bold block">Camera permission required for face analysis</span>
-            <button onClick={startCamera} className="px-3.5 py-1.5 rounded-full bg-coral text-cream text-[10px] font-black uppercase tracking-wider shadow">
+            <button onClick={startCamera} className="px-3.5 py-1.5 rounded-full bg-coral text-cream text-[10px] font-black uppercase tracking-wider shadow hover:opacity-90 transition">
               Grant Permission
             </button>
           </div>
@@ -253,14 +468,12 @@ const WebcamTelemetry: React.FC<{
               ref={videoRef}
               muted
               playsInline
-              className="absolute inset-0 w-full h-full object-cover opacity-80"
+              className="absolute inset-0 w-full h-full object-cover opacity-85"
               style={{ transform: 'scaleX(-1)' }} // Mirror view
             />
             {cameraActive && (
               <canvas
                 ref={canvasRef}
-                width={320}
-                height={240}
                 className="absolute inset-0 w-full h-full pointer-events-none"
                 style={{ transform: 'scaleX(-1)' }}
               />
@@ -268,11 +481,25 @@ const WebcamTelemetry: React.FC<{
           </>
         )}
 
-        {/* Live Indicator pill */}
+        {/* Live Indicator / Model Loading Status */}
         {cameraActive && (
-          <div className="absolute top-3 left-3 px-2 py-0.5 rounded-full bg-coral text-white text-[9px] font-black flex items-center gap-1.5 shadow animate-pulse">
-            <div className="w-1.5 h-1.5 rounded-full bg-white" />
-            LIVE TELEMETRY
+          <div className="absolute top-3 left-3 flex items-center gap-1.5">
+            {isModelLoading ? (
+              <div className="px-2.5 py-0.5 rounded-full bg-charcoal/80 backdrop-blur text-cream text-[9px] font-bold flex items-center gap-1.5 shadow border border-white/20">
+                <div className="w-2 h-2 rounded-full border border-cream border-t-transparent animate-spin" />
+                INITIALIZING AI...
+              </div>
+            ) : isFaceDetected ? (
+              <div className="px-2.5 py-0.5 rounded-full bg-emerald-600/90 backdrop-blur text-white text-[9px] font-black flex items-center gap-1.5 shadow animate-pulse">
+                <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                LIVE TELEMETRY
+              </div>
+            ) : (
+              <div className="px-2.5 py-0.5 rounded-full bg-amber-600/90 backdrop-blur text-white text-[9px] font-bold flex items-center gap-1.5 shadow">
+                <div className="w-1.5 h-1.5 rounded-full bg-white/70" />
+                WAITING FOR FACE
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -282,12 +509,12 @@ const WebcamTelemetry: React.FC<{
         <div className="grid grid-cols-2 gap-2 text-[10px]">
           <div className="p-2.5 bg-white rounded-xl border border-charcoal/5 flex flex-col justify-between shadow-sm">
             <span className="text-charcoal/50 font-bold uppercase">Eye Contact</span>
-            <span className="font-display font-black text-xs mt-1 text-charcoal">{cameraActive ? `${metrics.eyeContact}%` : 'N/A'}</span>
+            <span className="font-display font-black text-xs mt-1 text-charcoal">{cameraActive && isFaceDetected ? `${metrics.eyeContact}%` : 'N/A'}</span>
           </div>
 
           <div className="p-2.5 bg-white rounded-xl border border-charcoal/5 flex flex-col justify-between shadow-sm">
             <span className="text-charcoal/50 font-bold uppercase">Head Stability</span>
-            <span className="font-display font-black text-xs mt-1 text-charcoal">{cameraActive ? `${metrics.stability}%` : 'N/A'}</span>
+            <span className="font-display font-black text-xs mt-1 text-charcoal">{cameraActive && isFaceDetected ? `${metrics.stability}%` : 'N/A'}</span>
           </div>
 
           <div className="p-2.5 bg-white rounded-xl border border-charcoal/5 flex flex-col justify-between shadow-sm">
@@ -297,9 +524,9 @@ const WebcamTelemetry: React.FC<{
 
           <div className="p-2.5 bg-white rounded-xl border border-charcoal/5 flex flex-col justify-between shadow-sm">
             <span className="text-charcoal/50 font-bold uppercase">Expression</span>
-            <span className={`font-display font-black text-xs mt-1 uppercase ${
-              !cameraActive ? 'text-charcoal/55' : metrics.emotion === 'Nervous' ? 'text-coral' : 'text-emerald-700'
-            }`}>{cameraActive ? metrics.emotion : 'Standby'}</span>
+            <span className={`font-display font-black text-xs mt-1 uppercase px-1.5 py-0.5 rounded-md border w-fit ${getEmotionBadgeClass(metrics.emotion)}`}>
+              {cameraActive ? metrics.emotion : 'Standby'}
+            </span>
           </div>
         </div>
 
@@ -307,12 +534,12 @@ const WebcamTelemetry: React.FC<{
         <div className="p-3 bg-white rounded-2xl border border-charcoal/10 space-y-1.5 shadow-sm">
           <div className="flex items-center justify-between text-[10px] font-bold">
             <span className="text-charcoal">Confidence Index</span>
-            <span className="text-coral font-black">{cameraActive && metrics.confidence > 0 ? `${metrics.confidence}%` : 'N/A'}</span>
+            <span className="text-coral font-black">{cameraActive && isFaceDetected && metrics.confidence > 0 ? `${metrics.confidence}%` : 'N/A'}</span>
           </div>
           <div className="h-1.5 w-full bg-charcoal/5 rounded-full overflow-hidden">
             <div
               className="h-full bg-coral transition-all duration-500 rounded-full"
-              style={{ width: `${cameraActive ? metrics.confidence : 0}%` }}
+              style={{ width: `${cameraActive && isFaceDetected ? metrics.confidence : 0}%` }}
             />
           </div>
         </div>
@@ -320,7 +547,7 @@ const WebcamTelemetry: React.FC<{
         {/* Camera Toggle Button */}
         <button
           onClick={cameraActive ? stopCamera : startCamera}
-          className="w-full py-2 rounded-xl border border-charcoal/15 bg-white text-charcoal hover:bg-cream transition text-[10px] font-black uppercase tracking-wider"
+          className="w-full py-2 rounded-xl border border-charcoal/15 bg-white text-charcoal hover:bg-cream transition text-[10px] font-black uppercase tracking-wider shadow-sm active:scale-[0.98]"
         >
           {cameraActive ? 'Deactivate Camera' : 'Activate Camera'}
         </button>
