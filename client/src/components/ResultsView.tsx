@@ -1025,6 +1025,39 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ session }) => {
                     {/* Expanded Side-by-Side Model Answer Comparison */}
                     {isExp && ev && (
                       <div className="p-6 border-t border-charcoal/10 bg-white/60 space-y-5 text-xs animate-fade-in">
+                        {ev.confidenceMetrics && (
+                          <div className="p-4 rounded-2xl bg-white border border-charcoal/10 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-black uppercase text-charcoal/60 flex items-center gap-1.5">
+                                <Sparkles className="w-3.5 h-3.5 text-coral" /> Candidate Telemetry & Emotion
+                              </span>
+                              {typeof ev.confidenceScore === 'number' && (
+                                <span className="text-[10px] font-bold text-coral">
+                                  {ev.confidenceScore}% Confidence Index
+                                </span>
+                              )}
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+                              <div className="p-2.5 bg-cream rounded-2xl border border-charcoal/5">
+                                <span className="text-[10px] text-charcoal/50 block font-bold">EYE CONTACT</span>
+                                <span className="font-black text-xs text-charcoal">{ev.confidenceMetrics.eyeContact}%</span>
+                              </div>
+                              <div className="p-2.5 bg-cream rounded-2xl border border-charcoal/5">
+                                <span className="text-[10px] text-charcoal/50 block font-bold">STABILITY</span>
+                                <span className="font-black text-xs text-charcoal">{ev.confidenceMetrics.stability}%</span>
+                              </div>
+                              <div className="p-2.5 bg-cream rounded-2xl border border-charcoal/5">
+                                <span className="text-[10px] text-charcoal/50 block font-bold">PACING</span>
+                                <span className="font-black text-xs text-charcoal">{ev.confidenceMetrics.pacing > 0 ? `${ev.confidenceMetrics.pacing} WPM` : 'Not measured'}</span>
+                              </div>
+                              <div className="p-2.5 bg-cream rounded-2xl border border-charcoal/5">
+                                <span className="text-[10px] text-charcoal/50 block font-bold">DOMINANT EMOTION</span>
+                                <span className="font-black text-xs text-emerald-700 capitalize">{ev.confidenceMetrics.emotion || 'Neutral'}</span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                           <div className="p-4 rounded-2xl bg-white border border-charcoal/10 space-y-2">
                             <div className="flex items-center justify-between text-[10px] font-black uppercase text-charcoal/60">
